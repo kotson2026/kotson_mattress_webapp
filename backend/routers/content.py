@@ -35,7 +35,9 @@ async def pending_claims():
 
 @router.get("/content/assets", response_model=List[dict])
 async def public_assets():
-    docs = await db.assets.find({"status": "published"}).to_list(200)
+    """All registry slots. Only `published` slots carry renderable media; `placeholder` slots let the
+    storefront show a correctly-sized labelled placeholder until the owner uploads the real file."""
+    docs = await db.assets.find({}).to_list(200)
     return [{k: v for k, v in d.items() if k != "_id"} for d in docs]
 
 

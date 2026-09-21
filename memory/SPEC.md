@@ -51,3 +51,22 @@ Razorpay keys, mail provider, GST rate, shipping charges, all six trust claims (
 `cd /app/backend && python seed.py` — idempotent. 10 products across Mattresses/Pillows/Toppers/Baby+Kids with variants,
 SKUs, INR prices and stock (incl. deliberate out-of-stock and low-stock rows), 36 CMS blocks, 6 draft claims, 29 asset
 placeholders, 5 accounts (see `memory/test_credentials.md`). All products carry `is_seed: true`.
+
+## Navbar (visual category navigation)
+- `components/layout/LogoMark.tsx` — official wordmark, a transparent crop of the supplied brand file at
+  `public/brand/kotson-wordmark.png` (1601×184). Original letter shapes, integrated leaf and colours are unmodified;
+  TM, "NATURALS", the green dot and the tagline are excluded. **Never recreate this mark with a font.**
+  Sizes: `h-5` (<640px) → `h-7` (sm) → `h-8` (lg). `light` prop puts it on a sand plaque for the dark footer.
+- `components/layout/CategoryNav.tsx` — `CategoryNavDesktop` (image above label) and `CategoryNavMobile`
+  (image beside label, full-width rows). `CATEGORY_NAV` maps route slug → asset registry slot:
+  mattresses→category-mattress, pillows→category-pillow, toppers→category-topper, baby-kids→category-babykids.
+  Thumbnails are read from `GET /api/content/assets`; a slot renders its image only when `status === "published"`,
+  otherwise a correctly-sized labelled placeholder holds the same aspect ratio. Owner replaces images from
+  `/admin/assets` with **no navbar code change**.
+- `GET /api/content/assets` returns every slot (placeholder + published) so the storefront can render labelled
+  placeholders; only `published` slots ever supply renderable media.
+- About Us and FAQ stay plain text links, deliberately lighter than the category tiles. Cart/account/track remain
+  in the header; Track collapses into the mobile menu below 640px to prevent horizontal overflow.
+- Desktop tiles are a uniform 84×100 with 64×56 thumbs; mobile rows are 72px tall (≥44px tap targets). Hover, focus
+  (2px brand-leaf ring) and selected (tinted tile + leaf underline) states are distinct. Verified: no horizontal page
+  scroll at 375/768/1280, and all six links resolve — 4 categories, /about, /faq.

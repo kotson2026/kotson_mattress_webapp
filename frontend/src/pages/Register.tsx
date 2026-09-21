@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { signup } from "@/lib/session";
-import { LogoMark } from "@/components/layout/StorefrontHeader";
+import LogoMark from "@/components/layout/LogoMark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

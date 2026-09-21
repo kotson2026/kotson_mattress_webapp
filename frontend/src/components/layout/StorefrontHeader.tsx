@@ -3,81 +3,80 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Menu, ShoppingBag, UserRound } from "lucide-react";
 import { apiGet } from "@/lib/api";
-import type { CartView, Category } from "@/lib/types";
+import type { CartView } from "@/lib/types";
 import { useMe } from "@/lib/session";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import LogoMark from "@/components/layout/LogoMark";
+import { CategoryNavDesktop, CategoryNavMobile } from "@/components/layout/CategoryNav";
 
-// Wordmark placeholder — replaced by the official logo files (slots logo-header-light/dark) via /admin.
-export function LogoMark({ light = false }: { light?: boolean }) {
-  return (
-    <span className="flex items-baseline gap-2 leading-none" aria-label="Kotson Mattress">
-      <span className={`font-heading text-2xl font-black tracking-tight ${light ? "text-brand-sand" : "text-brand-charcoal"}`}>
-        KOTSON
-      </span>
-      <span className={`text-[10px] font-medium uppercase tracking-[0.28em] ${light ? "text-brand-sand/70" : "text-brand-deep"}`}>
-        Naturals
-      </span>
-      <span className="h-2 w-2 rounded-full bg-brand-leaf" aria-hidden="true" />
-    </span>
-  );
-}
+// Secondary text links — deliberately lighter weight than the shopping categories.
+const SECONDARY = [
+  { to: "/about", label: "About Us", testId: "nav-secondary-about" },
+  { to: "/faq", label: "FAQ", testId: "nav-secondary-faq" },
+];
+
+export { default as LogoMark } from "@/components/layout/LogoMark";
 
 export default function StorefrontHeader() {
   const { data: me } = useMe();
   const [open, setOpen] = useState(false);
-  const { data: cats } = useQuery({
-    queryKey: ["categories"],
-    queryFn: () => apiGet<Category[]>("/catalog/categories"),
-  });
   const { data: cart } = useQuery({
     queryKey: ["cart"],
     queryFn: () => apiGet<CartView>("/cart"),
   });
 
-  const nav = [
-    ...(cats ?? []).map((c) => ({ to: `/collections/${c.slug}`, label: c.name })),
-    { to: "/about", label: "About" },
-    { to: "/faq", label: "FAQ" },
-  ];
-
   return (
     <header className="sticky top-0 z-40 border-b border-stone-200/60 bg-stone-50/90 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
-        <Link to="/" data-testid="header-logo-link" aria-label="Kotson Mattress home">
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-3 sm:gap-3 sm:px-6 lg:h-[92px] lg:gap-5">
+        <Link
+          to="/"
+          data-testid="header-logo-link"
+          aria-label="Kotson home"
+          className="min-w-0 shrink-0 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-brand-leaf focus-visible:ring-offset-2"
+        >
           <LogoMark />
         </Link>
 
-        <nav className="ml-6 hidden items-center gap-1 md:flex" aria-label="Primary">
-          {nav.map((n) => (
+        {/* Visual shopping categories (desktop) */}
+        <div className="ml-4 hidden lg:block">
+          <CategoryNavDesktop />
+        </div>
+
+        {/* Secondary text links — visually subordinate to the categories */}
+        <nav className="ml-2 hidden items-center gap-1 lg:flex" aria-label="Secondary">
+          {SECONDARY.map((s) => (
             <NavLink
-              key={n.to}
-              to={n.to}
+              key={s.to}
+              to={s.to}
+              data-testid={s.testId}
               className={({ isActive }) =>
-                `rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-brand-leaf/10 hover:text-brand-deep ${
-                  isActive ? "text-brand-deep" : "text-foreground/80"
+                `min-h-11 inline-flex items-center rounded-md px-3 text-[13px] font-normal outline-none transition-colors duration-200 hover:text-brand-deep focus-visible:ring-2 focus-visible:ring-brand-leaf focus-visible:ring-offset-2 ${
+                  isActive ? "text-brand-deep underline decoration-brand-leaf decoration-2 underline-offset-4" : "text-brand-charcoal/60"
                 }`
               }
             >
-              {n.label}
+              {s.label}
             </NavLink>
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
-          <Link
-            to="/track-order"
-            aria-label="Track order"
-            data-testid="header-track-link"
-            className={buttonVariants({ variant: "ghost", size: "sm" }) + " min-h-11"}
-          >
-            <span className="text-xs font-semibold">Track</span>
-          </Link>
+        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+          <div className="hidden sm:block">
+            <Link
+              to="/track-order"
+              aria-label="Track order"
+              data-testid="header-track-link"
+              className={buttonVariants({ variant: "ghost", size: "sm" }) + " min-h-11"}
+            >
+              <span className="text-xs font-semibold">Track</span>
+            </Link>
+          </div>
           <Link
             to={me ? "/account" : "/login"}
             aria-label="Account"
             data-testid="header-account-link"
-            className={buttonVariants({ variant: "ghost", size: "icon" }) + " min-h-11"}
+            className={buttonVariants({ variant: "ghost", size: "icon" }) + " min-h-11 min-w-11"}
           >
             <UserRound className="h-5 w-5" />
           </Link>
@@ -85,7 +84,7 @@ export default function StorefrontHeader() {
             to="/cart"
             data-testid="header-cart-link"
             aria-label={`Cart, ${cart?.item_count ?? 0} items`}
-            className={buttonVariants({ variant: "outline", size: "sm" }) + " min-h-11"}
+            className={buttonVariants({ variant: "outline", size: "sm" }) + " min-h-11 min-w-11"}
           >
             <ShoppingBag className="h-4 w-4" />
             <span className="ml-1 tabular-nums" data-testid="header-cart-count">
@@ -95,32 +94,50 @@ export default function StorefrontHeader() {
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger
               render={
-                <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open menu" data-testid="header-menu-button">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="min-h-11 min-w-11 lg:hidden"
+                  aria-label="Open menu"
+                  data-testid="header-menu-button"
+                >
                   <Menu className="h-5 w-5" />
                 </Button>
               }
             />
-            <SheetContent side="right" className="w-72">
+            <SheetContent side="right" className="flex w-[300px] max-w-[88vw] flex-col overflow-y-auto sm:w-[340px]">
               <SheetHeader>
                 <SheetTitle>
                   <LogoMark />
                 </SheetTitle>
               </SheetHeader>
-              <nav className="flex flex-col gap-1 px-4" aria-label="Mobile">
-                {nav.map((n) => (
-                  <NavLink
-                    key={n.to}
-                    to={n.to}
-                    onClick={() => setOpen(false)}
-                    className="min-h-11 rounded-md px-3 py-2 text-base font-medium hover:bg-brand-leaf/10"
-                  >
-                    {n.label}
-                  </NavLink>
-                ))}
-                <NavLink to="/contact" onClick={() => setOpen(false)} className="min-h-11 rounded-md px-3 py-2 text-base font-medium hover:bg-brand-leaf/10">
-                  Contact
-                </NavLink>
-              </nav>
+
+              <div className="px-4 pb-6">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-deep">Shop</p>
+                <CategoryNavMobile onNavigate={() => setOpen(false)} />
+
+                <p className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-deep/70">
+                  More
+                </p>
+                <nav className="flex flex-col" aria-label="Mobile secondary">
+                  {[...SECONDARY, { to: "/contact", label: "Contact", testId: "mobile-nav-contact" },
+                    { to: "/track-order", label: "Track order", testId: "mobile-nav-track" }].map((s) => (
+                    <NavLink
+                      key={s.to}
+                      to={s.to}
+                      onClick={() => setOpen(false)}
+                      data-testid={`mobile-${s.testId}`}
+                      className={({ isActive }) =>
+                        `min-h-11 inline-flex items-center rounded-lg px-3 text-[15px] outline-none transition-colors hover:bg-brand-leaf/10 focus-visible:ring-2 focus-visible:ring-brand-leaf ${
+                          isActive ? "font-semibold text-brand-deep" : "text-brand-charcoal/75"
+                        }`
+                      }
+                    >
+                      {s.label}
+                    </NavLink>
+                  ))}
+                </nav>
+              </div>
             </SheetContent>
           </Sheet>
         </div>

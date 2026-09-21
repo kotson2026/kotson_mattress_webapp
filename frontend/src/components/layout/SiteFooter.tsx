@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
-import { LogoMark } from "@/components/layout/StorefrontHeader";
+import LogoMark from "@/components/layout/LogoMark";
 import { parseJsonBlock } from "@/lib/format";
 
 interface FooterContact {

@@ -45,14 +45,17 @@
 1. **Razorpay test credentials** — `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` into
    `backend/.env`, then `sudo supervisorctl restart backend`. Webhook URL to register:
    `https://<host>/api/checkout/webhook` (events: `payment.captured`, `payment.failed`, `order.paid`).
-2. **Official logo files** — missing: light header variant, dark header variant, footer variant. No mark has been
-   fabricated; a text wordmark placeholder is in use. Upload into slots `logo-header-light`, `logo-header-dark`,
-   `logo-footer`.
+2. **Official logo — SUPPLIED AND IN USE.** The wordmark is a transparent crop taken directly from the supplied
+   brand file (`frontend/public/brand/kotson-wordmark.png`, 1601×184, original colours and letter shapes intact,
+   TM/"NATURALS"/dot/tagline excluded). It renders in the desktop header, mobile header and footer. Still optional:
+   a dedicated reversed/mono variant for dark surfaces — the footer currently uses a light plaque behind the mark.
 3. **Font files** — **Kellion Black** and **Red Hat Display Light** were not supplied. Current fallbacks: **Outfit**
    (display) and **DM Sans** (body). Supply licensed web files or approve the fallback.
 4. **All imagery/video** — 29 named asset slots exist as labelled placeholders (hero, 4 categories, 4 materials,
    zone-overview + zone-01..07, process-01..04, cert-logo-gols, shark-tank-video, 3 testimonial thumbs, product
-   galleries). Provide filename → slot → alt text.
+   galleries). Provide filename → slot → alt text. **The navbar's four category thumbnails read live from slots
+   `category-mattress`, `category-pillow`, `category-topper`, `category-babykids`** — publishing those four in
+   `/admin/assets` swaps the navbar images with no code change.
 5. **Claim evidence** — GOLS certificate, "one of five in India" substantiation, Shark Tank episode proof, plus exact
    **100-night trial**, **10-year warranty** and **free shipping** terms and coverage. All six claims currently render
    as "owner verification pending".
