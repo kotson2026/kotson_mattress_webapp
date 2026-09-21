@@ -253,6 +253,8 @@ async def main() -> None:
         ("hello@kotsonmattress.com", "Kotson Owner", ["owner"], owner_pw),
         ("manager@kotsonmattress.com", "Ops Manager", ["manager"], "Kotson-Manager-2026!"),
         ("crm@kotsonmattress.com", "CRM Master", ["crm_master"], "Kotson-CRM-2026!"),
+        ("admin@kotsonmattress.com", "Store Admin", ["admin"], "Kotson-Admin-2026!"),
+        ("crm.employee@kotsonmattress.com", "CRM Employee", ["crm_employee"], "Kotson-CRMEmp-2026!"),
         ("rahul.demo@example.com", "Rahul (Demo Customer)", ["customer"], "Kotson-Customer-2026!"),
         ("dealer.demo@example.com", "Demo Dealer", ["customer"], "Kotson-Dealer-2026!"),
     ]

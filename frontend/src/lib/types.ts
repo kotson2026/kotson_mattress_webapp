@@ -217,6 +217,22 @@ export interface SiteSettings {
   analytics_consent: string;
 }
 
+export interface LowStockRow {
+  sku: string;
+  product_name: string;
+  size: string;
+  free_stock: number;
+}
+
+export interface ManagerDashboard {
+  awaiting_payment: number;
+  to_process: number;
+  processing: number;
+  shipped: number;
+  stock_exceptions: number;
+  low_stock: LowStockRow[];
+}
+
 export interface Dashboard {
   revenue_paid_paise: number;
   paid_orders: number;
@@ -224,7 +240,7 @@ export interface Dashboard {
   orders_week: number;
   awaiting_payment: number;
   stock_exceptions: number;
-  low_stock: { sku: string; product_name: string; size: string; free_stock: number }[];
+  low_stock: LowStockRow[];
   trend: { date: string; revenue_paise: number; orders: number }[];
   timezone: string;
 }

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
 import type { AssetSlot, AuditEntry, Claim, CMSBlock, Dashboard, Dealer, DealerOrder, Order, Product, ReferralRule, RewardEntry, SiteSettings, User } from "@/lib/types";
 import { fmtDateTime, inr } from "@/lib/format";
+import { useMe } from "@/lib/session";
 import ConsoleLayout from "@/components/layout/ConsoleLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -550,7 +551,13 @@ function DealersView() {
 
 function StaffView() {
   const qc = useQueryClient();
-  const { data: staff } = useQuery({ queryKey: ["admin-staff"], queryFn: () => apiGet<User[]>("/admin/staff") });
+  const { data: me } = useMe();
+  const isOwner = !!me?.roles.includes("owner");
+  const { data: staff } = useQuery({
+    queryKey: ["admin-staff"],
+    queryFn: () => apiGet<User[]>("/admin/staff"),
+    enabled: isOwner, // owner-only endpoint — don't fire a request that can only 403
+  });
   const [form, setForm] = useState({ email: "", name: "", roles: "manager" });
 
   const invite = useMutation({
@@ -566,6 +573,17 @@ function StaffView() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-staff"] }); toast.success("Staff updated"); },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Owner only"),
   });
+
+  if (!isOwner) {
+    return (
+      <Panel title="Staff & roles" testId="admin-staff-denied">
+        <p className="text-sm text-muted-foreground" data-testid="admin-staff-owner-only-note">
+          Staff accounts and role grants are restricted to the <strong>owner</strong>. Your admin role covers catalog,
+          inventory, orders, CMS and operational settings. Ask the owner to invite staff or change role grants.
+        </p>
+      </Panel>
+    );
+  }
 
   return (
     <div className="grid gap-6">

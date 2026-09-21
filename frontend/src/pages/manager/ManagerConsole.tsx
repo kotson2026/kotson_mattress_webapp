@@ -3,7 +3,7 @@ import { Route, Routes } from "react-router-dom";
 import { useState } from "react";
 import { toast } from "sonner";
 import { apiGet, apiPost } from "@/lib/api";
-import type { Dashboard, Order, Product } from "@/lib/types";
+import type { ManagerDashboard, Order, Product } from "@/lib/types";
 import { fmtDateTime, inr } from "@/lib/format";
 import ConsoleLayout from "@/components/layout/ConsoleLayout";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ const NAV = [
 
 function QueueView() {
   const qc = useQueryClient();
-  const { data: dash } = useQuery({ queryKey: ["manager-dashboard"], queryFn: () => apiGet<Dashboard>("/admin/dashboard") });
+  const { data: dash } = useQuery({ queryKey: ["manager-dashboard"], queryFn: () => apiGet<ManagerDashboard>("/manager/dashboard") });
   const { data: orders } = useQuery({ queryKey: ["manager-orders"], queryFn: () => apiGet<Order[]>("/admin/orders?payment=paid") });
 
   const transition = useMutation({
@@ -32,9 +32,9 @@ function QueueView() {
   return (
     <div className="grid gap-6">
       <div className="grid gap-4 sm:grid-cols-3" data-testid="manager-stats">
-        <div className="rounded-2xl border border-border bg-card p-5"><p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Paid orders</p><p className="mt-2 font-heading text-2xl font-black">{dash?.paid_orders ?? "—"}</p></div>
-        <div className="rounded-2xl border border-border bg-card p-5"><p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Orders (7d)</p><p className="mt-2 font-heading text-2xl font-black">{dash?.orders_week ?? "—"}</p></div>
-        <div className="rounded-2xl border border-border bg-card p-5"><p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Low-stock alerts</p><p className="mt-2 font-heading text-2xl font-black">{dash?.low_stock.length ?? "—"}</p></div>
+        <div className="rounded-2xl border border-border bg-card p-5"><p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">To process</p><p className="mt-2 font-heading text-2xl font-black" data-testid="manager-stat-to-process">{dash?.to_process ?? "—"}</p></div>
+        <div className="rounded-2xl border border-border bg-card p-5"><p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Shipped</p><p className="mt-2 font-heading text-2xl font-black" data-testid="manager-stat-shipped">{dash?.shipped ?? "—"}</p></div>
+        <div className="rounded-2xl border border-border bg-card p-5"><p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Low-stock alerts</p><p className="mt-2 font-heading text-2xl font-black" data-testid="manager-stat-low-stock">{dash?.low_stock.length ?? "—"}</p></div>
       </div>
 
       <section className="rounded-2xl border border-border bg-card p-6" data-testid="manager-queue">

@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from lib.db import db
 from lib.security import (
     ADMIN,
+    MANAGER,
     OWNER,
     STAFF_ROLES,
     audit,
@@ -28,7 +29,7 @@ router = APIRouter()
 
 
 @router.get("/admin/dashboard")
-async def dashboard(user=Depends(require_role("owner", "admin", "manager"))):
+async def dashboard(user=Depends(require_role(OWNER, ADMIN))):
     tzname = os.environ.get("APP_TZ", "Asia/Kolkata")
     tz = ZoneInfo(tzname)
     now_local = datetime.now(tz)
@@ -76,7 +77,7 @@ async def dashboard(user=Depends(require_role("owner", "admin", "manager"))):
 
 
 @router.get("/admin/staff", response_model=List[UserOut], dependencies=[])
-async def staff_list(user=Depends(require_role(OWNER, ADMIN))):
+async def staff_list(user=Depends(require_role(OWNER))):
     docs = await db.users.find({"roles": {"$in": STAFF_ROLES}}).sort("created_at", -1).to_list(200)
     return [UserOut(**clean_doc(d)) for d in docs]
 
@@ -117,8 +118,42 @@ async def staff_update(uid: str, input: StaffUpdateIn, user=Depends(require_role
     return UserOut(**clean_doc(doc))
 
 
+@router.get("/manager/dashboard")
+async def manager_dashboard(user=Depends(require_role(OWNER, ADMIN, MANAGER))):
+    """Operational-only tiles. Deliberately excludes revenue — managers get no pricing/financial visibility."""
+    awaiting = await db.orders.count_documents({"payment_status": "pending"})
+    to_process = await db.orders.count_documents({"payment_status": "paid", "fulfilment_status": "awaiting_payment"})
+    processing = await db.orders.count_documents({"fulfilment_status": "processing"})
+    shipped = await db.orders.count_documents({"fulfilment_status": "shipped"})
+    exceptions = await db.orders.count_documents({"fulfilment_status": "stock_exception"})
+    low = await db.variants.aggregate([
+        {"$match": {"is_active": True}},
+        {"$addFields": {"free_stock": {"$subtract": ["$stock", "$reserved"]}}},
+        {"$match": {"free_stock": {"$lte": 5}}},
+        {"$sort": {"free_stock": 1}},
+        {"$limit": 20},
+    ]).to_list(20)
+    names = {p["id"]: p["name"] for p in await db.products.find({}, {"id": 1, "name": 1}).to_list(500)}
+    return {
+        "awaiting_payment": awaiting,
+        "to_process": to_process,
+        "processing": processing,
+        "shipped": shipped,
+        "stock_exceptions": exceptions,
+        "low_stock": [
+            {
+                "sku": v["sku"],
+                "product_name": names.get(v["product_id"], "—"),
+                "size": v.get("size", "—"),
+                "free_stock": v["free_stock"],
+            }
+            for v in low
+        ],
+    }
+
+
 @router.get("/admin/settings", response_model=SettingsOut)
-async def get_settings(user=Depends(require_role("owner", "admin", "manager"))):
+async def get_settings(user=Depends(require_role(OWNER, ADMIN))):
     s = await db.settings.find_one({"id": "site"}) or {}
     kid = os.environ.get("RAZORPAY_KEY_ID", "").strip()
     out = SettingsOut(**clean_doc(s)) if s.get("id") else SettingsOut()
