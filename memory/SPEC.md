@@ -108,3 +108,30 @@ MongoDB stays; the PostgreSQL suggestion is not a migration instruction.
 
 **Staging fixture:** order `KS09001` is a seeded PAID order (`is_seed: true`) so dispatch flows are
 testable while Razorpay keys are absent. It is NOT a real payment.
+
+## Video hero + announcement bar (owner-editable)
+Page order is now: **announcement bar → navbar → full-width video hero → unchanged sections**.
+
+### Video hero (`components/home/VideoHero.tsx`, `routers/site_media.py`)
+- The old hero (headline, paragraph, CTAs, 3D mattress, layer tabs, stat cards) is **deleted**;
+  `MattressAssembly3D`/`HeroFallback` are no longer imported by Home.
+- Owner supplies a YouTube URL in Website Studio. The server extracts the 11-char id
+  (`extract_youtube_id`) and builds the embed itself — **raw iframe HTML is rejected (422)**, as are
+  non-YouTube hosts and `javascript:` payloads. watch?v=, youtu.be, /embed/, /shorts/, /live/ and a
+  bare id all parse.
+- Embed params: `autoplay=1&mute=1&loop=1&playlist=<id>&playsinline=1`. Autoplay is only ATTEMPTED —
+  a visible play button always renders, so it is never presented as guaranteed.
+- 16:9 aspect box + `object-contain`: full frame preserved edge-to-edge at 1440 and 375 (verified
+  aspect 1.778/1.777, full-bleed, no sideways scroll).
+- Poster precedence: owner poster → the video's own YouTube thumbnail (`maxresdefault.jpg`) → labelled
+  placeholder. Reduced-motion visitors get the poster first and the iframe mounts only on click.
+- Endpoints: `GET /api/content/hero-video`, `GET|PUT /api/admin/hero-video`.
+
+### Announcement bar (`components/layout/AnnouncementBar.tsx`)
+- Seamless loop: list rendered twice, translated exactly `-50%` (`.marquee-track` in index.css), so no jump.
+- Fixed `h-9` reserved even before data loads, so the navbar and video never shift.
+- Pauses on hover AND `:focus-within`; `prefers-reduced-motion` disables the animation entirely.
+- Links may be internal paths or http(s) only — other schemes rejected (422). Keyboard + touch operable.
+- New messages default to **disabled**; enabling is the owner's approval to publish. Website Studio warns
+  when a message's linked claim (e.g. `free_shipping`, `gols_organic`) is still draft/missing.
+- Endpoints: `GET /api/content/announcements` (enabled only), `GET|POST|PATCH|DELETE /api/admin/announcements`.

@@ -307,6 +307,28 @@ export interface ReturnRequest {
   created_at: string;
 }
 
+export interface Announcement {
+  id: string;
+  label: string;
+  href: string | null;
+  enabled: boolean;
+  claim_key: string | null;
+  sort: number;
+  claim_status?: string | null;
+}
+
+export interface HeroVideo {
+  configured: boolean;
+  video_id: string;
+  video_url: string;
+  embed_url: string;
+  poster_url: string | null;
+  poster_fallback_url: string | null;
+  poster_alt: string | null;
+  poster_pending: boolean;
+  enabled: boolean;
+}
+
 export interface PublicTracking {
   order_number: string;
   payment_status: string;

@@ -88,6 +88,7 @@ from routers import (  # noqa: E402
     fulfilment,
     orders,
     referrals,
+    site_media,
 )
 
 api_router.include_router(auth.router)
@@ -103,6 +104,7 @@ api_router.include_router(referrals.router)
 api_router.include_router(crm_leads.router)
 api_router.include_router(crm_calls.router)
 api_router.include_router(fulfilment.router)
+api_router.include_router(site_media.router)
 
 # Include the router in the main app
 app.include_router(api_router)

@@ -6,6 +6,7 @@ import { apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
 import type { AssetSlot, AuditEntry, Claim, CMSBlock, Dashboard, Dealer, DealerOrder, Order, Product, ReferralRule, RewardEntry, SiteSettings, User } from "@/lib/types";
 import { fmtDateTime, inr } from "@/lib/format";
 import { useMe } from "@/lib/session";
+import { AnnouncementEditor, HeroVideoEditor } from "@/components/admin/SiteMediaEditors";
 import ConsoleLayout from "@/components/layout/ConsoleLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -258,6 +259,8 @@ function CMSView() {
 
   return (
     <div className="grid gap-6">
+      <HeroVideoEditor />
+      <AnnouncementEditor />
       <Panel title="Trust claims — evidence gated" testId="admin-claims-panel">
         <p className="mb-4 text-xs text-muted-foreground">
           A claim can only be published after its evidence is marked approved. Unpublished claims render on the storefront as

@@ -9,6 +9,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import LogoMark from "@/components/layout/LogoMark";
 import { CategoryNavDesktop, CategoryNavMobile } from "@/components/layout/CategoryNav";
+import AnnouncementBar from "@/components/layout/AnnouncementBar";
 
 // Secondary text links — deliberately lighter weight than the shopping categories.
 const SECONDARY = [
@@ -28,6 +29,7 @@ export default function StorefrontHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-stone-200/60 bg-stone-50/90 backdrop-blur-xl">
+      <AnnouncementBar />
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-3 sm:gap-3 sm:px-6 lg:h-[92px] lg:gap-5">
         <Link
           to="/"

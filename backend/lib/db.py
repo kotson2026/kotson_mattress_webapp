@@ -122,6 +122,7 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("order_id", ASCENDING)], name="order"),
         IndexModel([("status", ASCENDING), ("created_at", DESCENDING)], name="status_created"),
     ],
+    "announcements": [IndexModel([("sort", ASCENDING)], name="sort")],
 }
 
 

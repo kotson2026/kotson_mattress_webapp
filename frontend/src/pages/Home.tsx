@@ -1,38 +1,24 @@
-import { Component, lazy, Suspense, useState, type ReactNode } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ShieldCheck, Sparkles, TriangleAlert } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import type { Category, Claim, Product } from "@/lib/types";
 import { parseJsonBlock } from "@/lib/format";
-import { useReducedMotion } from "motion/react";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import StorefrontHeader from "@/components/layout/StorefrontHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
 import SevenZones, { DEFAULT_ZONES, type Zone } from "@/components/home/SevenZones";
-import HeroFallback from "@/components/home/HeroFallback";
+import VideoHero from "@/components/home/VideoHero";
 import ProductGrid from "@/components/product/ProductGrid";
-
-const MattressAssembly3D = lazy(() => import("@/components/home/MattressAssembly3D"));
 
 interface StatSlot { value: string; label: string; pending?: boolean }
 interface Benefit { title: string; body: string }
 interface ProcessStep { n: number; title: string; body: string }
 interface Testimonial { name: string; text: string; rating: number }
 
-const LAYER_TABS = [
-  { id: "cover", label: "Bamboo cover" },
-  { id: "casing", label: "Organic cotton" },
-  { id: "core", label: "Latex core · 7 zones" },
-  { id: "support", label: "Support base" },
-  { id: "frame", label: "Teak platform" },
-];
-
 export default function Home() {
-  const reducedMotion = useReducedMotion();
-  const [layer, setLayer] = useState<string | null>(null);
-
   const { data: blocks } = useQuery({
     queryKey: ["blocks", "home"],
     queryFn: () => apiGet<Record<string, string>>("/content/blocks?page=home"),
@@ -66,65 +52,8 @@ export default function Home() {
       <StorefrontHeader />
 
       <main>
-        {/* HERO — asymmetric: copy left, interactive 3D assembly right */}
-        <section className="relative overflow-hidden bg-hero bg-[#F5F2EB]">
-          <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:py-24">
-            <div className="max-w-xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-brand-leaf" data-testid="hero-kicker">
-                {blocks?.hero_kicker ?? "Kotson Naturals — Organic Latex Since 1998"}
-              </p>
-              <h1 className="mt-4 font-heading text-4xl font-black leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl" data-testid="hero-title">
-                {blocks?.hero_title ?? "Sleep on a forest, not a factory"}
-              </h1>
-              <p className="mt-5 text-lg leading-relaxed text-[#53604E]" data-testid="hero-sub">
-                {blocks?.hero_sub ?? "Organic latex mattresses with seven anatomical support zones — tapped from tree sap, built in India."}
-              </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link to="/collections/mattresses" className={buttonVariants({ size: "lg" })} data-testid="hero-cta-primary">
-                  {blocks?.hero_cta_primary ?? "Shop Mattresses"}
-                </Link>
-                <a href="#zones" className={buttonVariants({ variant: "outline", size: "lg" })} data-testid="hero-cta-secondary">
-                  {blocks?.hero_cta_secondary ?? "Explore the 7 Zones"}
-                </a>
-              </div>
-              <dl className="mt-10 grid grid-cols-3 gap-4" data-testid="hero-stats">
-                {stats.map((s) => (
-                  <div key={s.label} className="rounded-xl bg-white/70 p-4">
-                    <dt className="font-heading text-2xl font-black text-brand-deep">
-                      {s.value}
-                      {s.pending && <TriangleAlert className="ml-1 inline h-4 w-4 text-brand-amber" aria-label="pending owner verification" />}
-                    </dt>
-                    <dd className="mt-1 text-xs leading-snug text-muted-foreground">{s.label}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-
-            <div className="relative h-[380px] sm:h-[460px]" data-testid="hero-3d-stage">
-              <Suspense fallback={<div className="h-full w-full animate-pulse rounded-2xl bg-brand-sand" />}>
-                <Hero3DStage reducedMotion={!!reducedMotion} highlightId={layer} onHighlight={setLayer} />
-              </Suspense>
-              <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 flex-wrap justify-center gap-1.5 rounded-full bg-white/85 px-3 py-2 shadow-sm backdrop-blur">
-                {LAYER_TABS.map((t) => (
-                  <button
-                    key={t.id}
-                    onMouseEnter={() => setLayer(t.id)}
-                    onMouseLeave={() => setLayer(null)}
-                    onFocus={() => setLayer(t.id)}
-                    onBlur={() => setLayer(null)}
-                    onClick={() => setLayer(layer === t.id ? null : t.id)}
-                    className={`min-h-9 rounded-full px-3 text-xs font-medium transition-colors ${
-                      layer === t.id ? "bg-brand-deep text-white" : "text-foreground/70 hover:bg-brand-leaf/10"
-                    }`}
-                    data-testid={`hero-layer-tab-${t.id}`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
+        {/* HERO — full-width owner-configured YouTube video, directly below the navbar */}
+        <VideoHero />
 
         {/* TRUST BENEFITS */}
         <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6" aria-label="Why Kotson">
@@ -264,37 +193,5 @@ export default function Home() {
 
       <SiteFooter />
     </div>
-  );
-}
-
-// WebGL failure → static fallback; the page (and shopping) must always work.
-class ErrorCatcher extends Component<{ children: ReactNode; onError: () => void }, { hasError: boolean }> {
-  state = { hasError: false };
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-  componentDidCatch() {
-    this.props.onError();
-  }
-  render() {
-    return this.state.hasError ? null : this.props.children;
-  }
-}
-
-function Hero3DStage({
-  reducedMotion,
-  highlightId,
-  onHighlight,
-}: {
-  reducedMotion: boolean;
-  highlightId: string | null;
-  onHighlight: (id: string | null) => void;
-}) {
-  const [failed, setFailed] = useState(false);
-  if (failed) return <HeroFallback highlightId={highlightId} onHighlight={onHighlight} />;
-  return (
-    <ErrorCatcher onError={() => setFailed(true)}>
-      <MattressAssembly3D highlightId={highlightId} />
-    </ErrorCatcher>
   );
 }

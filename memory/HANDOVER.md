@@ -113,3 +113,36 @@ New routes: `/crm/{leads,leads/:id,intake,follow-ups,cases,dispositions,reports}
 New collections: source_events, leads, pipelines, campaigns, follow_ups, calls, connectivities,
 dispositions, call_outcomes, engagement_forms, service_cases, shipments, return_requests.
 Seed commands: `python seed.py` (catalog/accounts), `python seed_crm.py` (CRM config drafts).
+
+## Video hero + announcement bar — status
+
+| Item | Status | Evidence |
+|---|---|---|
+| Old hero fully removed (headline, paragraph, CTAs, 3D mattress, layer labels, stat cards) | IMPLEMENTED | all 7 old testids return count 0 |
+| Video directly below navbar, edge to edge | IMPLEMENTED | bar.top=0 (h=36) < nav.top=66 < video.top=129; width 1440/1440 and 375/375 |
+| Full frame, no stretch/crop | IMPLEMENTED | aspect 1.778 desktop / 1.777 mobile, `object-contain` |
+| loop=1 + playlist=<id>, muted, inline | IMPLEMENTED | src params asserted in the DOM |
+| Autoplay not presented as guaranteed | IMPLEMENTED | play button always rendered; tapping appends autoplay=1 |
+| Poster while loading / playback unavailable | IMPLEMENTED | owner poster → video's own YouTube thumbnail (1280x720 loaded) → labelled placeholder |
+| Reduced motion: poster first, opt-in play | IMPLEMENTED | iframe not mounted until click; "Play video" offered |
+| Sections below hero unchanged | IMPLEMENTED | 6 benefits, 4 categories, 4 featured, 7 zones (still interactive), 4 process steps, final CTA |
+| Website Studio: YouTube URL + poster fields | IMPLEMENTED | `/admin/cms`; extracted id displayed |
+| Safe ID extraction (no arbitrary iframe HTML) | IMPLEMENTED | iframe HTML, non-YouTube host and `javascript:` all 422 |
+| Announcement bar above navbar, brand green + white text | IMPLEMENTED | Free Shipping / Chemical-Free / 100% Organic |
+| Seamless loop, no jump/clipping, no sideways scroll | IMPLEMENTED | -50% translate, track 3218px in 1280px frame, scrollWidth == clientWidth |
+| Pause on hover and on keyboard focus | IMPLEMENTED | playState running → paused on hover and focus-within |
+| Reduced-motion static version | IMPLEMENTED | animationName `none` |
+| Links touch + keyboard operable | IMPLEMENTED | focus + Enter navigated to /policies/policy_shipping |
+| Stable height while loading | IMPLEMENTED | h-9 placeholder reserved before data arrives |
+| Add / edit / reorder / enable / remove + links | IMPLEMENTED | reorder changed public order and restored; disable removed it from the storefront |
+| Claim gating | IMPLEMENTED | new messages default disabled; Studio warns `free_shipping` is draft and `gols_organic` is missing |
+
+**Playback caveat (honest):** YouTube reports `playableInEmbed: true` for `xoRN3hDvsD8`, and the embed
+params are verified in the DOM, but the automated test browser renders YouTube's "Video unavailable"
+screen because YouTube blocks headless/bot sessions. **Actual playback and looping could not be proven
+inside automation — please confirm in your own browser.** If it ever shows unavailable to real visitors,
+check YouTube Studio → video → Embedding is allowed. The poster fallback keeps the hero presentable either way.
+
+**Outstanding owner input:** a dedicated hero poster image (the video's own thumbnail is used meanwhile),
+and evidence for the `free_shipping` / GOLS organic claims before those bar messages stay published.
+Seed command: `python seed_site_media.py`.
