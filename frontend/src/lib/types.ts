@@ -1,0 +1,349 @@
+// Hand-written mirrors of the backend Pydantic models — nothing infers across the HTTP boundary.
+// Money is integer PAISE everywhere; format with inr() for display.
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  roles: string[];
+  referral_code: string | null;
+  referred_by: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface AuthOut {
+  user: User;
+  guest_cart_merged: number;
+}
+
+export interface Category {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  image_slot: string;
+  sort: number;
+  is_active: boolean;
+}
+
+export interface Variant {
+  id: string;
+  product_id: string;
+  sku: string;
+  size: string;
+  thickness: string | null;
+  firmness: string | null;
+  price: number; // paise
+  mrp: number | null;
+  stock: number;
+  reserved: number;
+  free_stock: number;
+  is_active: boolean;
+}
+
+export interface Product {
+  id: string;
+  slug: string;
+  name: string;
+  tagline: string;
+  description: string;
+  category_slug: string;
+  badge: string | null;
+  rating: number | null;
+  review_count: number;
+  trial_days: number | null;
+  warranty_years: number | null;
+  images: string[];
+  is_seed: boolean;
+  is_active: boolean;
+  sort: number;
+  created_at: string;
+  variants: Variant[];
+  price_from: number | null;
+  in_stock: boolean;
+}
+
+export interface CartLine {
+  variant_id: string;
+  product_id: string;
+  product_slug: string;
+  product_name: string;
+  sku: string;
+  size: string;
+  thickness: string | null;
+  firmness: string | null;
+  qty: number;
+  unit_price: number;
+  line_total: number;
+  stock: number;
+  free_stock: number;
+  is_active: boolean;
+}
+
+export interface CartView {
+  items: CartLine[];
+  item_count: number;
+  subtotal: number;
+  referred_code: string | null;
+  referral_status: "none" | "valid" | "invalid" | "self" | "no_published_rule";
+  referral_discount: number;
+  referral_note: string;
+}
+
+export interface OrderItem {
+  variant_id: string;
+  product_id: string;
+  product_slug: string;
+  product_name: string;
+  sku: string;
+  size: string;
+  thickness: string | null;
+  firmness: string | null;
+  qty: number;
+  unit_price: number;
+  line_total: number;
+}
+
+export interface OrderEvent {
+  at: string;
+  type: string;
+  detail: string;
+  actor: string;
+}
+
+export interface OrderAmounts {
+  subtotal: number;
+  discount: number;
+  tax: number;
+  tax_status: string;
+  shipping: number;
+  shipping_status: string;
+  total: number;
+}
+
+export interface Order {
+  id: string;
+  order_number: string;
+  user_id: string | null;
+  email: string;
+  guest_access_token: string | null;
+  channel: string;
+  items: OrderItem[];
+  address: Record<string, string>;
+  amounts: OrderAmounts;
+  payment_status: "pending" | "paid" | "failed" | "refunded";
+  fulfilment_status: "awaiting_payment" | "processing" | "shipped" | "delivered" | "cancelled";
+  reservation_status: string;
+  referral_code: string | null;
+  stock_exception?: boolean;
+  fulfilment_blocked?: boolean;
+  razorpay: Record<string, unknown>;
+  events: OrderEvent[];
+  created_at: string;
+}
+
+export interface GatewayInfo {
+  state: "ready" | "pending_keys" | "error";
+  mode: string;
+  key_id: string | null;
+  rzp_order_id: string | null;
+  amount: number;
+  detail?: string;
+}
+
+export interface CheckoutStartOut {
+  order_id: string;
+  order_number: string;
+  guest_access_token: string | null;
+  amounts: OrderAmounts;
+  gateway: GatewayInfo;
+}
+
+export interface CheckoutConfig {
+  gateway: string;
+  mode: string;
+  state: "ready" | "pending_keys" | "error";
+  key_id: string | null;
+  currency: string;
+  reservation_ttl_minutes: number;
+}
+
+export interface Claim {
+  key: string;
+  label: string;
+  body: string;
+  status: "draft" | "published";
+  evidence_status: "pending" | "approved";
+  evidence_url: string;
+  applies_to: string;
+  conditions: string;
+}
+
+export interface CMSBlock {
+  key: string;
+  page: string;
+  label: string;
+  type: "text" | "json" | "richtext";
+  value: string;
+  status: "draft" | "published";
+  updated_at: string;
+  revisions: { value: string; status: string; at: string; by: string }[];
+}
+
+export interface AssetSlot {
+  slot: string;
+  section: string;
+  alt_text: string;
+  file_url: string;
+  status: "placeholder" | "published";
+  attribution: string;
+  crop_desktop: string;
+  crop_mobile: string;
+}
+
+export interface SiteSettings {
+  company_name: string;
+  support_email: string;
+  support_phone: string;
+  address: string;
+  gst_rate: number | null;
+  gst_status: string;
+  shipping_flat_paise: number | null;
+  shipping_status: string;
+  free_shipping_enabled: boolean;
+  razorpay_state: string;
+  mail_state: string;
+  analytics_consent: string;
+}
+
+export interface Dashboard {
+  revenue_paid_paise: number;
+  paid_orders: number;
+  orders_today: number;
+  orders_week: number;
+  awaiting_payment: number;
+  stock_exceptions: number;
+  low_stock: { sku: string; product_name: string; size: string; free_stock: number }[];
+  trend: { date: string; revenue_paise: number; orders: number }[];
+  timezone: string;
+}
+
+export interface AuditEntry {
+  id: string;
+  actor_email: string;
+  action: string;
+  entity: string;
+  entity_id: string;
+  detail: string;
+  created_at: string;
+}
+
+export interface RewardEntry {
+  id: string;
+  order_number?: string;
+  type: string;
+  amount: number;
+  status: "pending" | "approved" | "reversed" | "paid";
+  created_at: string;
+  user_id?: string;
+  code?: string;
+}
+
+export interface ReferralRule {
+  id: string;
+  name: string;
+  reward_type: "referee_discount" | "referrer_reward";
+  value_type: "percent" | "fixed";
+  value: number;
+  min_spend_paise: number;
+  first_order_only: boolean;
+  status: "draft" | "published";
+  attribution_window_days: number;
+  created_at: string;
+}
+
+export interface ReferralMe {
+  referral_code: string | null;
+  share_url: string | null;
+  clicks: number;
+  attributed_signups: number;
+  qualified_orders: number;
+  rewards: RewardEntry[];
+  published_rules: { name: string; reward_type: string; value_type: string; value: number; min_spend_paise: number; first_order_only: boolean }[];
+  economics_configured: boolean;
+  policy: string;
+}
+
+export interface Inquiry {
+  id: string;
+  customer_id: string | null;
+  name: string;
+  email: string;
+  phone: string | null;
+  subject: string;
+  message: string;
+  issue_type: string;
+  status: "open" | "in_progress" | "resolved";
+  priority: "low" | "normal" | "high";
+  assignee_id: string | null;
+  notes: { at: string; author_id: string; author_email: string; body: string }[];
+  created_at: string;
+}
+
+export interface Dealer {
+  id: string;
+  user_id: string;
+  org_name: string;
+  gstin: string;
+  territory: string;
+  phone: string;
+  status: "pending" | "approved" | "rejected";
+  terms_status: string;
+  created_at: string;
+}
+
+export interface DealerOrder {
+  id: string;
+  dealer_id: string;
+  org_name: string;
+  items: { variant_id: string; sku: string; product_name: string; size: string; qty: number }[];
+  status: "quote_requested" | "quoted" | "approved" | "rejected" | "fulfilled";
+  note: string;
+  pricing_status: string;
+  created_at: string;
+  history?: { at: string; status: string; by: string; note: string }[];
+}
+
+export interface AffiliateMe {
+  applied: boolean;
+  status: "applied" | "approved" | "rejected" | null;
+  campaign_status: string;
+  note?: string;
+  rewards?: RewardEntry[];
+}
+
+export interface CrmCustomer {
+  id: string;
+  email: string;
+  name: string;
+  created_at: string;
+  verified_purchases: number;
+  lifetime_spend_paise: number;
+  last_order_at: string | null;
+}
+
+export interface CrmCustomerDetail {
+  customer: { id: string; email: string; name: string; referral_code: string | null; referred_by: string | null; created_at: string };
+  orders: { order_number: string; payment_status: string; fulfilment_status: string; total: number; created_at: string; items: OrderItem[] }[];
+  notes: { id: string; body: string; author_email: string; created_at: string }[];
+}
+
+export interface TrackOut {
+  order_number: string;
+  payment_status: string;
+  fulfilment_status: string;
+  placed_at: string;
+  items: { product_name: string; qty: number }[];
+  events: { type: string; detail: string; at: string }[];
+}

@@ -1,0 +1,429 @@
+{
+  "project_name": "Kotson Mattress",
+  "legal_entity": "KOTSON NATURALS PRIVATE LIMITED",
+  "archetype": "Organic & Earthy / Botanical Craft Luxury",
+  "template": "farm-ts",
+  "locale_conventions": {
+    "country": "India",
+    "currency": "INR",
+    "currency_symbol": "₹",
+    "price_format": "en-IN (e.g. ₹28,999)",
+    "date_format": "DD MMM YYYY (e.g. 15 Aug 2026)",
+    "pincode_label": "PIN Code / Delivery Check",
+    "gst_handling": "Inclusive of 18% GST"
+  },
+  "typography": {
+    "font_family_heading": "Outfit Variable, sans-serif",
+    "font_family_body": "DM Sans Variable, sans-serif",
+    "font_family_mono": "JetBrains Mono Variable, monospace",
+    "fontsource_imports": [
+      "@import \"@fontsource-variable/outfit\";",
+      "@import \"@fontsource-variable/dm-sans\";",
+      "@import \"@fontsource-variable/jetbrains-mono\";"
+    ],
+    "notes": "Kellion Black fallback is Outfit (weights 700-900 with tight tracking); Red Hat Display Light fallback is DM Sans (weight 300-400 with relaxed leading). Clean, modern, highly legible with botanical authority.",
+    "scale_px": {
+      "display": 56,
+      "h1": 44,
+      "h2": 32,
+      "h3": 22,
+      "body": 16,
+      "caption": 14
+    }
+  },
+  "colors": {
+    "brand_tokens": {
+      "--brand-leaf": "#7C9C59",
+      "--brand-deep": "#467065",
+      "--brand-charcoal": "#2D2D2D",
+      "--brand-sand": "#F7F5F0",
+      "--brand-cream": "#FAF8F5",
+      "--brand-amber": "#D97706"
+    },
+    "accent": "#467065",
+    "on_accent": "#FFFFFF",
+    "surfaces": [
+      {
+        "name": "page",
+        "kind": "solid",
+        "bg": "#FAF8F5",
+        "on_bg": "#2D2D2D",
+        "on_bg_muted": "#5C6656"
+      },
+      {
+        "name": "panel",
+        "kind": "solid",
+        "bg": "#FFFFFF",
+        "on_bg": "#2D2D2D",
+        "on_bg_muted": "#5C6656",
+        "roles": {
+          "link": "#467065",
+          "error": "#B91C1C",
+          "success": "#2E7D32",
+          "warning": "#B45309"
+        }
+      },
+      {
+        "name": "panel_elevated",
+        "kind": "solid",
+        "bg": "#F4F1EA",
+        "on_bg": "#2D2D2D",
+        "on_bg_muted": "#5C6656"
+      },
+      {
+        "name": "inverse",
+        "kind": "solid",
+        "bg": "#2D2D2D",
+        "on_bg": "#F7F5F0",
+        "on_bg_muted": "#A8B4A2",
+        "roles": {
+          "link": "#9EC379",
+          "error": "#FCA5A5",
+          "success": "#86EFAC"
+        }
+      },
+      {
+        "name": "brand_deep_card",
+        "kind": "solid",
+        "bg": "#467065",
+        "on_bg": "#FFFFFF",
+        "on_bg_muted": "#E0EBE8"
+      },
+      {
+        "name": "brand_leaf_soft",
+        "kind": "solid",
+        "bg": "#EEF4E8",
+        "on_bg": "#2C4421",
+        "on_bg_muted": "#4B683C"
+      },
+      {
+        "name": "hero",
+        "kind": "solid",
+        "bg": "#F5F2EB",
+        "on_bg": "#2D2D2D",
+        "on_bg_muted": "#53604E"
+      },
+      {
+        "name": "header_glass",
+        "kind": "glass",
+        "contrast_against": "#F7F5F0",
+        "guarantee": "backdrop-blur-xl bg-stone-50/90 border-b border-stone-200/60 shadow-xs",
+        "on_bg": "#2D2D2D",
+        "on_bg_muted": "#5C6656"
+      },
+      {
+        "name": "dark_page",
+        "kind": "solid",
+        "bg": "#1A1D1A",
+        "on_bg": "#EDEFEA",
+        "on_bg_muted": "#9DA799"
+      },
+      {
+        "name": "dark_panel",
+        "kind": "solid",
+        "bg": "#232824",
+        "on_bg": "#EDEFEA",
+        "on_bg_muted": "#9DA799"
+      }
+    ]
+  },
+  "entry_surfaces": {
+    "/": "Asymmetric editorial hero: botanical badge + value proposition left with INR CTA, interactive 3D 7-zone mattress assembly stage right with live layer controls and fallback",
+    "/login": "Branded split auth: botanical sourcing story panel left (#467065 background), phone/email customer sign-in form right with instant guest-cart merge notification",
+    "/register": "Branded split register: 100-night trial benefits panel left, customer profile and delivery address seed form right",
+    "/admin": "Back-office command center: dense dark slate sidebar (#2D2D2D), high-contrast stats bento grid, audit timeline and real-time Razorpay test switch",
+    "/manager": "Warehouse fulfilment matrix: operational topbar, order triage kanban with stock recount badges and batch transitions",
+    "/crm": "Customer experience hub: split directory on left, active ticket/conversation notes timeline and VIP mattress tags right",
+    "/dealer": "B2B Wholesale portal: tier pricing header, bulk order matrix with instant GST invoice calculation and sample kit request"
+  },
+  "logo_strategy": {
+    "slots": {
+      "logo-header-light": "KOTSON NATURALS wordmark + botanical leaf icon (H: 36px, W: auto, color: #467065)",
+      "logo-header-dark": "KOTSON NATURALS wordmark + leaf icon in pure cream (#F7F5F0)",
+      "logo-footer": "KOTSON MATTRESS full brandmark with subtitle 'Pure Organic Latex & Botanicals' (H: 48px)"
+    },
+    "wordmark_treatment": "Geometric uppercase 'KOTSON' (Outfit 900, tracking-tight) followed by superscript leaf pip + 'NATURALS' in tracking-[0.25em] caption"
+  },
+  "image_urls": {
+    "hero_and_features": [
+      {
+        "category": "hero_room_lifestyle",
+        "image_url": "https://images.pexels.com/photos/7598123/pexels-photo-7598123.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Minimalist luxury bedroom with organic mattress base and ambient lighting"
+      },
+      {
+        "category": "mattress_detail_showcase",
+        "image_url": "https://images.pexels.com/photos/7598114/pexels-photo-7598114.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Premium finished mattress on modern frame showing ergonomic contour"
+      }
+    ],
+    "sourcing_and_steps": [
+      {
+        "category": "step_1_hevea_sap",
+        "image_url": "https://images.pexels.com/photos/12996935/pexels-photo-12996935.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Natural Hevea Brasiliensis rubber tree sap extraction outdoors in Kerala plantation"
+      },
+      {
+        "category": "step_2_purification_plantation",
+        "image_url": "https://images.pexels.com/photos/12366786/pexels-photo-12366786.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Sustainably managed organic rubber tree forest with natural collecting bowls"
+      },
+      {
+        "category": "step_3_organic_cover",
+        "image_url": "https://images.unsplash.com/photo-1686806374120-e7ae3f19801d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHw0fHxvcmdhbmljJTIwY290dG9uJTIwZmFicmljJTIwdGV4dHVyZXxlbnwwfHx8fDE3ODk5ODU0MjV8MA&ixlib=rb-4.1.0&q=85",
+        "description": "GOTS certified breathable organic cotton & bamboo knitted surface fabric"
+      },
+      {
+        "category": "step_4_breathable_latex_core",
+        "image_url": "https://images.unsplash.com/photo-1615799998603-7c6270a45196?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHwxfHxvcmdhbmljJTIwY290dG9uJTIwZmFicmljJTIwdGV4dHVyZXxlbnwwfHx8fDE3ODk5ODU0MjV8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Macro pin-core open cell breathable mattress ventilation texture"
+      }
+    ]
+  },
+  "interactive_3d_hero_spec": {
+    "engine": "three + @react-three/fiber + @react-three/drei",
+    "stagger_duration": "3.8s initial layer drop sequence",
+    "layers": [
+      { "id": "foundation", "name": "Solid Teakwood Slatted Platform", "color": "#785338", "height": 0.3, "y_start": 3.0, "y_end": 0.0 },
+      { "id": "support_core", "name": "7-Zone Dunlop High-Density Latex Core (85 Density)", "color": "#E6DEC9", "height": 0.6, "y_start": 4.5, "y_end": 0.6 },
+      { "id": "comfort_layer", "name": "Gentle-Contour Talalay Latex Layer (70 Density)", "color": "#F3EDE0", "height": 0.4, "y_start": 6.0, "y_end": 1.2 },
+      { "id": "quilted_cover", "name": "GOTS Organic Cotton Quilted Zipper Cover", "color": "#FAF8F5", "height": 0.15, "y_start": 7.5, "y_end": 1.6 }
+    ],
+    "lighting": {
+      "ambient": "0.85 intensity warm sunlight (#FFFDF5)",
+      "directional": "1.2 intensity directional light from top-left with soft shadow bias",
+      "point_accent": "0.4 intensity leaf-tinted rim light (#9EC379)"
+    },
+    "interactions": [
+      "Layer explode / inspect toggle button (moves layers apart vertically)",
+      "Zone heatmap overlay (turns on blue/green pressure distribution glowing rings)",
+      "Drag to orbit with bounded polar angle (20deg to 85deg)",
+      "Auto-rotation (0.5 RPM) with hover pause"
+    ],
+    "accessibility_and_fallback": {
+      "reduced_motion": "Instantly displays fully assembled 3D model without drop bounce",
+      "static_fallback": "Renders high-res 2.5D layered SVG/CSS exploded illustration with layer inspect tabs for low-power devices and WebGL failures"
+    }
+  },
+  "interactive_seven_zones_spec": {
+    "zones": [
+      { "id": "zone-1", "name": "Head & Neck", "pressure": "Gentle Cradle", "firmness": "Medium-Soft", "description": "Micro-pin core channels alleviate cervical pressure and align upper spine naturally." },
+      { "id": "zone-2", "name": "Back & Shoulders", "pressure": "Pressure Relief", "firmness": "Contoured Soft", "description": "Expanded ventilation cavities allow broad shoulder blades to sink without pinch points." },
+      { "id": "zone-3", "name": "Lower Back & Lumbar", "pressure": "Targeted Support", "firmness": "Firm Adaptive", "description": "Reinforced latex density bridges the lumbar gap to eliminate morning back stiffness." },
+      { "id": "zone-4", "name": "Hips & Pelvis", "pressure": "Even Displacement", "firmness": "Dynamic Medium", "description": "Progressive compression distributes pelvic weight evenly across sleep transitions." },
+      { "id": "zone-5", "name": "Knees & Joints", "pressure": "Ergonomic Balance", "firmness": "Medium-Firm", "description": "Zero-rebound resilience preserves neutral knee joint angle in both side and back sleeping." },
+      { "id": "zone-6", "name": "Lower Legs & Calves", "pressure": "Circulation Flow", "firmness": "Soft Airy", "description": "Aerated cellular grid prevents pressure constriction for unhindered blood flow." },
+      { "id": "zone-7", "name": "Feet & Ankles", "pressure": "Weightless Finish", "firmness": "Gentle Float", "description": "Soft terminal cushion suspends heels and feet in a buoyant, gravity-free state." }
+    ],
+    "mobile_ux": "Horizontal scroll pill bar + vertical expandable accordion card with active glowing body heatmap diagram."
+  },
+  "seed_catalog_blueprint": [
+    {
+      "id": "prod-kotson-pure-7zone",
+      "slug": "kotson-pure-organic-latex-mattress-7zone",
+      "name": "Kotson Pure 7-Zone Organic Latex Mattress",
+      "category": "Mattresses",
+      "tagline": "100% GOLS Organic Certified Dunlop Latex with Anatomical 7-Zone Contouring",
+      "base_price_inr": 29999,
+      "mrp_inr": 39999,
+      "rating": 4.93,
+      "review_count": 218,
+      "trial_days": 100,
+      "warranty_years": 10,
+      "sizes": ["Single (72x36)", "Queen (78x60)", "King (78x72)", "Custom Dimensions"],
+      "thicknesses": ["6 Inch (15 cm)", "8 Inch (20 cm)", "10 Inch (25 cm)"],
+      "firmness_options": ["Medium Soft (65D/75D)", "Medium Firm (75D/85D)", "Dual Comfort (Reversible)"],
+      "badge": "Bestseller"
+    },
+    {
+      "id": "prod-kotson-ortho-natural",
+      "slug": "kotson-ortho-firm-organic-mattress",
+      "name": "Kotson Ortho-Firm Certified Back Support Mattress",
+      "category": "Mattresses",
+      "tagline": "Doctor-Recommended 85-Density Natural Latex for Spinal Alignment",
+      "base_price_inr": 34999,
+      "mrp_inr": 45999,
+      "rating": 4.96,
+      "review_count": 142,
+      "trial_days": 100,
+      "warranty_years": 15,
+      "sizes": ["Single (72x36)", "Queen (78x60)", "King (78x72)"],
+      "thicknesses": ["8 Inch (20 cm)", "10 Inch (25 cm)"],
+      "firmness_options": ["Firm (85D)", "Extra Firm (90D)"],
+      "badge": "Ortho Care"
+    },
+    {
+      "id": "prod-kotson-contour-pillow",
+      "slug": "kotson-cervical-contour-organic-latex-pillow",
+      "name": "Kotson Ergonomic Cervical Latex Pillow",
+      "category": "Pillows",
+      "tagline": "Wave-Contoured Organic Pillow with GOTS Washable Cover",
+      "base_price_inr": 3299,
+      "mrp_inr": 4999,
+      "rating": 4.88,
+      "review_count": 96,
+      "trial_days": 30,
+      "warranty_years": 3,
+      "sizes": ["Standard (24x16 in)"],
+      "thicknesses": ["High Contour (4.5 in)", "Low Contour (3.5 in)"],
+      "firmness_options": ["Plush Medium"],
+      "badge": "Popular"
+    },
+    {
+      "id": "prod-kotson-organic-topper",
+      "slug": "kotson-natural-latex-mattress-topper",
+      "name": "Kotson Organic 2-Inch Latex Mattress Topper",
+      "category": "Toppers",
+      "tagline": "Instantly revitalize any existing bed into natural latex comfort",
+      "base_price_inr": 11499,
+      "mrp_inr": 15999,
+      "rating": 4.85,
+      "review_count": 64,
+      "trial_days": 30,
+      "warranty_years": 5,
+      "sizes": ["Single", "Queen", "King"],
+      "thicknesses": ["2 Inch (5 cm)", "3 Inch (7.5 cm)"],
+      "firmness_options": ["Soft Plush (65D)", "Medium Balance (75D)"],
+      "badge": "Quick Upgrade"
+    },
+    {
+      "id": "prod-kotson-baby-crib",
+      "slug": "kotson-baby-safe-organic-crib-mattress",
+      "name": "Kotson Pure-Nest Organic Crib Mattress",
+      "category": "Baby & Kids",
+      "tagline": "Hypoallergenic, VOC-Free Natural Latex with Waterproof Organic Cotton Liner",
+      "base_price_inr": 8999,
+      "mrp_inr": 11999,
+      "rating": 4.97,
+      "review_count": 51,
+      "trial_days": 50,
+      "warranty_years": 5,
+      "sizes": ["Crib Standard (52x28 in)", "Toddler Bed (55x27 in)"],
+      "thicknesses": ["4 Inch (10 cm)"],
+      "firmness_options": ["Pediatric Firm"],
+      "badge": "Pediatric Safe"
+    }
+  ],
+  "checkout_and_razorpay_ux": {
+    "test_mode_badge": "Persistent amber pill '⚡ Razorpay Test Mode — No Live Charges' on /checkout and payment modal",
+    "state_machine": {
+      "idle": "Cart review with GST summary and delivery PIN code validation",
+      "address_step": "Customer details + India PIN auto-lookup (City/State autofill)",
+      "payment_selection": "Razorpay Test / UPI / Netbanking / 0% Interest EMI / Cash on Delivery (Deposit)",
+      "keys_status_gate": "If Razorpay API keys are not provided in backend .env, show an explicit 'Sandbox Test Order Creation (Keys Pending)' flow with Instant Simulated Approval button so user testing is never blocked without fake payment claims",
+      "order_confirmed": "Renders verified order breakdown, WhatsApp tracking link, 100-night trial countdown, and referral invite card"
+    }
+  },
+  "backoffice_workspaces": {
+    "admin": {
+      "path": "/admin",
+      "role": "Owner / SuperAdmin",
+      "sections": [
+        "Executive Dashboard (Live GMV, AOV, Trial-Return Rate, 7-day Sales Chart)",
+        "Product & Variant Matrix (Stock count, Dunlop/Talalay SKU overrides, MRP/Selling price)",
+        "CMS Trust Block Editor (Draft/Preview/Publish toggle for Shark Tank episode & GOLS certificates)",
+        "Audit Log & Staff Access Roles"
+      ]
+    },
+    "manager": {
+      "path": "/manager",
+      "role": "Operations & Fulfilment Manager",
+      "sections": [
+        "Order Triage & Batch Dispatch Pipeline (Pending -> Packed -> Courier Assigned -> In-Transit -> Delivered)",
+        "Inventory Stock Recount & Low-Stock Alerts (Minimum 5 units threshold)",
+        "Delivery Tracking Integration (Delhivery / BlueDart tracking ID assignment)"
+      ]
+    },
+    "crm": {
+      "path": "/crm",
+      "role": "Customer Experience & Concierge",
+      "sections": [
+        "Customer 360 Directory (Purchase history, sleep trial days elapsed, spine complaints)",
+        "Support Inbox & Sleep Specialist Consultation Chat Queue",
+        "Referral Rewards Approvals (₹1,500 bank transfer / store credits)"
+      ]
+    },
+    "dealer": {
+      "path": "/dealer",
+      "role": "B2B Franchise & Institutional Dealer",
+      "sections": [
+        "Tiered Wholesale Price List (Tier 1: 10-25 units 30% off, Tier 2: 26+ units 42% off)",
+        "Bulk Order Proforma Generator with GSTIN Auto-calc",
+        "Showroom Display Sample Kit Requests"
+      ]
+    }
+  },
+  "component_hierarchy": [
+    {
+      "component": "StorefrontHeader",
+      "path": "frontend/src/components/layout/StorefrontHeader.tsx",
+      "features": "Glassmorphic bar with announcement ribbon, category flyout menu, live cart sheet trigger with item count pill, PIN code delivery checker modal, and customer account quick-link."
+    },
+    {
+      "component": "MattressAssembly3D",
+      "path": "frontend/src/components/home/MattressAssembly3D.tsx",
+      "features": "React Three Fiber canvas + Drei Float & OrbitControls, 4 separable mattress layers with entrance bounce, layer inspect button, zone heatmap toggle, and fallback 2D view."
+    },
+    {
+      "component": "SevenZonesInteractive",
+      "path": "frontend/src/components/home/SevenZonesInteractive.tsx",
+      "features": "Interactive 7-zone body pressure map with SVG silhouette, keyboard/hover trigger, zone firmness statistics, and mobile-friendly tab carousel."
+    },
+    {
+      "component": "OrganicStepsProcess",
+      "path": "frontend/src/components/home/OrganicStepsProcess.tsx",
+      "features": "4-step farm-to-bedroom storytelling (Tree Tapping, Centrifugation, Dunlop Baking, GOTS Quilting) with rich photography and botanical badges."
+    },
+    {
+      "component": "TrustProofCertifications",
+      "path": "frontend/src/components/home/TrustProofCertifications.tsx",
+      "features": "GOLS, GOTS, OEKO-TEX Standard 100, and eco-INSTITUT verifiable certificate modal previews + Shark Tank India featured reel placeholder."
+    },
+    {
+      "component": "ProductCard",
+      "path": "frontend/src/components/product/ProductCard.tsx",
+      "features": "High-density editorial product card with trial badge, star rating, instant size pill selector, INR price with discount math, and quick add-to-cart button."
+    },
+    {
+      "component": "VariantSelector",
+      "path": "frontend/src/components/product/VariantSelector.tsx",
+      "features": "Multi-dimensional variant picker (Size, Thickness, Firmness) dynamically updating price, SKU, delivery ETA, and stock status."
+    },
+    {
+      "component": "CartDrawer",
+      "path": "frontend/src/components/cart/CartDrawer.tsx",
+      "features": "Side sheet with free shipping progress bar (Unlock free organic pillow above ₹35,000), item quantity controls, trial period notice, and Razorpay-ready checkout CTA."
+    },
+    {
+      "component": "ConsoleLayout",
+      "path": "frontend/src/components/layout/ConsoleLayout.tsx",
+      "features": "Shared back-office shell with role switcher tab (Admin / Manager / CRM / Dealer), dark-mode sidebar, search bar, and toast notification listener."
+    }
+  ],
+  "motion_and_interactions": {
+    "engine": "motion/react",
+    "rules": [
+      "Use staggered fade-in + translateY(12px) on product grids (0.05s stagger)",
+      "3D layer assembly uses spring physics: stiffness 120, damping 14",
+      "Hover effects use explicit transform with transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+      "Interactive zone selector highlights corresponding body segment with soft green glow",
+      "Respect prefers-reduced-motion via Framer Motion's useReducedMotion hook"
+    ]
+  },
+  "accessibility_and_compliance": {
+    "wcag_level": "WCAG 2.1 AA",
+    "touch_targets": "Minimum 44px x 44px for all buttons, pills, and dropdown triggers",
+    "focus_states": "Visible 2px ring with 2px offset: focus-visible:ring-2 focus-visible:ring-[#467065] focus-visible:ring-offset-2",
+    "contrast_guarantee": "Text against #FAF8F5 is #2D2D2D (ratio 12.8:1); muted text #5C6656 (ratio 5.1:1); on brand #467065 text is #FFFFFF (ratio 5.4:1)",
+    "data_testid_convention": "All interactive elements have kebab-case data-testid (e.g. data-testid='hero-explore-btn', data-testid='add-to-cart-btn', data-testid='zone-select-lumbar', data-testid='checkout-pay-btn')"
+  },
+  "instructions_to_main_agent": [
+    "1. Replace index.css theme tokens with the provided brand leaf (#7C9C59), brand deep (#467065), and charcoal (#2D2D2D) tokens and import Outfit, DM Sans, and JetBrains Mono.",
+    "2. Keep currency strictly INR with ₹ symbol and Indian numbering format (e.g. ₹29,999).",
+    "3. Build the 3D hero with @react-three/fiber + @react-three/drei using procedural rounded slabs and lighting, paired with the static/reduced-motion fallback.",
+    "4. Implement the 7-zone interactive selector with active state synchronization to the body anatomical diagram.",
+    "5. Ensure the Razorpay checkout shows the test-mode badge and handles both simulated and active gateway modes gracefully.",
+    "6. Build all 4 back-office consoles (/admin, /manager, /crm, /dealer) with role-based mock switching so any role can be previewed seamlessly.",
+    "7. Mount Sonner's <Toaster /> at bottom-right in App.tsx or main layout."
+  ]
+}
