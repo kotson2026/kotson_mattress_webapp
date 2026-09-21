@@ -7,6 +7,7 @@ Never trusts browser amounts. When Razorpay keys are absent the gateway state is
 import hashlib
 import hmac
 import json
+import logging
 import os
 import uuid
 from datetime import datetime
@@ -16,6 +17,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lib.crm_intake import capture_checkout_started, convert_on_paid_order
 from lib.db import db
 from lib.security import normalize_email, now_utc, optional_user, audit
 from lib.services import (
@@ -27,6 +29,7 @@ from models.orders import CartView, CheckoutStartIn, VerifyPaymentIn
 from routers.cart import cart_view, evaluate_referral, get_or_create_cart
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 RAZORPAY_BASE = "https://api.razorpay.com/v1"
 
@@ -145,6 +148,12 @@ async def checkout_start(input: CheckoutStartIn, request: Request, user=Depends(
         raise HTTPException(status_code=409, detail=str(exc))
     await db.orders.insert_one(order)
 
+    # CRM: checkout-started UPDATES the same opportunity — it never creates a duplicate lead.
+    try:
+        await capture_checkout_started(user, order)
+    except Exception:
+        logger.exception("CRM checkout-started intake failed for %s", order["id"])
+
     gateway: dict = {"state": gateway_state(), "mode": "test", "key_id": rzp_creds()[0], "rzp_order_id": None, "amount": total}
     if gateway["state"] == "ready":
         kid, ksec = rzp_creds()
@@ -198,6 +207,12 @@ async def finalize_order(order: dict, payment_meta: dict) -> dict:
     )
     if not updated:
         return await db.orders.find_one({"id": order["id"]})  # already finalized: idempotent no-op
+
+    # CRM: only a verified paid order converts an opportunity, and only once.
+    try:
+        await convert_on_paid_order(updated)
+    except Exception:
+        logger.exception("CRM paid-order conversion failed for %s", updated["id"])
 
     expected = sum(i["qty"] for i in updated["items"])
     moved = await consume_order_reservations(updated["id"])

@@ -70,3 +70,41 @@ placeholders, 5 accounts (see `memory/test_credentials.md`). All products carry 
 - Desktop tiles are a uniform 84×100 with 64×56 thumbs; mobile rows are 72px tall (≥44px tap targets). Hover, focus
   (2px brand-leaf ring) and selected (tinted tile + leaf underline) states are distinct. Verified: no horizontal page
   scroll at 375/768/1280, and all six links resolve — 4 categories, /about, /faq.
+
+## CRM intake, calls & order operations (Sections F/G/H)
+**Authoritative rule change:** signup AND add-to-cart DO create CRM leads (supersedes the earlier
+"registration must not create a lead"). Stack conflict resolved in favour of the existing build:
+MongoDB stays; the PostgreSQL suggestion is not a migration instruction.
+
+### Intake (`backend/lib/crm_intake.py`) — the only place events become leads
+- `source_events.event_key` is UNIQUE = the idempotency/dedup anchor.
+- Verified signup -> exactly ONE `registration` lead, qualification `registered` (NOT sales-qualified).
+- Add-to-cart by an identified customer -> at most ONE open `cart_opportunity`; further adds, quantity
+  changes and checkout-started UPDATE it. Guests are recorded but never become callable leads.
+- Contact/dealer enquiry -> sourced `sales`/`dealer` lead. Only a verified PAID order converts (once).
+- Dedup: customer_id first, then conservative normalized email/phone. Guest events merge at sign-in.
+
+### Leads/calls (`routers/crm_leads.py`, `routers/crm_calls.py`)
+- Stage moves ONLY via `POST /api/crm/leads/{id}/stage` (reason mandatory) or paid-order conversion.
+  Saving a call or completing a follow-up NEVER changes a stage. Converted leads are stage-locked.
+- Scope: owner/crm_master = all; crm_manager = own + team (`users.crm_manager_id`); crm_employee = assigned only.
+  Applied to lists, detail, aggregates and reports alike.
+- Call save order enforced server-side: connectivity -> disposition (must belong to it) -> outcome (only
+  when `requires_outcome`) -> active engagement form -> optional summary -> optional follow-up.
+  `false` and `0` are VALID answers; only null/whitespace/empty-list is missing.
+  `idempotency_key` unique per lead; retry returns the original call and creates no second reminder.
+  `verified_telephony` is always false — manual logging, no provider.
+- Call config seeded by `python seed_crm.py` as INACTIVE DRAFTS. `configured` reflects ACTIVE rows only;
+  with nothing active, saving a call is correctly rejected (honest empty state).
+- Reports state their conversion denominator; ad spend/impressions/ROAS = `not_connected`. IST day bounds.
+
+### Order operations (`routers/fulfilment.py`)
+- Unpaid orders cannot dispatch (409). Partial shipments supported; never ship more than ordered.
+- Shipment status roll-up drives order fulfilment; payment history untouched. Tracking URLs validated.
+- `tracking_is_manual` always true — no courier API; customer tracking says so explicitly.
+- Returns/trial/warranty: CRM may RAISE a request; only owner/admin approve, and restock happens once,
+  only from `inspected`, writing an inventory-ledger entry.
+- Routes: `/ops` (dispatch queue), `/ops/returns`. Customer view: `GET /api/ops/track/{order_number}?email=`.
+
+**Staging fixture:** order `KS09001` is a seeded PAID order (`is_seed: true`) so dispatch flows are
+testable while Razorpay keys are absent. It is NOT a real payment.

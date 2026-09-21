@@ -20,6 +20,7 @@ import NotFound from "@/pages/NotFound";
 import AdminConsole from "@/pages/admin/AdminConsole";
 import ManagerConsole from "@/pages/manager/ManagerConsole";
 import CRMConsole from "@/pages/crm/CRMConsole";
+import OpsConsole from "@/pages/ops/OpsConsole";
 import DealerConsole from "@/pages/dealer/DealerConsole";
 
 // One <Route> per page in src/pages; BrowserRouter already wraps this in main.tsx.
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="/admin/*" element={<AdminConsole />} />
         <Route path="/manager/*" element={<ManagerConsole />} />
         <Route path="/crm/*" element={<CRMConsole />} />
+        <Route path="/ops/*" element={<OpsConsole />} />
         <Route path="/dealer/*" element={<DealerConsole />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

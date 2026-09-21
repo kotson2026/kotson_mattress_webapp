@@ -1,16 +1,19 @@
 """Cart: guest-session or authenticated cart; every read reprices server-side from active variants."""
 
+import logging
 import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
+from lib.crm_intake import capture_cart_intent
 from lib.db import db
 from lib.security import CART_COOKIE, optional_user
 from lib.services import clean_doc
 from models.orders import CartItemIn, CartItemPatch, CartLine, CartView, ReferralApplyIn
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 async def get_or_create_cart(request: Request, response: Response, user):
@@ -130,6 +133,13 @@ async def add_item(input: CartItemIn, request: Request, response: Response, user
     items[input.variant_id] = min(items.get(input.variant_id, 0) + input.qty, free_stock, 10)
     await db.carts.update_one({"id": cart["id"]}, {"$set": {"items": [{"variant_id": k, "qty": q} for k, q in items.items()]}})
     cart = await db.carts.find_one({"id": cart["id"]})
+
+    # CRM intake: one open cart opportunity per identified customer; guests recorded, never called.
+    try:
+        await capture_cart_intent(user, cart, v, p)
+    except Exception:
+        logger.exception("CRM cart intake failed for cart %s", cart["id"])
+
     return await cart_view(cart, user)
 
 

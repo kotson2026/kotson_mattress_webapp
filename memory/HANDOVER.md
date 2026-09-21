@@ -82,3 +82,34 @@
 | `/api/admin/**`, `/api/crm/**`, `/api/dealer/**` | server-side role + row-scope checks on every request; all privileged mutations audited |
 
 No role — including owner — can view payment secrets in the UI; only masked integration state is exposed.
+
+## Increment F/G/H feature status (this session)
+
+| Scope item | Status | Evidence |
+|---|---|---|
+| Source-event intake (signup / cart / checkout / contact) | IMPLEMENTED | 1 signup -> 1 lead; 3 logins -> still 1; 3 add-to-cart -> 1 cart opportunity |
+| Guest cart never becomes a callable lead | IMPLEMENTED | lead count unchanged after anonymous add-to-cart |
+| Paid-order conversion, exactly once | IMPLEMENTED | idempotent on `event_key=paid_order:<id>` |
+| Pipelines, campaigns, Owner intake queue, assignment lineage | IMPLEMENTED | intake pipeline w/ 7 stages; bulk assign records prev/new owner + reason |
+| Stage-change invariant | IMPLEMENTED | stage `quote_shared` unchanged after saving a call (API + browser) |
+| Disposition centre (Connectivity/Dispositions/Outcomes/Form) | IMPLEMENTED | `/crm/dispositions`, legacy `/crm/call-configuration` redirects to same view |
+| Draft-only call options until owner approval | IMPLEMENTED | all seeded inactive; save rejected 422 until activated |
+| Call validation rules | IMPLEMENTED | Connected+Not Answering 422; Call Done w/o outcome 422; missing required field 422; `false`/`0` accepted |
+| Call idempotency (no duplicate call or reminder) | IMPLEMENTED | same `idempotency_key` -> 1 call, 1 follow-up |
+| Follow-up buckets in IST; completion never moves stage | IMPLEMENTED | "22 Sep 2026, 10:00 AM IST" in upcoming bucket |
+| CRM reports w/ stated denominator; ad metrics honest | IMPLEMENTED | ad_spend/impressions/roas = `not_connected` |
+| Row-level scope + IDOR denial | IMPLEMENTED | employee: 0 rows, 403 on unassigned lead, 403 team report, blocked from /ops |
+| Dispatch: unpaid cannot ship | IMPLEMENTED | 409 "Only a verified paid order can be dispatched" |
+| Partial shipment + over-ship prevention | IMPLEMENTED | qty 5 of 2 -> 409; 1-of-2 keeps order `processing` |
+| Shipment milestones + order roll-up | IMPLEMENTED | dispatched -> in_transit -> out_for_delivery -> delivered |
+| Manual courier labelling (no false live tracking) | IMPLEMENTED | `tracking_is_manual: true`; customer note states it |
+| Returns/trial/warranty; CRM raises, owner approves, restock once | IMPLEMENTED | CRM raise 201, CRM approve 403, stock 9->10, double restock refused |
+| Customer tracking privacy | IMPLEMENTED | wrong email -> 404, no data leak |
+| Telephony (recording/duration) | BLOCKED (by choice) | manual logging only; `verified_telephony` always false |
+| Razorpay live/test payment | BLOCKED | no keys; KS09001 is a seeded `is_seed` fixture, NOT a real payment |
+| Workforce (attendance/leave/payroll), Website Studio (pages/banners/redirects) | NOT PRESENT | agreed for the next session |
+
+New routes: `/crm/{leads,leads/:id,intake,follow-ups,cases,dispositions,reports}`, `/ops`, `/ops/returns`.
+New collections: source_events, leads, pipelines, campaigns, follow_ups, calls, connectivities,
+dispositions, call_outcomes, engagement_forms, service_cases, shipments, return_requests.
+Seed commands: `python seed.py` (catalog/accounts), `python seed_crm.py` (CRM config drafts).

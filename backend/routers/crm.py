@@ -5,6 +5,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from lib.crm_intake import capture_contact
 from lib.db import db
 from lib.security import (
     CRM_EMPLOYEE,
@@ -109,6 +110,11 @@ async def public_inquiry(input: InquiryCreate):
                                 "status": "open", "priority": "normal", "assignee_id": None,
                                 "notes": [], "created_at": now_utc()}
     await db.inquiries.insert_one(doc)
+    # CRM intake: a contact enquiry is a properly sourced, callable lead.
+    try:
+        await capture_contact("contact", input.name, str(input.email), input.phone, input.subject, doc["id"])
+    except Exception:
+        pass
     return Inquiry(**doc)
 
 

@@ -74,7 +74,21 @@ async def get_status_checks():
     return [StatusCheck(**status_check) for status_check in status_checks]
 
 # Resource routers (one module per resource) fold into the single /api router
-from routers import admin, auth, cart, catalog, checkout, content, crm, dealers, orders, referrals  # noqa: E402
+from routers import (  # noqa: E402
+    admin,
+    auth,
+    cart,
+    catalog,
+    checkout,
+    content,
+    crm,
+    crm_calls,
+    crm_leads,
+    dealers,
+    fulfilment,
+    orders,
+    referrals,
+)
 
 api_router.include_router(auth.router)
 api_router.include_router(catalog.router)
@@ -86,6 +100,9 @@ api_router.include_router(admin.router)
 api_router.include_router(crm.router)
 api_router.include_router(dealers.router)
 api_router.include_router(referrals.router)
+api_router.include_router(crm_leads.router)
+api_router.include_router(crm_calls.router)
+api_router.include_router(fulfilment.router)
 
 # Include the router in the main app
 app.include_router(api_router)

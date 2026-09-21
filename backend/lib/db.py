@@ -76,6 +76,52 @@ INDEXES: dict[str, list[IndexModel]] = {
     "affiliates": [IndexModel([("user_id", ASCENDING)], name="user_id", unique=True)],
     "refunds": [IndexModel([("order_id", ASCENDING)], name="order_id")],
     "referral_rules": [IndexModel([("id", ASCENDING)], name="id", unique=True)],
+    # --- CRM (Sections F/G) ---
+    "source_events": [
+        IndexModel([("event_key", ASCENDING)], name="event_key", unique=True),  # idempotency anchor
+        IndexModel([("customer_id", ASCENDING), ("created_at", DESCENDING)], name="customer_created"),
+        IndexModel([("guest_session", ASCENDING)], name="guest_session", sparse=True),
+    ],
+    "leads": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("lead_number", ASCENDING)], name="lead_number", unique=True),
+        IndexModel([("customer_id", ASCENDING), ("kind", ASCENDING)], name="customer_kind"),
+        IndexModel([("employee_id", ASCENDING), ("updated_at", DESCENDING)], name="employee_updated"),
+        IndexModel([("manager_id", ASCENDING)], name="manager"),
+        IndexModel([("email", ASCENDING)], name="email", sparse=True),
+        IndexModel([("phone", ASCENDING)], name="phone", sparse=True),
+        IndexModel([("qualification", ASCENDING), ("is_open", ASCENDING)], name="qualification_open"),
+    ],
+    "pipelines": [IndexModel([("code", ASCENDING)], name="code", unique=True)],
+    "campaigns": [IndexModel([("code", ASCENDING)], name="code", unique=True)],
+    "follow_ups": [
+        IndexModel([("owner_id", ASCENDING), ("status", ASCENDING), ("due_at", ASCENDING)], name="owner_status_due"),
+        IndexModel([("lead_id", ASCENDING)], name="lead"),
+    ],
+    "calls": [
+        IndexModel([("lead_id", ASCENDING), ("created_at", DESCENDING)], name="lead_created"),
+        IndexModel([("agent_id", ASCENDING)], name="agent"),
+        IndexModel([("lead_id", ASCENDING), ("idempotency_key", ASCENDING)], name="call_idem", unique=True, sparse=True),
+    ],
+    "connectivities": [IndexModel([("code", ASCENDING)], name="code", unique=True)],
+    "dispositions": [IndexModel([("code", ASCENDING)], name="code", unique=True)],
+    "call_outcomes": [IndexModel([("code", ASCENDING)], name="code", unique=True)],
+    "engagement_forms": [IndexModel([("code", ASCENDING), ("version", ASCENDING)], name="code_version", unique=True)],
+    "service_cases": [
+        IndexModel([("case_number", ASCENDING)], name="case_number", unique=True),
+        IndexModel([("assignee_id", ASCENDING), ("status", ASCENDING)], name="assignee_status"),
+        IndexModel([("customer_id", ASCENDING)], name="customer", sparse=True),
+    ],
+    # --- Order operations (Section H) ---
+    "shipments": [
+        IndexModel([("shipment_number", ASCENDING)], name="shipment_number", unique=True),
+        IndexModel([("order_id", ASCENDING), ("created_at", ASCENDING)], name="order_created"),
+    ],
+    "return_requests": [
+        IndexModel([("request_number", ASCENDING)], name="request_number", unique=True),
+        IndexModel([("order_id", ASCENDING)], name="order"),
+        IndexModel([("status", ASCENDING), ("created_at", DESCENDING)], name="status_created"),
+    ],
 }
 
 

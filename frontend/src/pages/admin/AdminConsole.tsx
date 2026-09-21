@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 const NAV = [
   { to: "/admin", label: "Dashboard" },
   { to: "/admin/orders", label: "Orders" },
+  { to: "/ops", label: "Dispatch & Returns" },
   { to: "/admin/catalog", label: "Catalog" },
   { to: "/admin/cms", label: "CMS & claims" },
   { to: "/admin/assets", label: "Assets" },

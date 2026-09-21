@@ -1,7 +1,7 @@
-import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { apiPost } from "@/lib/api";
-import type { TrackOut } from "@/lib/types";
+import { useMutation } from "@tanstack/react-query";
+import { apiGet } from "@/lib/api";
+import type { PublicTracking } from "@/lib/crmTypes";
 import { fmtDateTime } from "@/lib/format";
 import StorefrontHeader from "@/components/layout/StorefrontHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
@@ -15,7 +15,9 @@ export default function TrackOrder() {
   const [email, setEmail] = useState("");
 
   const track = useMutation({
-    mutationFn: () => apiPost<TrackOut>("/track-order", { order_number: orderNumber, email }),
+    // Shipment-aware tracking: returns canonical milestones and labels manual courier updates.
+    mutationFn: () =>
+      apiGet<PublicTracking>(`/ops/track/${encodeURIComponent(orderNumber)}?email=${encodeURIComponent(email)}`),
   });
 
   return (
@@ -66,13 +68,55 @@ export default function TrackOrder() {
                 <li key={n} className="text-muted-foreground">{i.product_name} × {i.qty}</li>
               ))}
             </ul>
-            <ol className="mt-6 space-y-2 border-t border-border pt-4 text-xs text-muted-foreground">
-              {track.data.events.map((e, n) => (
-                <li key={n}>
-                  <span className="font-medium text-foreground">{e.type.replace(/_/g, " ")}</span> — {e.detail} · {fmtDateTime(e.at)}
+            <ol className="mt-6 space-y-3 border-t border-border pt-4" data-testid="track-shipments">
+              {track.data.shipments.length === 0 ? (
+                <li className="text-xs text-muted-foreground" data-testid="track-no-shipments">
+                  No shipment has been created yet. You'll see dispatch milestones here once your order is packed.
                 </li>
-              ))}
+              ) : (
+                track.data.shipments.map((s) => (
+                  <li key={s.shipment_number} className="rounded-xl border border-border p-4" data-testid={`track-shipment-${s.shipment_number}`}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-semibold">{s.shipment_number}</p>
+                      <Badge variant="secondary" data-testid={`track-shipment-status-${s.shipment_number}`}>
+                        {s.status.replace(/_/g, " ")}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {s.items.map((i) => `${i.product_name} × ${i.qty}`).join(", ")}
+                    </p>
+                    {s.carrier && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {s.carrier}
+                        {s.tracking_reference ? ` · ${s.tracking_reference}` : ""}
+                      </p>
+                    )}
+                    {s.tracking_url && (
+                      <a
+                        href={s.tracking_url}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="mt-1 inline-block text-xs font-semibold text-brand-deep underline"
+                        data-testid={`track-shipment-link-${s.shipment_number}`}
+                      >
+                        Open carrier tracking
+                      </a>
+                    )}
+                    <ol className="mt-2 space-y-1 text-xs text-muted-foreground">
+                      {s.milestones.map((m, n) => (
+                        <li key={n}>
+                          <span className="font-medium text-foreground">{m.status.replace(/_/g, " ")}</span> · {fmtDateTime(m.at)}
+                          {m.note ? ` · ${m.note}` : ""}
+                        </li>
+                      ))}
+                    </ol>
+                  </li>
+                ))
+              )}
             </ol>
+            <p className="mt-4 text-xs text-muted-foreground" data-testid="track-manual-note">
+              {track.data.tracking_note}
+            </p>
           </div>
         )}
       </main>

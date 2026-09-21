@@ -6,6 +6,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
+from lib.crm_intake import capture_registration, merge_guest_history
 from lib.db import db
 from lib.security import (
     CART_COOKIE,
@@ -107,6 +108,13 @@ async def signup(input: SignupIn, request: Request, response: Response):
         "created_at": now_utc(),
     }
     await db.users.insert_one(user)
+
+    # CRM intake: exactly ONE registration lead per verified signup (idempotent on event_key).
+    try:
+        await capture_registration(user)
+        await merge_guest_history(user_id, request.cookies.get(CART_COOKIE))
+    except Exception:
+        logger.exception("CRM registration intake failed for %s", user_id)
 
     merged = await merge_guest_cart(user_id, request)
     token = await create_session(user_id)
