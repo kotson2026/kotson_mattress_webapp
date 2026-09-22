@@ -1,0 +1,300 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/manrope";
+@import "@fontsource/dm-serif-display";
+@import "@fontsource-variable/jetbrains-mono";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-heading: var(--font-ui);
+    --font-sans: var(--font-ui);
+    --font-ui: var(--font-ui);
+    --font-display: var(--font-display);
+    --font-serif: var(--font-display);
+    --font-mono: 'JetBrains Mono Variable', monospace;
+    --color-brand-leaf: var(--brand-leaf);
+    --color-brand-deep: var(--brand-deep);
+    --color-brand-charcoal: var(--brand-charcoal);
+    --color-brand-sand: var(--brand-sand);
+    --color-brand-cream: var(--brand-cream);
+    --color-brand-amber: var(--brand-amber);
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* Kotson brand tokens & typography */
+:root {
+    --font-ui: 'Manrope Variable', 'Manrope', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-display: 'DM Serif Display', Georgia, serif;
+
+    --brand-leaf: #7C9C59;
+    --brand-deep: #467065;
+    --brand-charcoal: #2D2D2D;
+    --brand-sand: #F7F5F0;
+    --brand-cream: #FAF8F5;
+    --brand-amber: #D97706;
+
+    --background: #FAF8F5;
+    --foreground: #2D2D2D;
+    --card: #FFFFFF;
+    --card-foreground: #2D2D2D;
+    --popover: #FFFFFF;
+    --popover-foreground: #2D2D2D;
+    --primary: #467065;
+    --primary-foreground: #FFFFFF;
+    --secondary: #EEF4E8;
+    --secondary-foreground: #2C4421;
+    --muted: #F4F1EA;
+    --muted-foreground: #5C6656;
+    --accent: #EEF4E8;
+    --accent-foreground: #2C4421;
+    --destructive: #B91C1C;
+    --border: #E5E0D5;
+    --input: #E5E0D5;
+    --ring: #467065;
+    --chart-1: #7C9C59;
+    --chart-2: #467065;
+    --chart-3: #D97706;
+    --chart-4: #2D2D2D;
+    --chart-5: #9EC379;
+    --radius: 0.75rem;
+    --sidebar: #2D2D2D;
+    --sidebar-foreground: #F7F5F0;
+    --sidebar-primary: #7C9C59;
+    --sidebar-primary-foreground: #14210F;
+    --sidebar-accent: #3A3F38;
+    --sidebar-accent-foreground: #EDEFEA;
+    --sidebar-border: rgba(247, 245, 240, 0.08);
+    --sidebar-ring: #7C9C59;
+}
+
+.dark {
+    --brand-leaf: #9EC379;
+    --brand-deep: #5E8A7E;
+    --brand-charcoal: #1A1D1A;
+
+    --background: #1A1D1A;
+    --foreground: #EDEFEA;
+    --card: #232824;
+    --card-foreground: #EDEFEA;
+    --popover: #232824;
+    --popover-foreground: #EDEFEA;
+    --primary: #9EC379;
+    --primary-foreground: #16290F;
+    --secondary: #2A3327;
+    --secondary-foreground: #EDEFEA;
+    --muted: #262B26;
+    --muted-foreground: #9DA799;
+    --accent: #2A3327;
+    --accent-foreground: #EDEFEA;
+    --destructive: #FCA5A5;
+    --border: rgba(237, 239, 234, 0.12);
+    --input: rgba(237, 239, 234, 0.16);
+    --ring: #9EC379;
+    --chart-1: #9EC379;
+    --chart-2: #5E8A7E;
+    --chart-3: #D97706;
+    --chart-4: #EDEFEA;
+    --chart-5: #7C9C59;
+    --sidebar: #232824;
+    --sidebar-foreground: #EDEFEA;
+    --sidebar-primary: #9EC379;
+    --sidebar-primary-foreground: #16290F;
+    --sidebar-accent: #2A3327;
+    --sidebar-accent-foreground: #EDEFEA;
+    --sidebar-border: rgba(237, 239, 234, 0.1);
+    --sidebar-ring: #9EC379;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+  }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    font-family: var(--font-ui);
+    @apply bg-background text-foreground;
+  }
+  html {
+    font-family: var(--font-ui);
+    @apply font-sans;
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-ui);
+    letter-spacing: -0.02em;
+  }
+}
+
+/* ─── Premium Dual Typography System Tokens ──────────────────────────────────
+   1. SERIF (.font-display) = emotional / natural / storytelling moments
+   2. MANROPE (.font-ui) = interface / ecommerce / product / science / functional
+─────────────────────────────────────────────────────────────────────────────── */
+.font-ui {
+  font-family: var(--font-ui);
+}
+
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+/* Suggested desktop display serif: clamp(40px, 4.2vw, 68px), lh 0.98–1.08 */
+.text-display-xl {
+  font-family: var(--font-display);
+  font-size: clamp(38px, 4.2vw, 68px);
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+  font-weight: 400;
+}
+
+.text-display-lg {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 3.2vw, 46px);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  font-weight: 400;
+}
+
+/* Product & commerce section titles in Manrope SemiBold/Bold */
+.text-section-title {
+  font-family: var(--font-ui);
+  font-size: clamp(24px, 2.2vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.18;
+}
+
+/* Controlled precise section eyebrows in Manrope */
+.text-eyebrow {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.text-product-title {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.text-body {
+  font-family: var(--font-ui);
+  font-weight: 400;
+  font-size: clamp(15px, 1.1vw, 17px);
+  line-height: 1.62;
+}
+
+.text-button {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* ─── Hero layout guarantee ──────────────────────────────────────────────────
+   The hero section MUST physically begin at viewport y=0.
+   The Floating Sleep Dock (position: fixed) overlays it — it does NOT push it.
+   No margin, padding, or top offset is allowed on the hero element itself.
+─────────────────────────────────────────────────────────────────────────────── */
+.hero {
+  position: relative;
+  width: 100%;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  top: 0 !important;
+}
+
+/* The hero-video must fill the section completely from inset-0 */
+.hero-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+@keyframes marquee-scroll {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    /* exactly -50%: the duplicated copy lands where the first began, so the loop is seamless */
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.marquee-track {
+  animation: marquee-scroll 38s linear infinite;
+  will-change: transform;
+}
+
+/* Pause on hover or keyboard focus anywhere inside the bar. */
+.group:hover .marquee-track,
+.marquee-track:hover,
+.marquee-track:focus-within {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Non-moving version: no animation at all. */
+  .marquee-track {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
