@@ -1,300 +1,323 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-import MattressLayersCard from "@/components/home/MattressLayersCard";
+import { useRef, useState, useEffect } from "react";
 
-interface LayerStory {
-  id: "cover" | "casing" | "core";
-  step: string;
-  name: string;
-  headline: string;
-  description: string;
-  detail: string;
-  tag: string;
-}
+/* ─────────────────────────────────────────────────────────────────────────
+   WHAT'S INSIDE THE MATTRESS? — Section 4
+   2-column grid: 36% left (heading + layers) / 64% right (image).
+   Both columns stretch to the same height. Left content distributes
+   vertically with justify-content: space-between so it visually matches
+   the image height.
+   ───────────────────────────────────────────────────────────────────────── */
 
-const LAYERS_STORY: LayerStory[] = [
+const DEEP     = "#467065";
+const CHARCOAL = "#2D2D2D";
+const SAND     = "#F7F5F0";
+
+const LAYERS = [
   {
     id: "cover",
     step: "01",
-    name: "100% PURE BAMBOO COVER",
-    headline: "Soft, breathable and naturally comfortable.",
-    description: "Harvested from organic bamboo stalks and knitted into a silky, temperature-regulating surface.",
-    detail: "Naturally hypoallergenic and antimicrobial, creating a cool microclimate for uninterrupted sleep.",
-    tag: "Breathable Surface",
+    title: ["100% PURE", "BAMBOO COVER"],
+    desc: "Soft, breathable and naturally comfortable.",
   },
   {
     id: "casing",
     step: "02",
-    name: "THIN COTTON ZIP COVER",
-    headline: "A breathable protective layer designed for everyday comfort.",
-    description: "Unbleached GOTS-certified organic cotton casing tailored to shield the organic core.",
-    detail: "Allows unrestricted air circulation between the comfort cover and the latex core while easing zip removal.",
-    tag: "Protective Shield",
+    title: ["THIN COTTON", "ZIP COVER"],
+    desc: "A breathable protective layer designed for everyday comfort.",
   },
   {
     id: "core",
     step: "03",
-    name: "GOLS-CERTIFIED 100% ORGANIC LATEX CORE",
-    headline: "Naturally responsive support at the heart of the mattress.",
-    description: "Zero synthetic blends, petrochemical foams, or chemical fire retardants.",
-    detail: "Sustainably tapped Dunlop latex offering 7 ergonomic support zones for natural spinal alignment.",
-    tag: "Anatomical Core",
+    title: ["GOLS-CERTIFIED 100%", "ORGANIC LATEX CORE"],
+    desc: "Naturally responsive support at the heart of the mattress.",
   },
-];
+] as const;
 
 export default function WhatsInside() {
-  const containerRef = useRef<HTMLElement>(null);
-  const [progress, setProgress] = useState(0);
-  const [activeStage, setActiveStage] = useState<0 | 1 | 2 | 3 | 4>(0);
-  const [prefersReduced, setPrefersReduced] = useState(false);
-  const [webglSupported, setWebglSupported] = useState<boolean | null>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+  const [entered, setEntered] = useState(false);
 
-  // Detect prefers-reduced-motion
+  const reduced =
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
   useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setPrefersReduced(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setPrefersReduced(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
+    const el = sectionRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) { setEntered(true); io.disconnect(); } },
+      { threshold: 0.06 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
   }, []);
 
-  // WebGL feature detection
-  useEffect(() => {
-    try {
-      const canvas = document.createElement("canvas");
-      setWebglSupported(Boolean(canvas.getContext("webgl2") || canvas.getContext("webgl")));
-    } catch {
-      setWebglSupported(false);
-    }
-  }, []);
-
-  // Native scroll progress calculation via requestAnimationFrame
-  const handleScroll = useCallback(() => {
-    if (!containerRef.current || prefersReduced) return;
-
-    const rect = containerRef.current.getBoundingClientRect();
-    const totalScrollable = rect.height - window.innerHeight;
-
-    if (totalScrollable <= 0) return;
-
-    // Progress from 0 (section top hits viewport top) to 1 (section bottom hits viewport bottom)
-    const currentScroll = -rect.top;
-    const rawProgress = Math.min(1, Math.max(0, currentScroll / totalScrollable));
-    setProgress(rawProgress);
-
-    // Active stage segmentation
-    if (rawProgress < 0.18) {
-      setActiveStage(0); // Intro / Exploded state
-    } else if (rawProgress < 0.42) {
-      setActiveStage(1); // Layer 1: Bamboo Cover
-    } else if (rawProgress < 0.68) {
-      setActiveStage(2); // Layer 2: Cotton Zip Cover
-    } else if (rawProgress < 0.86) {
-      setActiveStage(3); // Layer 3: Organic Latex Core
-    } else {
-      setActiveStage(4); // Finished Assembled Mattress
-    }
-  }, [prefersReduced]);
-
-  useEffect(() => {
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", handleScroll, { passive: true });
-    handleScroll();
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleScroll);
-    };
-  }, [handleScroll]);
-
-  // Active layer mapping
-  const currentLayer =
-    activeStage === 1
-      ? LAYERS_STORY[0]
-      : activeStage === 2
-      ? LAYERS_STORY[1]
-      : activeStage === 3
-      ? LAYERS_STORY[2]
-      : null;
+  const ease = "cubic-bezier(0.22,1,0.36,1)";
 
   return (
     <section
-      ref={containerRef}
+      ref={sectionRef}
       id="whats-inside"
-      aria-label="What's Inside Kotson: Nature, Layer by Layer"
-      className="relative w-full bg-[#FAF8F5] border-t border-border/50 select-none min-h-[100vh] lg:min-h-[290vh]"
+      aria-label="What's Inside The Mattress?"
+      style={{
+        width: "100%",
+        background: "#FAF8F5",
+        borderTop: "1px solid rgba(0,0,0,0.06)",
+        paddingTop:    "40px",
+        paddingBottom: "40px",
+        overflow: "hidden",
+        position: "relative",
+      }}
     >
-      {/* Accessible semantic content for screen readers */}
+      {/* SR-only semantic content */}
       <div className="sr-only">
-        <h2>What's Inside Kotson: Nature, Layer by Layer</h2>
-        <p>Discover the natural materials thoughtfully layered inside every Kotson mattress.</p>
+        <h2>What's Inside The Mattress?</h2>
         <ol>
-          {LAYERS_STORY.map((layer) => (
-            <li key={layer.id}>
-              <h3>{layer.name}</h3>
-              <p>{layer.headline}</p>
-              <p>{layer.description}</p>
-            </li>
+          {LAYERS.map(l => (
+            <li key={l.id}><h3>{l.title.join(" ")}</h3><p>{l.desc}</p></li>
           ))}
         </ol>
       </div>
 
-      {/* Sticky 100vh interactive viewport container */}
-      <div className="lg:sticky lg:top-0 lg:h-screen w-full flex items-center overflow-hidden py-12 lg:py-0">
-        {/* Subtle ambient botanical gradient edges */}
-        <div
-          className="pointer-events-none absolute -left-40 top-1/3 h-96 w-96 rounded-full bg-brand-leaf/[0.03] blur-3xl"
-          aria-hidden="true"
-        />
-        <div
-          className="pointer-events-none absolute -right-40 bottom-1/4 h-96 w-96 rounded-full bg-brand-leaf/[0.03] blur-3xl"
-          aria-hidden="true"
-        />
+      {/* ── Page wrapper ─────────────────────────────────────────────── */}
+      <div style={{
+        position: "relative",
+        width: "calc(100% - clamp(20px, 4vw, 80px) * 2)",
+        maxWidth: "1440px",
+        margin: "0 auto",
+      }}>
 
-        <div className="relative mx-auto max-w-[1360px] w-full px-4 sm:px-6 lg:px-10 h-full flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-12">
-          {/* ─── LEFT COLUMN: Storytelling & Dynamic Material Narrative (38%–42%) ─── */}
-          <div className="w-full lg:w-[40%] flex flex-col justify-center z-10 pt-4 lg:pt-0">
-            {/* Section Eyebrow (Manrope uppercase 13–15px, letter-spacing 0.14em, Kotson green) */}
-            <p className="font-ui text-xs sm:text-[13px] lg:text-[14px] font-bold uppercase tracking-[0.14em] text-brand-deep">
-              WHAT'S INSIDE THE MATTRESS?
-            </p>
+        {/* ════════════════════════════════════════
+            MOBILE: heading then image then layers
+            DESKTOP: 2-column grid (wi-grid)
+        ════════════════════════════════════════ */}
+        <div className="wi-grid">
 
-            {/* Main Storytelling Heading (DM Serif Display 52–68px desktop) */}
-            <h2 className="mt-2 font-display text-[40px] sm:text-[52px] lg:text-[62px] font-normal text-brand-charcoal tracking-tight leading-[1.04]">
-              Nature, <br className="hidden sm:inline" />
-              Layer by Layer.
-            </h2>
+          {/* ── LEFT: Heading + Layer content ── */}
+          <div
+            className="wi-left"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              opacity: entered ? 1 : 0,
+              transform: entered ? "translateY(0)" : "translateY(18px)",
+              transition: reduced ? "none"
+                : `opacity 800ms ${ease}, transform 800ms ${ease}`,
+            }}
+          >
+            {/* ── Heading block ── */}
+            <div style={{ flexShrink: 0, marginBottom: "24px" }}>
+              {/* Eyebrow */}
+              <p
+                aria-hidden="true"
+                style={{
+                  margin: "0 0 clamp(6px, 0.8vw, 10px)",
+                  fontFamily: "var(--font-ui,'Manrope',sans-serif)",
+                  fontSize: "clamp(9px, 0.95vw, 11px)",
+                  fontWeight: 700,
+                  letterSpacing: "0.20em",
+                  textTransform: "uppercase",
+                  color: DEEP,
+                  lineHeight: 1,
+                }}
+              >
+                WHAT'S INSIDE
+              </p>
 
-            {/* Supporting Copy (from reference image) */}
-            <p className="mt-3 font-ui text-[14px] sm:text-[15px] lg:text-[16px] text-brand-charcoal/75 leading-relaxed max-w-lg font-normal">
-              Crafted from nature's finest materials, the mattress combines an ultra-soft organic bamboo cover, a premium cotton inner casing, and a <strong className="font-semibold text-brand-charcoal">100% Organic Latex core</strong>. The result is a sleep surface that is breathable, supportive, resilient, and built to last for years.
-            </p>
-
-            {/* Subtle Progress Indicator (01 — 03) */}
-            <div className="mt-6 sm:mt-8 flex items-center gap-3">
-              <span className="font-ui text-xs font-semibold uppercase tracking-widest text-brand-charcoal/50">
-                Layer Stage
-              </span>
-              <div className="flex items-center gap-1.5 font-ui text-xs font-bold">
-                {[1, 2, 3].map((stepNum) => {
-                  const isActive = activeStage === stepNum;
-                  const isPassed = activeStage > stepNum;
-                  return (
-                    <div key={stepNum} className="flex items-center gap-1.5">
-                      <span
-                        className={`transition-colors duration-300 ${
-                          isActive
-                            ? "text-brand-deep font-bold"
-                            : isPassed
-                            ? "text-brand-leaf/80"
-                            : "text-brand-charcoal/30"
-                        }`}
-                      >
-                        0{stepNum}
-                      </span>
-                      {stepNum < 3 && <span className="text-brand-charcoal/20 select-none">—</span>}
-                    </div>
-                  );
-                })}
-              </div>
+              {/* Main serif heading */}
+              <h2
+                style={{
+                  margin: 0,
+                  fontFamily: "var(--font-display,'DM Serif Display',serif)",
+                  fontSize: "clamp(36px, 4vw, 60px)",
+                  fontWeight: 400,
+                  lineHeight: 1.0,
+                  color: CHARCOAL,
+                  letterSpacing: "-0.01em",
+                  wordBreak: "normal",
+                  overflowWrap: "normal",
+                  hyphens: "none",
+                }}
+              >
+                The Mattress?
+              </h2>
             </div>
 
-            {/* ─── DYNAMIC MATERIAL STORY (ONE ACTIVE CARD AT A TIME) ─── */}
-            <div className="mt-5 min-h-[170px] sm:min-h-[185px] relative">
-              {/* STAGE 0: Initial Exploded State Guidance */}
-              {activeStage === 0 && (
-                <div className="rounded-2xl border border-border/80 bg-white/70 backdrop-blur p-5 sm:p-6 shadow-xs animate-in fade-in duration-300">
-                  <div className="flex items-center justify-between">
-                    <span className="font-ui text-[11px] font-bold uppercase tracking-wider text-brand-deep bg-brand-deep/8 px-2.5 py-0.5 rounded-full">
-                      Physical Architecture
-                    </span>
-                    <span className="font-ui text-[11px] text-muted-foreground">3 Genuine Layers</span>
-                  </div>
-                  <h3 className="mt-3 font-ui text-base font-bold text-brand-charcoal">
-                    Tapped from nature, structured for sleep.
-                  </h3>
-                  <p className="mt-1.5 font-ui text-sm text-brand-charcoal/70 leading-relaxed font-normal">
-                    Scroll downward to experience how each natural component descends and physically aligns into place.
-                  </p>
-                </div>
-              )}
-
-              {/* STAGES 1 to 3: Active Material Story with Subtle Visual Connector Indicator */}
-              {currentLayer && (
-                <div
-                  key={currentLayer.id}
-                  className="rounded-2xl border border-brand-deep/25 bg-white p-5 sm:p-6 shadow-xs ring-1 ring-brand-deep/10 animate-in fade-in slide-in-from-bottom-2 duration-300 relative"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-ui text-xs font-bold text-brand-deep">
-                        {currentLayer.step} / 03
-                      </span>
-                      <span className="h-1 w-1 rounded-full bg-brand-leaf" />
-                      <span className="font-ui text-[11px] font-semibold text-brand-charcoal/60 uppercase tracking-wider">
-                        {currentLayer.tag}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Material Name in Manrope Bold/SemiBold */}
-                  <h3 className="mt-2.5 font-ui text-[13px] sm:text-sm font-bold uppercase tracking-[0.05em] text-brand-charcoal">
-                    {currentLayer.name}
-                  </h3>
-
-                  {/* Supporting Copy in Manrope Regular */}
-                  <p className="mt-1.5 font-ui text-sm sm:text-[15px] font-medium text-brand-deep leading-snug">
-                    {currentLayer.headline}
-                  </p>
-
-                  <p className="mt-2 font-ui text-xs sm:text-[13px] text-brand-charcoal/70 leading-relaxed font-normal">
-                    {currentLayer.description}
-                  </p>
-
-                  {/* Subtle directional connector cue */}
-                  <div className="hidden lg:flex items-center gap-1 mt-3 pt-3 border-t border-border/50 text-[11px] font-ui font-medium text-brand-charcoal/50">
-                    <span className="w-1.5 h-1.5 rounded-full bg-brand-leaf animate-pulse" />
-                    <span>Highlighted in 3D construction scene</span>
-                  </div>
-                </div>
-              )}
-
-              {/* STAGE 4: Final Assembled Mattress State */}
-              {activeStage === 4 && (
-                <div className="rounded-2xl border border-brand-deep/30 bg-white p-5 sm:p-6 shadow-sm ring-1 ring-brand-deep/15 animate-in fade-in zoom-in-95 duration-400">
-                  <span className="font-ui text-[11px] font-bold uppercase tracking-wider text-brand-leaf bg-brand-leaf/10 px-2.5 py-0.5 rounded-full">
-                    Completed Assembly
-                  </span>
-                  {/* Story Statement in Serif */}
-                  <h3 className="mt-3 font-display text-xl sm:text-2xl text-brand-charcoal font-normal">
-                    Naturally Made. <br />
-                    Thoughtfully Layered.
-                  </h3>
-                  {/* Supporting Copy in Manrope */}
-                  <p className="mt-2 font-ui text-sm text-brand-charcoal/75 leading-relaxed font-normal">
-                    Everything you need for better sleep. Nothing you don't.
-                  </p>
-                  <p className="mt-3 font-ui text-xs text-brand-deep font-medium">
-                    ✦ Drag on desktop to inspect finished craftsmanship
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ─── RIGHT COLUMN: Photorealistic Mattress Construction Scene (Image 4 Placement) ─── */}
-          <div className="w-full lg:w-[58%] h-[420px] sm:h-[480px] lg:h-[560px] flex items-center justify-center relative">
-            <MattressLayersCard
-              progress={prefersReduced ? 0 : progress}
-              activeLayerId={currentLayer?.id ?? null}
-              activeStage={activeStage}
-              onSelectLayer={(id) => {
-                if (id === "cover") setActiveStage(1);
-                else if (id === "casing") setActiveStage(2);
-                else if (id === "core") setActiveStage(3);
+            {/* ── Three layers ── */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "flex-start",
+                gap: "0px",
               }}
-            />
+            >
+              {LAYERS.map((layer, idx) => (
+                <div key={layer.id}>
+                  {/* Layer row */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "clamp(10px, 1.2vw, 16px)",
+                      paddingTop:    idx === 0 ? 0 : "16px",
+                      paddingBottom: idx < LAYERS.length - 1 ? "16px" : 0,
+                    }}
+                  >
+                    {/* Step number */}
+                    <span style={{
+                      flexShrink: 0,
+                      fontFamily: "var(--font-ui,'Manrope',sans-serif)",
+                      fontSize: "clamp(9px, 0.9vw, 11px)",
+                      fontWeight: 700,
+                      color: `${DEEP}88`,
+                      letterSpacing: "0.06em",
+                      lineHeight: 1.4,
+                      paddingTop: "2px",
+                      minWidth: "clamp(22px, 2vw, 28px)",
+                    }}>
+                      {layer.step}
+                    </span>
+
+                    {/* Thin vertical rule */}
+                    <div style={{
+                      flexShrink: 0,
+                      width: "1px",
+                      alignSelf: "stretch",
+                      background: `${DEEP}28`,
+                      marginTop: "2px",
+                    }} />
+
+                    {/* Title + description */}
+                    <div style={{
+                      flex: 1,
+                      minWidth: 0,
+                      wordBreak: "normal",
+                      overflowWrap: "normal",
+                      hyphens: "none",
+                    }}>
+                      <h3 style={{
+                        margin: 0,
+                        fontFamily: "var(--font-ui,'Manrope',sans-serif)",
+                        fontSize: "clamp(15px, 1.5vw, 19px)",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.03em",
+                        lineHeight: 1.2,
+                        color: CHARCOAL,
+                        whiteSpace: "pre-line",
+                        wordBreak: "normal",
+                        overflowWrap: "normal",
+                        hyphens: "none",
+                      }}>
+                        {layer.title[0]}{"\n"}{layer.title[1]}
+                      </h3>
+                      <p style={{
+                        margin: "5px 0 0",
+                        fontFamily: "var(--font-ui,'Manrope',sans-serif)",
+                        fontSize: "clamp(12px, 1.1vw, 15px)",
+                        fontWeight: 400,
+                        lineHeight: 1.58,
+                        color: `${CHARCOAL}90`,
+                        wordBreak: "normal",
+                        overflowWrap: "normal",
+                        hyphens: "none",
+                      }}>
+                        {layer.desc}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Horizontal divider between layers */}
+                  {idx < LAYERS.length - 1 && (
+                    <div style={{
+                      height: "1px",
+                      background: `${DEEP}22`,
+                      margin: 0,
+                    }} />
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
+
+          {/* ── RIGHT: Image ── */}
+          <div
+            className="wi-right"
+            style={{
+              opacity: entered ? 1 : 0,
+              transform: entered ? "translateY(0)" : "translateY(22px)",
+              transition: reduced ? "none"
+                : `opacity 800ms ${ease} 100ms, transform 800ms ${ease} 100ms`,
+            }}
+          >
+            <div style={{
+              width: "100%",
+              maxWidth: "680px",
+              marginLeft: "auto",
+              borderRadius: "clamp(16px, 1.8vw, 26px)",
+              overflow: "hidden",
+              border: `1px solid ${CHARCOAL}0D`,
+              boxShadow: `0 10px 40px ${CHARCOAL}0E`,
+              background: SAND,
+            }}>
+              <img
+                src="https://cdn.phototourl.com/free/2026-09-22-8f77abc6-0f41-42df-8b46-df110ccc137c.png"
+                alt="Kotson 3-Layer Mattress Construction: 100% Pure Bamboo Cover, Thin Cotton Zip Cover, and GOLS-Certified 100% Organic Latex Core"
+                draggable={false}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  height: "auto",
+                  objectFit: "contain",
+                  objectPosition: "center",
+                  userSelect: "none",
+                  verticalAlign: "bottom",
+                }}
+              />
+            </div>
+          </div>
+
         </div>
       </div>
+
+      {/* Responsive grid rules */}
+      <style>{`
+        /* ── Mobile: single column, image above layers ── */
+        .wi-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 20px;
+        }
+        .wi-left  { order: 2; }
+        .wi-right { order: 1; }
+
+        /* ── Tablet ≥ 768px: 2-column ── */
+        @media (min-width: 768px) {
+          .wi-grid {
+            grid-template-columns: minmax(300px, 0.42fr) minmax(0, 0.58fr);
+            gap: clamp(28px, 3.5vw, 40px);
+            align-items: center;
+          }
+          .wi-left  { order: 1; }
+          .wi-right { order: 2; }
+        }
+
+        /* ── Desktop ≥ 1024px: full 42/58 ── */
+        @media (min-width: 1024px) {
+          .wi-grid {
+            grid-template-columns: minmax(360px, 0.42fr) minmax(0, 0.58fr);
+            gap: clamp(36px, 4vw, 48px);
+          }
+        }
+
+        /* ── Global word-break guard for this section ── */
+        #whats-inside * {
+          word-break:    normal !important;
+          overflow-wrap: normal !important;
+          hyphens:       none   !important;
+        }
+      `}</style>
     </section>
   );
 }

@@ -143,13 +143,13 @@ async def admin_update_claim(key: str, input: ClaimUpdate, user=Depends(require_
     return Claim(**clean_doc(doc))
 
 
-@router.get("/admin/assets", response_model=List[dict], dependencies=[])
+@router.get("/admin/content/asset-slots", response_model=List[dict], dependencies=[])
 async def admin_assets(user=Depends(require_role(*CATALOG_MANAGERS))):
     docs = await db.assets.find({}).sort("slot", 1).to_list(300)
     return [{k: v for k, v in d.items() if k != "_id"} for d in docs]
 
 
-@router.patch("/admin/assets/{slot}")
+@router.patch("/admin/content/asset-slots/{slot}")
 async def admin_update_asset(slot: str, input: AssetUpdate, user=Depends(require_role(*CATALOG_MANAGERS))):
     patch = {k: v for k, v in input.model_dump().items() if v is not None}
     doc = await db.assets.find_one_and_update({"slot": slot}, {"$set": patch}, return_document=True)

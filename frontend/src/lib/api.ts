@@ -4,12 +4,37 @@ const BASE = "/api";
 
 // Fields are declared, not constructor parameter properties: tsconfig sets
 // erasableSyntaxOnly, which rejects `constructor(readonly status: number)`.
+function parseErrorMessage(status: number, body: unknown): string {
+  if (body && typeof body === "object") {
+    const b = body as Record<string, unknown>;
+    if (typeof b.detail === "string") return b.detail;
+    if (Array.isArray(b.detail)) {
+      const msgs = b.detail
+        .map((item) => {
+          if (item && typeof item === "object") {
+            const it = item as Record<string, unknown>;
+            const loc = Array.isArray(it.loc)
+              ? it.loc.filter((p) => p !== "body").join(" ")
+              : "";
+            const msg = (it.msg as string) || "";
+            return loc ? `${loc}: ${msg}` : msg;
+          }
+          return String(item);
+        })
+        .filter(Boolean);
+      if (msgs.length > 0) return msgs.join(", ");
+    }
+    if (typeof b.message === "string") return b.message;
+  }
+  return `request failed with ${status}`;
+}
+
 export class ApiError extends Error {
   status: number;
   body: unknown;
 
   constructor(status: number, body: unknown) {
-    super(`request failed with ${status}`);
+    super(parseErrorMessage(status, body));
     this.name = "ApiError";
     this.status = status;
     this.body = body;

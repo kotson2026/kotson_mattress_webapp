@@ -30,66 +30,141 @@ CATS = [
     ("baby-kids", "Baby + Kids", "Hypoallergenic, VOC-free natural latex for little sleepers.", "category-babykids", 4),
 ]
 
-# (slug, name, tagline, category, badge, trial, warranty, rating, reviews, [(size, thickness, firmness, price_paise, stock)])
+# Authoritative 18-product Kotson catalogue: (slug, name, category, price_rupees, image_url)
 PRODUCTS = [
-    ("kotson-pure-7-zone-organic-latex-mattress", "Kotson Pure 7-Zone Organic Latex Mattress",
-     "100% GOLS organic certified Dunlop latex with anatomical 7-zone contouring", "mattresses", "Bestseller",
-     100, 10, 4.93, 218, [
-         ("Single (72x36)", "8 Inch (20 cm)", "Medium Firm (75D/85D)", 54999 * P, 9),
-         ("Queen (78x60)", "8 Inch (20 cm)", "Medium Firm (75D/85D)", 64999 * P, 6),
-         ("King (78x72)", "10 Inch (25 cm)", "Dual Comfort (Reversible)", 74999 * P, 3),
-     ]),
-    ("ortho-therapy-mattress", "Ortho Therapy Mattress",
-     "Doctor-recommended orthopaedic organic latex for targeted spinal support", "mattresses", "Ortho Care",
-     100, 10, 4.9, 87, [
-         ("Single (72x36)", "8 Inch (20 cm)", "Firm (85D)", 74000 * P, 7),
-         ("Queen (78x60)", "8 Inch (20 cm)", "Firm (85D)", 84000 * P, 4),
-         ("King (78x72)", "10 Inch (25 cm)", "Firm (85D)", 94000 * P, 0),
-     ]),
-    ("spine-balance-mattress", "Spine Balance Mattress",
-     "Balanced medium-firm organic latex engineered for neutral spine alignment", "mattresses", None,
-     100, 10, 4.87, 64, [
-         ("Single (72x36)", "8 Inch (20 cm)", "Medium Firm (75D/85D)", 72000 * P, 5),
-         ("Queen (78x60)", "8 Inch (20 cm)", "Medium Firm (75D/85D)", 82000 * P, 8),
-     ]),
-    ("ortho-core-max-mattress", "Ortho Core Max Mattress",
-     "High-density natural latex core for maximum postural support", "mattresses", None,
-     100, 10, 4.82, 51, [
-         ("Single (72x36)", "8 Inch (20 cm)", "Extra Firm (90D)", 50000 * P, 2),
-         ("Queen (78x60)", "10 Inch (25 cm)", "Extra Firm (90D)", 58000 * P, 6),
-     ]),
-    ("jumbo-pillow", "Jumbo Pillow",
-     "Extra-tall organic latex pillow with a GOTS washable cotton cover", "pillows", "Popular",
-     30, 3, 4.88, 96, [
-         ("Standard (24x16 in)", "Jumbo (6 in)", "Plush Medium", 3899 * P, 20),
-     ]),
-    ("ortho-wave-acu-touch-pillow", "Ortho Wave Acu Touch Pillow",
-     "Wave-contoured surface with gentle acupressure zones for the neck", "pillows", None,
-     30, 3, 4.85, 73, [
-         ("Standard (24x16 in)", "High Contour (4.5 in)", "Plush Medium", 3499 * P, 15),
-     ]),
-    ("standard-flex-pillow", "Standard Flex Pillow",
-     "Everyday resilient latex pillow that keeps its shape wash after wash", "pillows", None,
-     30, 3, 4.8, 58, [
-         ("Standard (24x16 in)", "Low Contour (3.5 in)", "Plush Medium", 2199 * P, 0),
-     ]),
-    ("latex-mattress-topper", "Kotson Organic Latex Mattress Topper",
-     "Instantly revitalise any existing bed with natural latex comfort", "toppers", "Quick Upgrade",
-     30, 5, 4.85, 64, [
-         ("Single", "2 Inch (5 cm)", "Medium Balance (75D)", 24999 * P, 6),
-         ("Queen", "2 Inch (5 cm)", "Medium Balance (75D)", 24999 * P, 10),
-         ("King", "3 Inch (7.5 cm)", "Medium Balance (75D)", 29999 * P, 1),
-     ]),
-    ("natural-nest-junior-pillow", "Natural Nest Junior Pillow",
-     "Soft-support latex pillow sized and tuned for children", "baby-kids", "Pediatric Safe",
-     50, 5, 4.97, 51, [
-         ("Junior (20x12 in)", "3 in", "Pediatric Firm", 2099 * P, 12),
-     ]),
-    ("natural-nest-mini-pillow", "Natural Nest Mini Pillow",
-     "Toddler-safe natural latex pillow, hypoallergenic and washable", "baby-kids", None,
-     50, 5, 4.95, 34, [
-         ("Mini (16x10 in)", "2.5 in", "Pediatric Firm", 1899 * P, 4),
-     ]),
+    # --- Mattresses (3) ---
+    (
+        "ortho-therapy-mattress",
+        "Ortho Therapy Mattress",
+        "mattresses",
+        74000,
+        "https://cdn.phototourl.com/member/2026-09-23-58e2ca4e-ebff-4af3-be34-e3e84717dbb8.jpg",
+    ),
+    (
+        "spine-balance-mattress",
+        "Spine Balance Mattress",
+        "mattresses",
+        72000,
+        "https://cdn.phototourl.com/member/2026-09-23-cdee954b-8e07-4331-b0a8-26696b4dad71.png",
+    ),
+    (
+        "ortho-core-max-mattress",
+        "Ortho Core Max Mattress",
+        "mattresses",
+        50000,
+        "https://cdn.phototourl.com/member/2026-09-23-12dd140c-f528-41fa-b568-15b06c82205d.png",
+    ),
+
+    # --- Pillows (12) ---
+    (
+        "standard-classic-pillow",
+        "Standard Classic Pillow",
+        "pillows",
+        2899,
+        "https://cdn.phototourl.com/member/2026-09-22-d076aa68-00a8-46f3-ae97-22a703352de1.png",
+    ),
+    (
+        "standard-linea-pillow",
+        "Standard Linea Pillow",
+        "pillows",
+        3099,
+        "https://cdn.phototourl.com/member/2026-09-22-c2f502d1-519b-4174-b2f1-946201979c86.png",
+    ),
+    (
+        "standard-flex-pillow",
+        "Standard Flex Pillow",
+        "pillows",
+        2199,
+        "https://cdn.phototourl.com/free/2026-09-22-fa7082d3-1ea4-408a-8105-0f5cdeafaf44.png",
+    ),
+    (
+        "standard-dudlis-pillow",
+        "Standard Dudlis Pillow",
+        "pillows",
+        4299,
+        "https://cdn.phototourl.com/member/2026-09-22-3f612e8e-1da2-42ca-ad3d-4c94a1b160bf.jpg",
+    ),
+    (
+        "ortho-wave-classic-pillow",
+        "Ortho Wave Classic Pillow",
+        "pillows",
+        3299,
+        "https://cdn.phototourl.com/member/2026-09-22-7e00e34c-49f6-408e-85d9-515088ea248b.png",
+    ),
+    (
+        "ortho-wave-linea-pillow",
+        "Ortho Wave Linea Pillow",
+        "pillows",
+        3299,
+        "https://cdn.phototourl.com/member/2026-09-22-26c4ef83-1435-4cf3-8721-2caaea6f005a.png",
+    ),
+    (
+        "ortho-wave-support-plus-pillow",
+        "Ortho Wave Support+ Pillow",
+        "pillows",
+        3299,
+        "https://cdn.phototourl.com/member/2026-09-22-26c4ef83-1435-4cf3-8721-2caaea6f005a.png",
+    ),
+    (
+        "ortho-wave-acu-touch-pillow",
+        "Ortho Wave Acu Touch Pillow",
+        "pillows",
+        3499,
+        "https://cdn.phototourl.com/member/2026-09-22-586a543f-151f-454b-8a7b-b0570e75d9d7.png",
+    ),
+    (
+        "jumbo-pillow",
+        "Jumbo Pillow",
+        "pillows",
+        3999,
+        "https://cdn.phototourl.com/member/2026-09-23-ea4945c6-f120-409b-984b-ff5f7f0fb7fd.jpg",
+    ),
+    (
+        "dualis-arc-pillow",
+        "Dualis Arc Pillow",
+        "pillows",
+        4899,
+        "https://cdn.phototourl.com/member/2026-09-23-66e778fa-1b51-4f9f-a8e7-b0d8ef87a6e5.jpg",
+    ),
+    (
+        "dualis-travel-pillow",
+        "Dualis Travel Pillow",
+        "pillows",
+        1899,
+        "https://cdn.phototourl.com/member/2026-09-23-ec4001c4-6330-453e-b6d6-9e2f66ab4fc0.jpg",
+    ),
+    (
+        "dualis-body-pillow",
+        "Dualis Body Pillow",
+        "pillows",
+        5599,
+        "https://cdn.phototourl.com/member/2026-09-23-94ba7d88-251d-4053-a562-78b30f543c7c.jpg",
+    ),
+
+    # --- Toppers (1) ---
+    (
+        "topper",
+        "Topper",
+        "toppers",
+        25000,
+        "https://cdn.phototourl.com/member/2026-09-23-6b486cf9-0fea-481b-9c26-fac9c94586c4.jpg",
+    ),
+
+    # --- Baby + Kids (2) ---
+    (
+        "natural-nest-junior-pillow",
+        "Natural Nest Junior Pillow",
+        "baby-kids",
+        2099,
+        "https://cdn.phototourl.com/member/2026-09-23-334275fa-130c-4cdd-a46f-c28ef9e3f7c1.png",
+    ),
+    (
+        "natural-nest-mini-pillow",
+        "Natural Nest Mini Pillow",
+        "baby-kids",
+        1899,
+        "https://cdn.phototourl.com/member/2026-09-23-0385ffe0-b11e-4446-a8e4-9ee94aa0baa0.jpg",
+    ),
 ]
 
 ZONES = [
@@ -154,23 +229,107 @@ async def main() -> None:
             "image_slot": slot, "sort": sort, "is_active": True,
         })
 
-    for slug, name, tagline, cat, badge, trial, warranty, rating, reviews, variants in PRODUCTS:
-        if await db.products.find_one({"slug": slug}):
-            continue
-        pid = str(uuid.uuid4())
-        await db.products.insert_one({
-            "id": pid, "slug": slug, "name": name, "tagline": tagline,
-            "description": f"SEED SAMPLE — {name}. Replace this copy with owner-approved product documentation via /admin. Organic latex construction with breathable organic cotton and bamboo cover.",
-            "category_slug": cat, "badge": badge, "rating": rating, "review_count": reviews,
-            "trial_days": trial, "warranty_years": warranty, "images": [], "is_seed": True,
-            "is_active": True, "sort": 0, "created_at": now_utc(),
-        })
-        for i, (size, thickness, firmness, price, stock) in enumerate(variants, 1):
+    # 1. Purge any obsolete mock products not in the official catalogue
+    valid_slugs = {p[0] for p in PRODUCTS}
+    obsolete_products = await db.products.find({"slug": {"$nin": list(valid_slugs)}}).to_list(200)
+    for op in obsolete_products:
+        await db.variants.delete_many({"product_id": op["id"]})
+        await db.products.delete_one({"id": op["id"]})
+        print(f"  Purged obsolete mock product: {op.get('name')} ({op.get('slug')})")
+
+    # 2. Insert or update the 18 official products
+    for sort_order, (slug, name, cat, price_rupees, image_url) in enumerate(PRODUCTS, 1):
+        existing = await db.products.find_one({"slug": slug})
+        price_paise = price_rupees * P
+        if existing:
+            pid = existing["id"]
+            await db.products.update_one(
+                {"id": pid},
+                {
+                    "$set": {
+                        "name": name,
+                        "category_slug": cat,
+                        "status": "ACTIVE",
+                        "website_visibility": "VISIBLE",
+                        "is_active": True,
+                        "sort": sort_order,
+                        "badge": None,
+                        "rating": None,
+                        "review_count": 0,
+                        "trial_days": None,
+                        "warranty_years": None,
+                        "description": "",
+                        "tagline": "",
+                        "images": [image_url],
+                        "primary_image": image_url,
+                    }
+                }
+            )
+            # Ensure at least one base variant at the exact price
+            v = await db.variants.find_one({"product_id": pid})
+            if v:
+                await db.variants.update_one(
+                    {"id": v["id"]},
+                    {"$set": {"price": price_paise, "mrp": None, "is_active": True}}
+                )
+            else:
+                sku_clean = slug.upper().replace("-", "")[:14]
+                await db.variants.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "product_id": pid,
+                    "sku": f"KS-{sku_clean}-1",
+                    "size": "Standard",
+                    "thickness": None,
+                    "firmness": None,
+                    "price": price_paise,
+                    "mrp": None,
+                    "stock": 25,
+                    "reserved": 0,
+                    "is_active": True,
+                })
+        else:
+            pid = str(uuid.uuid4())
+            await db.products.insert_one({
+                "id": pid,
+                "slug": slug,
+                "name": name,
+                "tagline": "",
+                "short_description": "",
+                "description": "",
+                "category_slug": cat,
+                "brand": "Kotson Naturals",
+                "material": "100% Botanical Natural Latex",
+                "product_type": "Mattress" if cat == "mattresses" else "Pillow" if cat in ("pillows", "baby-kids") else "Topper",
+                "status": "ACTIVE",
+                "website_visibility": "VISIBLE",
+                "badge": None,
+                "rating": None,
+                "review_count": 0,
+                "trial_days": None,
+                "warranty_years": None,
+                "images": [image_url],
+                "primary_image": image_url,
+                "videos": [],
+                "tags": [],
+                "features": [],
+                "specifications": {},
+                "is_seed": False,
+                "is_active": True,
+                "sort": sort_order,
+                "created_at": now_utc(),
+            })
+            sku_clean = slug.upper().replace("-", "")[:14]
             await db.variants.insert_one({
-                "id": str(uuid.uuid4()), "product_id": pid,
-                "sku": f"KS-{slug[:14].upper().replace('-', '')}-{i}",
-                "size": size, "thickness": thickness, "firmness": firmness,
-                "price": price, "mrp": int(price * 1.25), "stock": stock, "reserved": 0,
+                "id": str(uuid.uuid4()),
+                "product_id": pid,
+                "sku": f"KS-{sku_clean}-1",
+                "size": "Standard",
+                "thickness": None,
+                "firmness": None,
+                "price": price_paise,
+                "mrp": None,
+                "stock": 25,
+                "reserved": 0,
                 "is_active": True,
             })
 
@@ -287,6 +446,11 @@ async def main() -> None:
           % (await db.products.count_documents({}), await db.blocks.count_documents({}),
              await db.claims.count_documents({}), await db.assets.count_documents({})))
     print(f"Owner login: {os.environ.get('OWNER_EMAIL', 'hello@kotsonmattress.com')} / {owner_pw}  (SEED credential — rotate)")
+    
+    # Run the PDP catalog migration to populate exact variant matrices
+    import lib.pdp_catalog_migration
+    await lib.pdp_catalog_migration.main()
+
 
 
 if __name__ == "__main__":

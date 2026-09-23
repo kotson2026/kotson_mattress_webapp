@@ -12,7 +12,7 @@ export function useMe() {
 export const login = (email: string, password: string) =>
   apiPost<AuthOut>("/auth/login", { email, password });
 
-export const signup = (body: { email: string; name: string; password: string; referral_code?: string | null }) =>
+export const signup = (body: { email: string; name: string; password: string; phone?: string | null; referral_code?: string | null }) =>
   apiPost<AuthOut>("/auth/signup", body);
 
 export const logout = () => apiPost<{ ok: boolean }>("/auth/logout");

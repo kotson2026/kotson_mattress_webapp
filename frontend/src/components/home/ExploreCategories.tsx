@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
+import { apiGet } from "@/lib/api";
+import type { Category } from "@/lib/types";
 
 interface CategoryShowroomItem {
   id: string;
@@ -24,7 +27,7 @@ const SHOWROOM_CATEGORIES: CategoryShowroomItem[] = [
     image: "/navbar/mattress.png",
     fallbackImage: "https://cdn.phototourl.com/member/2026-09-21-becf1398-8387-4f2c-a4bd-729072937fdf.png",
     alt: "Kotson 7-Zone Organic Latex Mattress",
-    motionMultiplier: { x: 0.5, y: 0.4 }, // Heavier / stable response
+    motionMultiplier: { x: 0.5, y: 0.4 },
   },
   {
     id: "pillows",
@@ -35,7 +38,7 @@ const SHOWROOM_CATEGORIES: CategoryShowroomItem[] = [
     image: "/navbar/pillows.png",
     fallbackImage: "https://cdn.phototourl.com/member/2026-09-21-db2b927f-f73a-4acf-aa46-ca3f72a19d43.png",
     alt: "Kotson Ergonomic Cervical Latex Pillow",
-    motionMultiplier: { x: 0.9, y: 0.8 }, // Softer lift
+    motionMultiplier: { x: 0.9, y: 0.8 },
   },
   {
     id: "toppers",
@@ -46,7 +49,7 @@ const SHOWROOM_CATEGORIES: CategoryShowroomItem[] = [
     image: "/navbar/toppers.png",
     fallbackImage: "https://cdn.phototourl.com/member/2026-09-21-d8cd5b3e-7b3c-4614-8cd3-293abc8d1526.png",
     alt: "Kotson Breathable Organic Latex Mattress Topper",
-    motionMultiplier: { x: 0.7, y: 1.0 }, // Small upward float
+    motionMultiplier: { x: 0.7, y: 1.0 },
   },
   {
     id: "baby-kids",
@@ -57,12 +60,13 @@ const SHOWROOM_CATEGORIES: CategoryShowroomItem[] = [
     image: "/navbar/baby-kids.png",
     fallbackImage: "https://cdn.phototourl.com/member/2026-09-21-c10cfc86-8ffe-4b1c-9e20-dc91bd8f0238.png",
     alt: "Kotson Pediatric Certified Baby and Kids Mattress",
-    motionMultiplier: { x: 0.4, y: 0.4 }, // Gentle minimal response
+    motionMultiplier: { x: 0.4, y: 0.4 },
   },
 ];
 
 function CategoryZone({
   category,
+  count,
   isActive,
   isAnyActive,
   onHoverStart,
@@ -71,6 +75,7 @@ function CategoryZone({
   prefersReduced,
 }: {
   category: CategoryShowroomItem;
+  count?: number;
   isActive: boolean;
   isAnyActive: boolean;
   onHoverStart: () => void;
@@ -193,6 +198,16 @@ function CategoryZone({
             {category.name}
           </h3>
 
+          {/* Dynamic Product Count */}
+          {count !== undefined && (
+            <span
+              className="mt-0.5 font-ui text-[11px] sm:text-[12px] font-semibold tracking-wider uppercase text-brand-deep/80"
+              data-testid={`category-count-${category.slug}`}
+            >
+              {count} {count === 1 ? "Product" : "Products"}
+            </span>
+          )}
+
           {/* Subtitle — Manrope Regular */}
           <p className="mt-1 sm:mt-1.5 font-ui text-xs sm:text-[13.5px] lg:text-[14px] text-brand-charcoal/65 max-w-[210px] leading-relaxed">
             {category.subtitle}
@@ -234,6 +249,17 @@ function CategoryZone({
 }
 
 function ExploreCategories() {
+  const { data: categoriesData } = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => apiGet<Category[]>("/catalog/categories"),
+    staleTime: 60_000,
+  });
+
+  const countMap = (categoriesData ?? []).reduce<Record<string, number>>((acc, c) => {
+    acc[c.slug] = c.product_count ?? 0;
+    return acc;
+  }, {});
+
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [pointerOffset, setPointerOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [prefersReduced, setPrefersReduced] = useState(false);
@@ -252,10 +278,8 @@ function ExploreCategories() {
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLElement>) => {
     if (!sectionRef.current) return;
     const rect = sectionRef.current.getBoundingClientRect();
-    // Normalize -1 to 1 based on center of section
     const relX = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
     const relY = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
-    // Maximum movement: x: ±4px, y: ±3px
     setPointerOffset({
       x: Math.max(-4, Math.min(4, relX * 4)),
       y: Math.max(-3, Math.min(3, relY * 3)),
@@ -317,6 +341,7 @@ function ExploreCategories() {
             <CategoryZone
               key={cat.id}
               category={cat}
+              count={countMap[cat.slug]}
               isActive={activeCategory === cat.id}
               isAnyActive={activeCategory !== null}
               onHoverStart={() => setActiveCategory(cat.id)}

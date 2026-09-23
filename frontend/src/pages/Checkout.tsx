@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { apiGet, apiPost } from "@/lib/api";
 import type { CartView, CheckoutConfig, CheckoutStartOut } from "@/lib/types";
@@ -60,6 +60,17 @@ export default function Checkout() {
   const [refInput, setRefInput] = useState("");
   const [placing, setPlacing] = useState(false);
 
+  useEffect(() => {
+    if (me) {
+      setAddress((a) => ({
+        ...a,
+        full_name: a.full_name || me.name || "",
+        email: a.email || me.email || "",
+        phone: a.phone || me.phone || "",
+      }));
+    }
+  }, [me]);
+
   const { data: cart } = useQuery({ queryKey: ["cart"], queryFn: () => apiGet<CartView>("/cart") });
   const { data: config } = useQuery({ queryKey: ["checkout-config"], queryFn: () => apiGet<CheckoutConfig>("/checkout/config") });
 
@@ -67,13 +78,23 @@ export default function Checkout() {
   const place = useMutation({
     mutationFn: () =>
       apiPost<CheckoutStartOut>("/checkout/start", {
-        address: { ...address, email: address.email || me?.email || "" },
-        referral_code: refInput || undefined,
+        address: {
+          full_name: address.full_name.trim(),
+          phone: address.phone.trim(),
+          email: (address.email || me?.email || "").trim(),
+          line1: address.line1.trim(),
+          line2: address.line2.trim() || undefined,
+          city: address.city.trim(),
+          state: address.state.trim(),
+          pincode: address.pincode.trim(),
+        },
+        referral_code: refInput.trim() || undefined,
       }),
     onSuccess: async (out) => {
       qc.invalidateQueries({ queryKey: ["orders"] });
       const t = out.guest_access_token ? `?t=${out.guest_access_token}` : "";
-      if (out.gateway.state === "ready" && out.gateway.rzp_order_id && out.gateway.key_id) {
+      const gatewayReady = out.gateway.state === "ready_test" || out.gateway.state === "ready_live";
+      if (gatewayReady && out.gateway.rzp_order_id && out.gateway.key_id) {
         const ok = await loadRazorpayScript();
         if (!ok || !window.Razorpay) {
           toast.error("Could not load Razorpay — your order is saved as awaiting payment");
@@ -118,7 +139,62 @@ export default function Checkout() {
   });
 
   const submit = () => {
-    if (!cart || cart.items.length === 0) return;
+    if (!cart || cart.items.length === 0) {
+      toast.error("Your cart is empty");
+      return;
+    }
+
+    const fullName = address.full_name.trim();
+    if (!fullName || fullName.length < 2) {
+      toast.error("Please enter your full name (at least 2 characters)");
+      document.getElementById("co-name")?.focus();
+      return;
+    }
+
+    const phone = address.phone.trim();
+    if (!phone || phone.length < 10) {
+      toast.error("Please enter a valid 10-digit phone number");
+      document.getElementById("co-phone")?.focus();
+      return;
+    }
+
+    const emailToUse = (address.email || me?.email || "").trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailToUse || !emailRegex.test(emailToUse)) {
+      toast.error("Please enter a valid email address");
+      document.getElementById("co-email")?.focus();
+      return;
+    }
+
+    const line1 = address.line1.trim();
+    if (!line1 || line1.length < 5) {
+      toast.error("Please enter your delivery street address (at least 5 characters)");
+      document.getElementById("co-line1")?.focus();
+      return;
+    }
+
+    const city = address.city.trim();
+    if (!city || city.length < 2) {
+      toast.error("Please enter your city");
+      document.getElementById("co-city")?.focus();
+      return;
+    }
+
+    const state = address.state.trim();
+    if (!state || state.length < 2) {
+      toast.error("Please enter your state");
+      document.getElementById("co-state")?.focus();
+      return;
+    }
+
+    const pincode = address.pincode.trim();
+    const pinRegex = /^[1-9][0-9]{5}$/;
+    if (!pincode || !pinRegex.test(pincode)) {
+      toast.error("Please enter a valid 6-digit Indian PIN code (e.g. 560001)");
+      document.getElementById("co-pin")?.focus();
+      return;
+    }
+
     setPlacing(true);
     place.mutate(undefined, { onSettled: () => setPlacing(false) });
   };
@@ -161,36 +237,36 @@ export default function Checkout() {
               )}
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2">
-                  <Label htmlFor="co-name">Full name</Label>
-                  <Input id="co-name" value={address.full_name} onChange={set("full_name")} required minLength={2} className="mt-1.5 min-h-11" data-testid="checkout-name-input" />
+                  <Label htmlFor="co-name">Full name <span className="text-destructive">*</span></Label>
+                  <Input id="co-name" placeholder="e.g. Rahul Sharma" value={address.full_name} onChange={set("full_name")} required minLength={2} className="mt-1.5 min-h-11" data-testid="checkout-name-input" />
                 </div>
                 <div>
-                  <Label htmlFor="co-phone">Phone</Label>
-                  <Input id="co-phone" value={address.phone} onChange={set("phone")} inputMode="tel" required minLength={10} className="mt-1.5 min-h-11" data-testid="checkout-phone-input" />
+                  <Label htmlFor="co-phone">Phone <span className="text-destructive">*</span></Label>
+                  <Input id="co-phone" placeholder="e.g. 9876543210" value={address.phone} onChange={set("phone")} inputMode="tel" required minLength={10} className="mt-1.5 min-h-11" data-testid="checkout-phone-input" />
                 </div>
                 <div>
-                  <Label htmlFor="co-email">Email</Label>
-                  <Input id="co-email" type="email" value={address.email} onChange={set("email")} required className="mt-1.5 min-h-11" data-testid="checkout-email-input" />
+                  <Label htmlFor="co-email">Email <span className="text-destructive">*</span></Label>
+                  <Input id="co-email" type="email" placeholder="e.g. rahul@example.com" value={address.email} onChange={set("email")} required className="mt-1.5 min-h-11" data-testid="checkout-email-input" />
                 </div>
                 <div className="sm:col-span-2">
-                  <Label htmlFor="co-line1">Address line 1</Label>
-                  <Input id="co-line1" value={address.line1} onChange={set("line1")} required minLength={5} className="mt-1.5 min-h-11" data-testid="checkout-line1-input" />
+                  <Label htmlFor="co-line1">Address line 1 <span className="text-destructive">*</span></Label>
+                  <Input id="co-line1" placeholder="e.g. Flat 402, Green Valley Apts, MG Road" value={address.line1} onChange={set("line1")} required minLength={5} className="mt-1.5 min-h-11" data-testid="checkout-line1-input" />
                 </div>
                 <div className="sm:col-span-2">
-                  <Label htmlFor="co-line2">Address line 2 (optional)</Label>
-                  <Input id="co-line2" value={address.line2} onChange={set("line2")} className="mt-1.5 min-h-11" data-testid="checkout-line2-input" />
+                  <Label htmlFor="co-line2">Address line 2 <span className="text-xs text-muted-foreground font-normal">(optional)</span></Label>
+                  <Input id="co-line2" placeholder="e.g. Landmark / Near Metro" value={address.line2} onChange={set("line2")} className="mt-1.5 min-h-11" data-testid="checkout-line2-input" />
                 </div>
                 <div>
-                  <Label htmlFor="co-city">City</Label>
-                  <Input id="co-city" value={address.city} onChange={set("city")} required minLength={2} className="mt-1.5 min-h-11" data-testid="checkout-city-input" />
+                  <Label htmlFor="co-city">City <span className="text-destructive">*</span></Label>
+                  <Input id="co-city" placeholder="e.g. Bengaluru" value={address.city} onChange={set("city")} required minLength={2} className="mt-1.5 min-h-11" data-testid="checkout-city-input" />
                 </div>
                 <div>
-                  <Label htmlFor="co-state">State</Label>
-                  <Input id="co-state" value={address.state} onChange={set("state")} required minLength={2} className="mt-1.5 min-h-11" data-testid="checkout-state-input" />
+                  <Label htmlFor="co-state">State <span className="text-destructive">*</span></Label>
+                  <Input id="co-state" placeholder="e.g. Karnataka" value={address.state} onChange={set("state")} required minLength={2} className="mt-1.5 min-h-11" data-testid="checkout-state-input" />
                 </div>
                 <div>
-                  <Label htmlFor="co-pin">PIN code</Label>
-                  <Input id="co-pin" value={address.pincode} onChange={set("pincode")} inputMode="numeric" pattern="[1-9][0-9]{5}" required className="mt-1.5 min-h-11" data-testid="checkout-pincode-input" />
+                  <Label htmlFor="co-pin">PIN code <span className="text-destructive">*</span></Label>
+                  <Input id="co-pin" placeholder="e.g. 560001" value={address.pincode} onChange={set("pincode")} inputMode="numeric" pattern="[1-9][0-9]{5}" required className="mt-1.5 min-h-11" data-testid="checkout-pincode-input" />
                 </div>
               </div>
             </section>
@@ -232,7 +308,11 @@ export default function Checkout() {
                 disabled={placing || place.isPending}
                 data-testid="checkout-pay-btn"
               >
-                {placing || place.isPending ? "Creating order…" : config?.state === "ready" ? "Pay with Razorpay" : "Place order"}
+                {placing || place.isPending
+                  ? "Creating order…"
+                  : config?.state === "ready_test" || config?.state === "ready_live"
+                  ? "Pay with Razorpay"
+                  : "Place order"}
               </Button>
               {config?.mode === "test" && (
                 <Badge variant="outline" className="mt-3 w-full justify-center border-brand-amber text-brand-amber">

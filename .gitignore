@@ -84,11 +84,12 @@ android-sdk/
 # Testing workspace artifacts
 /tests/test-results/
 
-# overlay black-box crash/user-report dumps — session data, never history
-**/.emergent/recordings/
 .env
 .env.*
 *.env
 credentials.json
 *.key
 .credentials
+scratch/
+*.db
+

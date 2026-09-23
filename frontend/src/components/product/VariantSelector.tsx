@@ -1,126 +1,141 @@
-import { useMemo, useState } from "react";
+import { useState, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import type { Product, Variant } from "@/lib/types";
 import { inr } from "@/lib/format";
 import { apiPost } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import MattressVariantSelector from "./MattressVariantSelector";
+import TopperVariantSelector from "./TopperVariantSelector";
 
-function OptionGroup({
-  label,
-  options,
-  value,
-  onChange,
-  testId,
-}: {
-  label: string;
-  options: string[];
-  value: string | null;
-  onChange: (v: string) => void;
-  testId: string;
-}) {
-  if (options.length <= 1 && options[0] === undefined) return null;
-  return (
-    <div>
-      <p className="mb-2 text-sm font-semibold">{label}</p>
-      <div className="flex flex-wrap gap-2">
-        {options.map((o) => (
-          <button
-            key={o}
-            type="button"
-            onClick={() => onChange(o)}
-            data-testid={`${testId}-${o.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
-            className={cn(
-              "min-h-11 rounded-full border px-4 text-sm font-medium transition-colors",
-              value === o ? "border-brand-deep bg-brand-deep text-white" : "border-border bg-card hover:border-brand-deep/50"
-            )}
-          >
-            {o}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+interface VariantSelectorProps {
+  product: Product;
+  onVariantChange?: (variant: Variant | null) => void;
 }
 
-export default function VariantSelector({ product }: { product: Product }) {
+export default function VariantSelector({ product, onVariantChange }: VariantSelectorProps) {
   const qc = useQueryClient();
-  const [size, setSize] = useState<string | null>(null);
-  const [thickness, setThickness] = useState<string | null>(null);
-  const [firmness, setFirmness] = useState<string | null>(null);
+  const navigate = useNavigate();
+  
+  // Default variant for pillows or products with 1 variant
+  const defaultVariant = product.variants.length === 1 ? product.variants[0] : null;
+  const [selectedVariant, setSelectedVariantState] = useState<Variant | null>(defaultVariant);
 
-  const sizes = useMemo(() => [...new Set(product.variants.map((v) => v.size))], [product.variants]);
-  const thicknesses = useMemo(
-    () => [...new Set(product.variants.filter((v) => !size || v.size === size).map((v) => v.thickness).filter(Boolean) as string[])],
-    [product.variants, size]
-  );
-  const firmnesses = useMemo(
-    () =>
-      [
-        ...new Set(
-          product.variants
-            .filter((v) => (!size || v.size === size) && (!thickness || v.thickness === thickness))
-            .map((v) => v.firmness)
-            .filter(Boolean) as string[]
-        ),
-      ] as string[],
-    [product.variants, size, thickness]
-  );
+  const setSelectedVariant = useCallback((variant: Variant | null) => {
+    setSelectedVariantState(variant);
+    if (onVariantChange) onVariantChange(variant);
+  }, [onVariantChange]);
 
-  const match: Variant | undefined = product.variants.find(
-    (v) => (!size || v.size === size) && (!thickness || v.thickness === thickness) && (!firmness || v.firmness === firmness)
-  );
-
+  const isMattress = product.category_slug === "mattresses";
+  const isTopper = product.category_slug === "toppers";
+  
   const mutation = useMutation({
     mutationFn: (variant_id: string) => apiPost("/cart/items", { variant_id, qty: 1 }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["cart"] });
-      toast.success("Added to cart");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Could not add to cart"),
   });
 
-  return (
-    <div className="flex flex-col gap-5" data-testid="variant-selector">
-      {sizes.length > 1 && <OptionGroup label="Size" options={sizes} value={size ?? sizes[0]} onChange={(v) => { setSize(v); setThickness(null); setFirmness(null); }} testId="variant-size" />}
-      {thicknesses.length > 1 && <OptionGroup label="Thickness" options={thicknesses} value={thickness ?? thicknesses[0]} onChange={setThickness} testId="variant-thickness" />}
-      {firmnesses.length > 1 && <OptionGroup label="Firmness" options={firmnesses} value={firmness ?? firmnesses[0]} onChange={setFirmness} testId="variant-firmness" />}
+  const handleAddToCart = useCallback(() => {
+    if (!selectedVariant) return;
+    mutation.mutate(selectedVariant.id, {
+      onSuccess: () => toast.success("Added to cart"),
+    });
+  }, [selectedVariant, mutation]);
 
-      <div className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card p-4">
+  const handleBuyItNow = useCallback(() => {
+    if (!selectedVariant) return;
+    mutation.mutate(selectedVariant.id, {
+      onSuccess: () => {
+        navigate("/checkout");
+      }
+    });
+  }, [selectedVariant, mutation, navigate]);
+
+  return (
+    <div className="flex flex-col gap-6" data-testid="unified-variant-selector">
+      {/* Delegate to specific selectors */}
+      {isMattress && product.variants.length > 1 && (
+        <MattressVariantSelector product={product} onVariantSelect={setSelectedVariant} />
+      )}
+      
+      {isTopper && product.variants.length > 1 && (
+        <TopperVariantSelector product={product} onVariantSelect={setSelectedVariant} />
+      )}
+
+      {/* Price and Stock Summary */}
+      <div className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card p-5">
         <div>
-          <p className="font-heading text-2xl font-bold" data-testid="variant-price">{match ? inr(match.price) : "—"}</p>
-          {match?.mrp && match.mrp > match.price && (
-            <p className="text-xs text-muted-foreground">
-              MRP <s>{inr(match.mrp)}</s> · incl. taxes as configured
+          <p className="font-heading text-3xl font-bold tracking-tight text-foreground" data-testid="variant-price">
+            {selectedVariant ? inr(selectedVariant.price) : (product.price_from ? inr(product.price_from) : "—")}
+          </p>
+          {selectedVariant?.mrp && selectedVariant.mrp > selectedVariant.price && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              MRP <s>{inr(selectedVariant.mrp)}</s> <span className="text-brand-leaf ml-1 font-medium">({Math.round(((selectedVariant.mrp - selectedVariant.price) / selectedVariant.mrp) * 100)}% OFF)</span>
             </p>
           )}
-          <p className="mt-1 text-xs text-muted-foreground" data-testid="variant-sku">SKU: {match?.sku ?? "—"}</p>
+          <p className="mt-2 text-xs text-muted-foreground">incl. of all taxes</p>
         </div>
-        <div className="text-right">
-          {match ? (
-            match.free_stock > 0 ? (
-              <p className="text-xs font-medium text-brand-leaf" data-testid="variant-stock">
-                In stock{match.free_stock <= 5 ? ` — only ${match.free_stock} left` : ""}
+        <div className="text-right flex flex-col justify-end">
+          {selectedVariant ? (
+            selectedVariant.stock > 0 ? (
+              <p className="text-sm font-medium text-brand-leaf" data-testid="variant-stock">
+                In stock{selectedVariant.free_stock <= 5 ? ` — only ${selectedVariant.free_stock} left` : ""}
               </p>
             ) : (
-              <p className="text-xs font-medium text-destructive" data-testid="variant-stock">Out of stock</p>
+              <p className="text-sm font-medium text-destructive" data-testid="variant-stock">Out of stock</p>
             )
           ) : (
-            <p className="text-xs text-muted-foreground">Select options</p>
+            <p className="text-sm text-muted-foreground">Select options</p>
+          )}
+          {selectedVariant?.sku && (
+            <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground" data-testid="variant-sku">
+              SKU: {selectedVariant.sku}
+            </p>
           )}
         </div>
       </div>
 
-      <Button
-        size="lg"
-        disabled={!match || match.free_stock === 0 || mutation.isPending}
-        onClick={() => match && mutation.mutate(match.id)}
-        className="min-h-12 text-base"
-        data-testid="add-to-cart-btn"
-      >
-        {mutation.isPending ? "Adding…" : match && match.free_stock === 0 ? "Out of stock" : "Add to cart"}
-      </Button>
+      {/* CTAs */}
+      <div className="flex flex-col gap-3">
+        <Button
+          size="lg"
+          variant="default"
+          disabled={!selectedVariant || selectedVariant.stock === 0 || mutation.isPending}
+          onClick={handleBuyItNow}
+          className="min-h-14 w-full text-base font-semibold shadow-lg hover:shadow-xl transition-all"
+          data-testid="buy-it-now-btn"
+        >
+          {mutation.isPending ? "Processing…" : selectedVariant && selectedVariant.stock === 0 ? "Out of stock" : "Buy It Now"}
+        </Button>
+        <Button
+          size="lg"
+          variant="outline"
+          disabled={!selectedVariant || selectedVariant.stock === 0 || mutation.isPending}
+          onClick={handleAddToCart}
+          className="min-h-14 w-full text-base font-medium border-2 hover:bg-brand-sand/30 transition-colors"
+          data-testid="add-to-cart-btn"
+        >
+          {mutation.isPending ? "Processing…" : "Add to Cart"}
+        </Button>
+      </div>
+      
+      <div className="mt-2 flex items-center justify-center gap-6 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2">
+           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
+           <span>100-Night Trial</span>
+        </div>
+        <div className="flex items-center gap-2">
+           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+           <span>10-Year Warranty</span>
+        </div>
+        <div className="flex items-center gap-2">
+           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"/><path d="M9 10h6"/><path d="M9 14h6"/></svg>
+           <span>Free Shipping</span>
+        </div>
+      </div>
     </div>
   );
 }

@@ -9,7 +9,6 @@ import os
 
 import httpx
 import pytest
-import pytest_asyncio
 
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8001")
 API_URL = f"{BACKEND_URL}/api"
@@ -37,11 +36,15 @@ def client():
         yield c
 
 
-@pytest_asyncio.fixture
-async def aclient():
-    """Async variant, for tests that also await motor/backend helpers directly."""
-    async with httpx.AsyncClient(base_url=API_URL, timeout=30.0) as c:
-        yield c
+try:
+    import pytest_asyncio
+    @pytest_asyncio.fixture
+    async def aclient():
+        """Async variant, for tests that also await motor/backend helpers directly."""
+        async with httpx.AsyncClient(base_url=API_URL, timeout=30.0) as c:
+            yield c
+except ImportError:
+    pass
 
 
 # --- app-specific fixtures below this line ---

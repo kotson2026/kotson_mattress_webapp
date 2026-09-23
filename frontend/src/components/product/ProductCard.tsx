@@ -1,26 +1,36 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Star } from "lucide-react";
 import type { Product } from "@/lib/types";
 import { inr } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { apiPost } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useState } from "react";
 
-// Quick add is only offered when the product has exactly one variant — never silently
-// add a wrong default when a variant choice is required.
 export default function ProductCard({ product }: { product: Product }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
-  const single = product.variants.length === 1 ? product.variants[0] : null;
+  const [hasError, setHasError] = useState(false);
 
-  const quickAdd = async () => {
-    if (!single) return;
+  const requiresVariantSelection = product.variants.length > 1;
+
+  const handleAction = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (requiresVariantSelection) {
+      navigate(`/products/${product.slug}`);
+      return;
+    }
+
+    if (!product.variants[0]) return;
+
     setBusy(true);
     try {
-      await apiPost("/cart/items", { variant_id: single.id, qty: 1 });
+      await apiPost("/cart/items", { variant_id: product.variants[0].id, qty: 1 });
       qc.invalidateQueries({ queryKey: ["cart"] });
       toast.success("Added to cart");
     } catch (e) {
@@ -30,53 +40,78 @@ export default function ProductCard({ product }: { product: Product }) {
     }
   };
 
+  const rawImage = (product.images && product.images[0]) || product.primary_image;
+  const showImage = Boolean(rawImage && !hasError);
+
   return (
     <article
-      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1"
+      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-transform duration-300 hover:-translate-y-1 w-full"
       data-testid={`product-card-${product.slug}`}
     >
-      <Link to={`/products/${product.slug}`} className="relative block aspect-[4/3] bg-brand-sand" aria-label={product.name}>
-        {product.images[0] ? (
-          <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" loading="lazy" />
+      <Link
+        to={`/products/${product.slug}`}
+        className="product-image-wrapper relative bg-brand-sand/60 p-4 transition-colors group-hover:bg-brand-sand/80 overflow-hidden"
+        aria-label={product.name}
+      >
+        {showImage ? (
+          <img
+            src={rawImage}
+            alt={product.name}
+            className="product-image aspect-square h-full w-full object-contain transition-transform duration-300 ease-out group-hover:scale-105"
+            loading="lazy"
+            decoding="async"
+            width={400}
+            height={400}
+            onError={() => setHasError(true)}
+          />
         ) : (
-          <span className="flex h-full w-full items-center justify-center text-xs uppercase tracking-[0.3em] text-brand-deep/50">
-            {product.category_slug}
-          </span>
+          <div className="flex aspect-square h-full w-full flex-col items-center justify-center p-4 text-center">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-deep/60">
+              Product Image Coming Soon
+            </span>
+          </div>
         )}
         {product.badge && (
-          <Badge className="absolute left-3 top-3 bg-brand-deep text-white" data-testid={`product-badge-${product.slug}`}>
+          <Badge className="absolute left-3 top-3 bg-brand-deep text-white text-[10px] px-2 py-0.5 border-none" data-testid={`product-badge-${product.slug}`}>
             {product.badge}
           </Badge>
         )}
       </Link>
+
       <div className="flex flex-1 flex-col gap-2 p-5">
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Star className="h-3.5 w-3.5 fill-brand-amber text-brand-amber" aria-hidden="true" />
-          {product.rating?.toFixed(1) ?? "New"} · {product.review_count} reviews
-        </div>
+        {product.rating !== null && product.rating !== undefined && product.review_count > 0 && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Star className="h-3.5 w-3.5 fill-brand-amber text-brand-amber" aria-hidden="true" />
+            {product.rating.toFixed(1)} · {product.review_count} reviews
+          </div>
+        )}
+
         <h3 className="font-heading text-lg font-bold leading-snug">
-          <Link to={`/products/${product.slug}`} className="hover:text-brand-deep" data-testid={`product-name-${product.slug}`}>
+          <Link to={`/products/${product.slug}`} className="hover:text-brand-deep transition-colors" data-testid={`product-name-${product.slug}`}>
             {product.name}
           </Link>
         </h3>
-        <p className="line-clamp-2 text-sm text-muted-foreground">{product.tagline}</p>
-        <div className="mt-auto flex items-center justify-between gap-2 pt-3">
+
+        {product.tagline && <p className="line-clamp-2 text-sm text-muted-foreground">{product.tagline}</p>}
+
+        <div className="mt-auto flex flex-col gap-4 pt-3">
           <div>
             <p className="font-heading text-lg font-bold" data-testid={`product-price-${product.slug}`}>
+              {requiresVariantSelection && <span className="text-xs font-normal text-muted-foreground mr-1">From</span>}
               {product.price_from !== null ? inr(product.price_from) : "—"}
-              {product.variants.length > 1 && <span className="text-xs font-normal text-muted-foreground"> onwards</span>}
             </p>
-            {product.trial_days && <p className="text-xs text-brand-leaf">{product.trial_days}-night trial</p>}
           </div>
-          {single && product.in_stock ? (
-            <Button size="sm" onClick={quickAdd} disabled={busy} className="min-h-11" data-testid={`product-quick-add-${product.slug}`}>
-              Add
-            </Button>
-          ) : (
-            <Link to={`/products/${product.slug}`} className={buttonVariants({ variant: "outline", size: "sm" })} data-testid={`product-view-${product.slug}`}>
-              {product.in_stock ? "Options" : "View"}
-            </Link>
-          )}
+
+          <Button
+            size="sm"
+            onClick={handleAction}
+            disabled={busy || !product.in_stock}
+            className="w-full min-h-11 font-semibold transition-colors duration-200"
+            variant={requiresVariantSelection ? "outline" : "default"}
+            data-testid={`product-action-${product.slug}`}
+          >
+            {busy ? "Processing..." : (!product.in_stock ? "Out of stock" : (requiresVariantSelection ? "Add to Cart" : "Add to Cart"))}
+          </Button>
         </div>
       </div>
     </article>

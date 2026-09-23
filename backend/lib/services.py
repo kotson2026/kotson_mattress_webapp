@@ -23,14 +23,29 @@ def now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def clean_doc(doc: dict) -> dict:
-    """Strip Mongo internals and normalize datetimes to aware UTC."""
-    out = {k: v for k, v in doc.items() if k != "_id" or isinstance(v, ObjectId) is False}
-    out.pop("_id", None)
-    for k, v in out.items():
-        if isinstance(v, datetime):
-            out[k] = v.replace(tzinfo=timezone.utc)
-    return out
+def clean_doc(doc: any) -> any:
+    """Strip Mongo internals and normalize datetimes to aware UTC recursively."""
+    if isinstance(doc, dict):
+        out = {}
+        for k, v in doc.items():
+            if k == "_id":
+                continue
+            if isinstance(v, ObjectId):
+                out[k] = str(v)
+            elif isinstance(v, datetime):
+                out[k] = v.replace(tzinfo=timezone.utc) if v.tzinfo is None else v
+            elif isinstance(v, (dict, list)):
+                out[k] = clean_doc(v)
+            else:
+                out[k] = v
+        return out
+    elif isinstance(doc, list):
+        return [clean_doc(x) for x in doc]
+    elif isinstance(doc, ObjectId):
+        return str(doc)
+    elif isinstance(doc, datetime):
+        return doc.replace(tzinfo=timezone.utc) if doc.tzinfo is None else doc
+    return doc
 
 
 async def reserve_stock(order_id: str, items: list[dict]) -> list[dict]:

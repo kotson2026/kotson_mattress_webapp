@@ -151,9 +151,20 @@
     margin: 0;
     padding: 0;
     width: 100%;
+    /* Prevent any section from creating horizontal page overflow */
+    overflow-x: hidden;
   }
   * {
     @apply border-border outline-ring/50;
+    /* Prevent any element from escaping its container width */
+    max-width: 100%;
+  }
+  /* Reset max-width override for layout containers that need full flex/grid freedom */
+  .max-w-none { max-width: none !important; }
+  img, video {
+    display: block;
+    max-width: 100%;
+    height: auto;
   }
   body {
     font-family: var(--font-ui);
@@ -162,10 +173,29 @@
   html {
     font-family: var(--font-ui);
     @apply font-sans;
+    /* Smooth text rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
   h1, h2, h3, h4 {
     font-family: var(--font-ui);
     letter-spacing: -0.02em;
+    /* Prevent heading overflow on narrow screens */
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+  /* Minimum tap target size for interactive elements */
+  button, a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* Reset for inline links that shouldn't force 44px */
+  p a, li a, nav a {
+    display: inline;
+    min-height: unset;
   }
 }
 
@@ -298,3 +328,21 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Kotson product image display standards */
+.product-image-wrapper {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+

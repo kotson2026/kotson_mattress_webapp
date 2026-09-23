@@ -43,8 +43,12 @@ async def lifespan(app: FastAPI):
             await seed.main()
             await seed_crm.main()
             await seed_site_media.main()
+        
+        # Ensure CMS restoration of existing website pages and sections
+        from lib.cms_migrator import ensure_cms_migrated
+        await ensure_cms_migrated()
     except Exception as exc:
-        logger.warning("Startup auto-seed check skipped or failed: %s", exc)
+        logger.warning("Startup auto-seed / CMS migration check skipped or failed: %s", exc)
     yield
     app.state.sweeper_task.cancel()
     client.close()
@@ -99,6 +103,12 @@ from routers import (  # noqa: E402
     orders,
     referrals,
     site_media,
+    sales,
+    cms,
+    dev_data,
+    dispatch,
+    assets,
+    claims_trust,
 )
 
 api_router.include_router(auth.router)
@@ -115,6 +125,12 @@ api_router.include_router(crm_leads.router)
 api_router.include_router(crm_calls.router)
 api_router.include_router(fulfilment.router)
 api_router.include_router(site_media.router)
+api_router.include_router(sales.router)
+api_router.include_router(cms.router)
+api_router.include_router(dev_data.router)
+api_router.include_router(dispatch.router)
+api_router.include_router(assets.router)
+api_router.include_router(claims_trust.router)
 
 # Include the router in the main app
 app.include_router(api_router)

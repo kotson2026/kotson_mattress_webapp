@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 const NAV = [
   { to: "/manager", label: "Fulfilment queue" },
-  { to: "/ops", label: "Dispatch & Returns" },
+  { to: "/admin/dispatch", label: "Dispatch & Returns" },
   { to: "/manager/stock", label: "Stock & recount" },
   { to: "/manager/catalog", label: "Catalog (read-only)" },
 ];

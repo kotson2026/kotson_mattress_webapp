@@ -46,7 +46,7 @@ filename and `quality` is JPEG-only; `page.goto` needs an absolute
   `recharts` alias (`src/lib/recharts.tsx`) restores Tooltip's generic typing; the raw package is `recharts-upstream`.
 - **Backend** (`backend/requirements.txt`): `fastapi`, `uvicorn`, `motor`,
   `pymongo`, `pydantic` v2, `python-dotenv`, `httpx`, `requests`, `pandas`,
-  `numpy`, `openpyxl`, `emergentintegrations`, `boto3`, `typer`, `pytest` +
+  `numpy`, `openpyxl`, `boto3`, `typer`, `pytest` +
   `pytest-asyncio`/`xdist`; auth and uploads are covered too — `pyjwt`,
   `python-jose`, `passlib`, `cryptography`, `email-validator`,
   `python-multipart`.
@@ -73,9 +73,8 @@ This list is why you never need to read `package.json` or list `node_modules`.
 | `frontend/src/lib/utils.ts` | `cn()` |
 | `frontend/src/components/ui/` | shadcn `base-nova` on **@base-ui/react** (index in §11) |
 | `frontend/src/index.css` | Tailwind v4 entry + theme tokens (no `tailwind.config.js`) |
-| `@emergentbase/overlay` (npm) | platform infra (branded error overlay vite plugin) — not in your source tree. Probe: `curl -s localhost:3000/__emergent_overlay__/health` → 503 = JSON with the current build/runtime errors, 200 = none known (no `-f`; a 200 with `degraded` in the body means the probe itself failed). It reflects state since the last page load, so load the page once for authority. Runtime crashes leave `crash-*.json` + digest `.md` in `.emergent/recordings/` (newest three kept) — read the `.md` first. Needs frontend HMR (§10): with it off you still get the error card, but no crash dumps and no bug button. With `EMERGENT_OVERLAY_RRWEB="buffer"` on the frontend `environment=` line the dumps include the recent interaction timeline (typed input masked); with `"off"`, error context and stack only. Bug button, for behavior you can't reproduce: set `EMERGENT_OVERLAY_FAB="on"` on that line in `/etc/supervisor/conf.d/supervisord.conf` (the one edit allowed there), `sudo supervisorctl reread && sudo supervisorctl update`, then ask the user to repeat the steps and use the button at the bottom-left of the preview — their session + note land as a `user-report-*` pair in `.emergent/recordings/`; read the newest `.md`. Leaving it on is fine; the user can hide it |
 | `memory/spec.md`, `memory/test_credentials.md` | write seed facts + credentials here before delegating — the testing subagent reads them first |
-| `backend/pytest.ini`, `backend/tests/`, `tests/` | pytest + Playwright scaffolding, pre-configured — don't edit or recreate; browser checks land in `.emergent/scripts/checks/` |
+| `backend/pytest.ini`, `backend/tests/`, `tests/` | pytest scaffolding, pre-configured |
 ## 4. The typed-fetch boundary
 
 Nothing infers across Python↔TypeScript. Each endpoint has **two** declarations
@@ -226,7 +225,7 @@ and the hex values in `:root` + `.dark`; leave the other aliases and
   `cd /app/backend && python -c 'import server'` for backend import sanity.
 - **Screenshots** (`mcp_screenshot_tool_ts`): `path` must be a **bare filename**
   (`home.png`) — a directory prefix is written but never returned, landing under
-  `/root/.emergent/automation_output/<ts>/`. `quality` is **JPEG-only**: passing
+  `automation_output/<ts>/`. `quality` is **JPEG-only**: passing
   it with a `.png` path fails the whole browser run (`options.quality is
   unsupported for the png screenshots`). Set the viewport before capturing; the
   image returns inline, so never `find` it on disk.

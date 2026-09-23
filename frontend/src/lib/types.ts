@@ -5,6 +5,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  phone?: string | null;
   roles: string[];
   referral_code: string | null;
   referred_by: string | null;
@@ -24,6 +25,7 @@ export interface Category {
   description: string;
   image_slot: string;
   sort: number;
+  product_count?: number;
   is_active: boolean;
 }
 
@@ -32,6 +34,8 @@ export interface Variant {
   product_id: string;
   sku: string;
   size: string;
+  length: string | null;
+  width: string | null;
   thickness: string | null;
   firmness: string | null;
   price: number; // paise
@@ -55,6 +59,7 @@ export interface Product {
   trial_days: number | null;
   warranty_years: number | null;
   images: string[];
+  primary_image?: string;
   is_seed: boolean;
   is_active: boolean;
   sort: number;
@@ -62,6 +67,11 @@ export interface Product {
   variants: Variant[];
   price_from: number | null;
   in_stock: boolean;
+  features?: string[];
+  specifications?: Record<string, string>;
+  care_instructions?: string;
+  is_best_seller?: boolean;
+  short_description?: string;
 }
 
 export interface CartLine {
@@ -71,6 +81,8 @@ export interface CartLine {
   product_name: string;
   sku: string;
   size: string;
+  length: string | null;
+  width: string | null;
   thickness: string | null;
   firmness: string | null;
   qty: number;
@@ -98,6 +110,8 @@ export interface OrderItem {
   product_name: string;
   sku: string;
   size: string;
+  length: string | null;
+  width: string | null;
   thickness: string | null;
   firmness: string | null;
   qty: number;
@@ -138,13 +152,26 @@ export interface Order {
   referral_code: string | null;
   stock_exception?: boolean;
   fulfilment_blocked?: boolean;
+  order_source?: string;
+  order_channel?: string;
+  sale_date?: string;
+  employee_id?: string | null;
+  dealer_id?: string | null;
+  source_note?: string | null;
+  payment_verification_source?: string;
+  manual_payment_ref?: string | null;
+  manual_payment_remarks?: string | null;
   razorpay: Record<string, unknown>;
   events: OrderEvent[];
   created_at: string;
+  is_test_data?: boolean;
+  data_environment?: string;
+  seed_batch_id?: string;
+  seed_key?: string;
 }
 
 export interface GatewayInfo {
-  state: "ready" | "pending_keys" | "error";
+  state: "ready_test" | "ready_live" | "pending_keys" | "error";
   mode: string;
   key_id: string | null;
   rzp_order_id: string | null;
@@ -163,7 +190,7 @@ export interface CheckoutStartOut {
 export interface CheckoutConfig {
   gateway: string;
   mode: string;
-  state: "ready" | "pending_keys" | "error";
+  state: "ready_test" | "ready_live" | "pending_keys" | "error";
   key_id: string | null;
   currency: string;
   reservation_ttl_minutes: number;
@@ -363,3 +390,109 @@ export interface TrackOut {
   items: { product_name: string; qty: number }[];
   events: { type: string; detail: string; at: string }[];
 }
+
+export interface Phase2LowStockItem {
+  sku: string;
+  product_name: string;
+  category_slug: string;
+  size: string;
+  thickness: string | null;
+  stock: number;
+  reserved: number;
+  free_stock: number;
+  status: "OUT_OF_STOCK" | "CRITICAL" | "LOW_STOCK";
+}
+
+export interface OwnerDashboardData {
+  range: {
+    preset: string;
+    date_from: string;
+    date_to: string;
+  };
+  product_orders: {
+    mattresses: number;
+    pillows: number;
+    toppers: number;
+    baby_kids: number;
+    total_orders: number;
+  };
+  customer_activity: {
+    signups: number;
+    cart_users: number;
+    purchased_customers: number;
+  };
+  dealer_network: {
+    total_dealers: number;
+    pending_approvals: number;
+    dealer_sales_paise: number;
+    dealer_orders: number;
+  };
+  low_stock_items: Phase2LowStockItem[];
+}
+
+export interface DashboardDrillDownData {
+  type: string;
+  category?: string;
+  summary: {
+    total_orders?: number;
+    units_sold?: number;
+    gross_sales_paise?: number;
+    net_revenue_paise?: number;
+    total_count?: number;
+    total_sales_paise?: number;
+  };
+  items: any[];
+}
+
+export interface SalesSummaryResponse {
+  kpi_row_1: {
+    net_revenue_paise: number;
+    gross_sales_paise: number;
+    paid_orders: number;
+    retail_orders: number;
+    dealer_orders: number;
+    walkin_orders: number;
+    aov_paise: number;
+    dealer_sales_paise: number;
+    retail_sales_paise: number;
+  };
+  kpi_row_2: {
+    new_registrations: number;
+    refunds_reversals_paise: number;
+    cancelled_orders: number;
+    failed_payments: number;
+    total_dealer_volume: number;
+    manual_walkin_sales_paise: number;
+  };
+  trend: Array<{ label: string; revenue_paise: number; orders: number }>;
+  by_source: Array<{ source: string; orders: number; revenue_paise: number }>;
+  by_category: Array<{ category: string; orders: number; units: number; revenue_paise: number }>;
+  by_location: Array<{ state: string; district: string; orders: number; revenue_paise: number }>;
+  recent_transactions: Array<any>;
+}
+
+export interface ManualSaleItemIn {
+  product_id: string;
+  variant_id: string;
+  qty: number;
+  unit_price: number;
+  discount?: number;
+}
+
+export interface ManualSaleIn {
+  customer_name: string;
+  customer_phone: string;
+  customer_email: string;
+  sales_source: string;
+  order_channel: string;
+  employee_id?: string;
+  dealer_id?: string;
+  source_note?: string;
+  sale_date: string;
+  payment_method: string;
+  manual_payment_ref?: string;
+  manual_payment_remarks?: string;
+  shipping_address: Record<string, string>;
+  items: ManualSaleItemIn[];
+}
+

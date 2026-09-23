@@ -140,3 +140,45 @@ async def crm_patch_inquiry(iid: str, input: InquiryPatch, user=Depends(require_
     await audit(user, "crm.inquiry", "inquiry", iid, "; ".join(events))
     updated = await db.inquiries.find_one({"id": iid})
     return Inquiry(**clean_doc(updated))
+
+
+class CaptureLeadIn(BaseModel):
+    name: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    source_page: Optional[str] = None
+    form_source: Optional[str] = "popup"
+    product_interest: Optional[str] = None
+    utm_source: Optional[str] = None
+    utm_medium: Optional[str] = None
+    utm_campaign: Optional[str] = None
+
+
+@router.post("/crm/capture-lead", status_code=201)
+async def capture_lead_public(input: CaptureLeadIn):
+    """Public lead capture for popups, forms, consultation prompts."""
+    lead_ref_id = str(__import__("uuid").uuid4())
+    subject = input.product_interest or f"Inquiry via {input.form_source or 'web'}"
+    if input.source_page:
+        subject += f" on {input.source_page}"
+
+    lead = None
+    try:
+        lead = await capture_contact(
+            kind="contact",
+            name=input.name,
+            email=input.email,
+            phone=input.phone,
+            subject=subject,
+            ref_id=lead_ref_id,
+        )
+    except Exception as e:
+        # non-blocking fallback if intake fails
+        pass
+
+    return {
+        "status": "success",
+        "message": "Thank you! We will get in touch with you shortly.",
+        "lead_id": lead.get("id") if lead else None,
+    }
+

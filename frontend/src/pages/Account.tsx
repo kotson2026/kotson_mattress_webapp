@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Copy, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { apiGet, apiPost } from "@/lib/api";
-import type { AffiliateMe, Dealer, Order, ReferralMe } from "@/lib/types";
+import type { Dealer, Order, ReferralMe } from "@/lib/types";
 import { fmtDate, inr } from "@/lib/format";
 import { useMe } from "@/lib/session";
 import StorefrontHeader from "@/components/layout/StorefrontHeader";
@@ -20,21 +20,11 @@ export default function Account() {
 
   const { data: orders } = useQuery({ queryKey: ["orders"], queryFn: () => apiGet<Order[]>("/orders"), enabled: !!me });
   const { data: referrals } = useQuery({ queryKey: ["referrals"], queryFn: () => apiGet<ReferralMe>("/referrals/me"), enabled: !!me });
-  const { data: affiliate } = useQuery({ queryKey: ["affiliate"], queryFn: () => apiGet<AffiliateMe>("/affiliates/me"), enabled: !!me });
   const { data: dealer } = useQuery({
     queryKey: ["dealer-me"],
     queryFn: () => apiGet<Dealer>("/dealer/me").catch(() => null),
     enabled: !!me,
     retry: false,
-  });
-
-  const applyAffiliate = useMutation({
-    mutationFn: () => apiPost("/affiliates/apply"),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["affiliate"] });
-      toast.success("Affiliate application submitted");
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not apply"),
   });
 
   const signOut = useMutation({
@@ -100,7 +90,7 @@ export default function Account() {
             <TabsTrigger value="orders" data-testid="account-tab-orders">Orders</TabsTrigger>
             <TabsTrigger value="addresses" data-testid="account-tab-addresses">Addresses</TabsTrigger>
             <TabsTrigger value="referrals" data-testid="account-tab-referrals">Refer &amp; Earn</TabsTrigger>
-            <TabsTrigger value="partner" data-testid="account-tab-partner">Partner</TabsTrigger>
+            <TabsTrigger value="dealer" data-testid="account-tab-dealer">Dealer &amp; B2B</TabsTrigger>
           </TabsList>
 
           <TabsContent value="orders" className="mt-6">
@@ -192,43 +182,27 @@ export default function Account() {
             </div>
           </TabsContent>
 
-          <TabsContent value="partner" className="mt-6 grid gap-6 md:grid-cols-2">
-            <div className="rounded-2xl border border-border bg-card p-6" data-testid="account-affiliate">
-              <h2 className="font-heading text-lg font-bold">Affiliate programme</h2>
-              {affiliate?.applied ? (
-                <>
-                  <Badge variant="outline" className="mt-3">{affiliate.status}</Badge>
-                  <p className="mt-3 text-sm text-muted-foreground">
-                    Campaign economics: {affiliate.campaign_status?.replace(/_/g, " ")}. Commission accrues only on verified paid orders and
-                    reverses on refunds.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="mt-2 text-sm text-muted-foreground">{affiliate?.note ?? "Apply to become an affiliate."}</p>
-                  <Button className="mt-4 min-h-11" onClick={() => applyAffiliate.mutate()} disabled={applyAffiliate.isPending} data-testid="affiliate-apply-button">
-                    Apply as affiliate
-                  </Button>
-                </>
-              )}
-            </div>
-
-            <div className="rounded-2xl border border-border bg-card p-6" data-testid="account-dealer">
-              <h2 className="font-heading text-lg font-bold">Dealer / B2B</h2>
+          <TabsContent value="dealer" className="mt-6">
+            <div className="max-w-xl rounded-2xl border border-border bg-card p-6" data-testid="account-dealer">
+              <h2 className="font-heading text-lg font-bold">Dealer / B2B Portal</h2>
               {dealer ? (
                 <>
                   <p className="mt-3 font-medium">{dealer.org_name}</p>
                   <Badge variant="outline" className="mt-2">{dealer.status}</Badge>
-                  <Link to="/dealer" className={buttonVariants({ variant: "outline", size: "sm" }) + " mt-4"} data-testid="dealer-portal-link">
-                    Open dealer portal
-                  </Link>
+                  <div className="mt-4">
+                    <Link to="/dealer" className={buttonVariants({ variant: "outline", size: "sm" })} data-testid="dealer-portal-link">
+                      Open dealer portal
+                    </Link>
+                  </div>
                 </>
               ) : (
                 <>
-                  <p className="mt-2 text-sm text-muted-foreground">Sell Kotson in your store? Apply for a dealer account.</p>
-                  <Link to="/dealer" className={buttonVariants({ size: "sm" }) + " mt-4 min-h-11"} data-testid="dealer-apply-link">
-                    Apply as dealer
-                  </Link>
+                  <p className="mt-2 text-sm text-muted-foreground">Sell Kotson in your store? Apply for a wholesale dealer account.</p>
+                  <div className="mt-4">
+                    <Link to="/dealer" className={buttonVariants({ size: "sm" }) + " min-h-11"} data-testid="dealer-apply-link">
+                      Apply as dealer
+                    </Link>
+                  </div>
                 </>
               )}
             </div>

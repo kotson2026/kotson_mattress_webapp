@@ -21,8 +21,8 @@ export default function SiteFooter() {
 
   return (
     <footer className="mt-20 bg-brand-charcoal text-brand-sand">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-4">
-        <div className="md:col-span-2">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 px-4 py-14 sm:px-6">
+        <div className="sm:col-span-2 md:col-span-2">
           <LogoMark light />
           <p className="mt-3 font-display text-xl sm:text-2xl text-brand-sand/95 font-normal">
             Where better sleep begins.
@@ -33,22 +33,22 @@ export default function SiteFooter() {
         </div>
         <div>
           <h3 className="font-ui text-xs font-bold uppercase tracking-[0.14em] text-brand-leaf">Shop</h3>
-          <ul className="mt-4 space-y-2 font-ui text-sm">
-            <li><Link className="min-h-11 inline-flex items-center hover:text-brand-sand/70" to="/collections/mattresses" data-testid="footer-link-mattresses">Mattresses</Link></li>
-            <li><Link className="min-h-11 inline-flex items-center hover:text-brand-sand/70" to="/collections/pillows" data-testid="footer-link-pillows">Pillows</Link></li>
-            <li><Link className="min-h-11 inline-flex items-center hover:text-brand-sand/70" to="/collections/toppers" data-testid="footer-link-toppers">Toppers</Link></li>
-            <li><Link className="min-h-11 inline-flex items-center hover:text-brand-sand/70" to="/collections/baby-kids" data-testid="footer-link-baby">Baby + Kids</Link></li>
+          <ul className="mt-4 space-y-1 font-ui text-sm">
+            <li><Link className="min-h-[44px] inline-flex items-center hover:text-brand-sand/70" to="/collections/mattresses" data-testid="footer-link-mattresses">Mattresses</Link></li>
+            <li><Link className="min-h-[44px] inline-flex items-center hover:text-brand-sand/70" to="/collections/pillows" data-testid="footer-link-pillows">Pillows</Link></li>
+            <li><Link className="min-h-[44px] inline-flex items-center hover:text-brand-sand/70" to="/collections/toppers" data-testid="footer-link-toppers">Toppers</Link></li>
+            <li><Link className="min-h-[44px] inline-flex items-center hover:text-brand-sand/70" to="/collections/baby-kids" data-testid="footer-link-baby">Baby + Kids</Link></li>
           </ul>
         </div>
         <div>
           <h3 className="font-ui text-xs font-bold uppercase tracking-[0.14em] text-brand-leaf">Company</h3>
-          <ul className="mt-4 space-y-2 font-ui text-sm">
-            <li><Link className="min-h-11 inline-flex items-center hover:text-brand-sand/70" to="/about">About</Link></li>
-            <li><Link className="min-h-11 inline-flex items-center hover:text-brand-sand/70" to="/contact">Contact</Link></li>
-            <li><Link className="min-h-11 inline-flex items-center hover:text-brand-sand/70" to="/policies/policy_shipping">Shipping policy</Link></li>
-            <li><Link className="min-h-11 inline-flex items-center hover:text-brand-sand/70" to="/policies/policy_returns">Returns &amp; trial</Link></li>
-            <li><Link className="min-h-11 inline-flex items-center hover:text-brand-sand/70" to="/policies/policy_privacy">Privacy</Link></li>
-            <li><Link className="min-h-11 inline-flex items-center hover:text-brand-sand/70" to="/policies/policy_terms">Terms</Link></li>
+          <ul className="mt-4 space-y-1 font-ui text-sm">
+            <li><Link className="min-h-[44px] inline-flex items-center hover:text-brand-sand/70" to="/about">About</Link></li>
+            <li><Link className="min-h-[44px] inline-flex items-center hover:text-brand-sand/70" to="/contact">Contact</Link></li>
+            <li><Link className="min-h-[44px] inline-flex items-center hover:text-brand-sand/70" to="/policies/policy_shipping">Shipping policy</Link></li>
+            <li><Link className="min-h-[44px] inline-flex items-center hover:text-brand-sand/70" to="/policies/policy_returns">Returns &amp; trial</Link></li>
+            <li><Link className="min-h-[44px] inline-flex items-center hover:text-brand-sand/70" to="/policies/policy_privacy">Privacy</Link></li>
+            <li><Link className="min-h-[44px] inline-flex items-center hover:text-brand-sand/70" to="/policies/policy_terms">Terms</Link></li>
           </ul>
         </div>
       </div>

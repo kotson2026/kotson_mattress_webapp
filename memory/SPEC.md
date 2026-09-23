@@ -2,7 +2,7 @@
 
 **Entity:** KOTSON NATURALS PRIVATE LIMITED, trading as KOTSON MATTRESS. INR only (integer **paise** everywhere).
 **Stack:** FastAPI + MongoDB (motor) backend on `/api`; Vite + React 19 + TS strict + Tailwind v4 + shadcn/ui frontend.
-Public URL: https://sleep-build-1.preview.emergentagent.com
+Public URL: http://localhost:3000 / https://kotsonmattress.com
 
 > Note on the brief: the prompt requested a TypeScript full-stack framework with PostgreSQL. This pod template is
 > FastAPI + MongoDB, so the build uses it with document-level atomic guards in place of SQL transactions (see

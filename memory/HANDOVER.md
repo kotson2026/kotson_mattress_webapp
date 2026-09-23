@@ -1,6 +1,6 @@
 # Kotson Mattress — handover
 
-**Staging URL:** https://sleep-build-1.preview.emergentagent.com
+**Staging URL:** http://localhost:3000 / https://kotsonmattress.com
 **Credentials:** `memory/test_credentials.md` · **Spec:** `memory/SPEC.md` · **Env template:** `backend/.env.example`
 **Seed:** `cd /app/backend && python seed.py` (idempotent; every product carries `is_seed: true`)
 

@@ -109,7 +109,7 @@ export default function ProductShelf({ activeCategory, onSelectCategory, onClose
                 {/* Product Thumbnail / Category Icon */}
                 <div className="relative my-3 flex h-28 w-full items-center justify-center overflow-hidden rounded-xl bg-brand-sand/50">
                   <img
-                    src={categoryItem.imageUrl}
+                    src={(product.images && product.images[0]) || categoryItem.imageUrl}
                     alt={product.name}
                     width={80}
                     height={80}

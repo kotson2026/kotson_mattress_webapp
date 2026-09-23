@@ -84,11 +84,21 @@ class Order(BaseModel):
     email: str
     guest_access_token: Optional[str] = None
     channel: str = "retail"  # retail | dealer
+    buyer_type: str = "CUSTOMER"  # CUSTOMER | DEALER
+    order_source: str = "DIRECT_WEBSITE"  # DIRECT_WEBSITE | WEB_REFERRAL | DEALER | EMPLOYEE_ASSISTED | WALK_IN | MANUAL_OTHER
+    order_channel: str = "WEBSITE"  # WEBSITE | ADMIN_MANUAL
+    sale_date: datetime = Field(default_factory=utcnow)
+    employee_id: Optional[str] = None
+    dealer_id: Optional[str] = None
+    source_note: Optional[str] = None
+    payment_verification_source: str = "PAYMENT_GATEWAY"  # PAYMENT_GATEWAY | ADMIN_RECORDED
+    manual_payment_ref: Optional[str] = None
+    manual_payment_remarks: Optional[str] = None
     items: List[OrderItemSnapshot] = []
     address: dict = {}
     amounts: dict = {}  # subtotal, discount, tax, tax_status, shipping, shipping_status, total (paise)
     payment_status: str = "pending"  # pending | paid | failed | refunded
-    fulfilment_status: str = "awaiting_payment"  # awaiting_payment | processing | shipped | delivered | cancelled
+    fulfilment_status: str = "awaiting_payment"  # awaiting_payment | processing | ready_for_dispatch | dispatched | shipped | out_for_delivery | delivered | cancelled | returned | refunded
     reservation_status: str = "active"
     referral_code: Optional[str] = None
     referred_by_user_id: Optional[str] = None
@@ -107,3 +117,31 @@ class VerifyPaymentIn(BaseModel):
     razorpay_order_id: str
     razorpay_payment_id: str
     razorpay_signature: str
+
+
+class ManualSaleItemIn(BaseModel):
+    variant_id: str
+    qty: int = Field(ge=1, le=100)
+    unit_price: int = Field(ge=0)  # paise
+    discount: int = Field(default=0, ge=0)  # paise
+
+
+class ManualSaleIn(BaseModel):
+    customer_id: Optional[str] = None
+    customer_name: str = Field(min_length=2, max_length=120)
+    mobile: str = Field(min_length=10, max_length=20)
+    email: Optional[str] = None
+    order_source: str = Field(default="WALK_IN")
+    employee_id: Optional[str] = None
+    dealer_id: Optional[str] = None
+    source_note: Optional[str] = None
+    items: List[ManualSaleItemIn] = Field(min_length=1)
+    payment_method: str = Field(default="cash")
+    payment_status: str = Field(default="paid")
+    manual_payment_ref: Optional[str] = None
+    amount_received: Optional[int] = None
+    payment_remarks: Optional[str] = None
+    payment_date: Optional[datetime] = None
+    address: dict = Field(default_factory=dict)
+    sale_date: Optional[datetime] = None
+

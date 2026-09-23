@@ -24,7 +24,14 @@ export default function CollectionCategory() {
           <Link to="/" className="hover:text-brand-deep">Home</Link> / <Link to="/collections" className="hover:text-brand-deep">Collections</Link> /{" "}
           <span className="text-foreground">{cat?.name ?? category}</span>
         </nav>
-        <h1 className="mt-4 font-heading text-4xl font-black tracking-tight" data-testid="category-title">{cat?.name ?? "Collection"}</h1>
+        <div className="flex flex-wrap items-baseline gap-3 mt-4">
+          <h1 className="font-heading text-4xl font-black tracking-tight" data-testid="category-title">{cat?.name ?? "Collection"}</h1>
+          {products !== undefined && (
+            <span className="text-sm font-medium text-muted-foreground" data-testid="category-product-count">
+              {products.length} {products.length === 1 ? "Product" : "Products"}
+            </span>
+          )}
+        </div>
         <p className="mt-2 max-w-2xl text-muted-foreground">{cat?.description}</p>
         <div className="mt-10">
           {isLoading ? (

@@ -96,8 +96,8 @@ async def dispatch_queue(user=Depends(require_role(*FULFILMENT))):
         shipped = await db.shipments.find({"order_id": o["id"]}).to_list(50)
         shipped_qty: dict = {}
         for s in shipped:
-            for it in s["items"]:
-                shipped_qty[it["variant_id"]] = shipped_qty.get(it["variant_id"], 0) + it["qty"]
+            for it in s.get("items", []):
+                shipped_qty[it["variant_id"]] = shipped_qty.get(it["variant_id"], 0) + it.get("qty", 1)
         pending = [
             {"variant_id": i["variant_id"], "product_name": i["product_name"], "sku": i["sku"],
              "ordered": i["qty"], "shipped": shipped_qty.get(i["variant_id"], 0),

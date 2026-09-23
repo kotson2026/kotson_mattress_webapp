@@ -16,6 +16,7 @@ export default function Register() {
   const [params] = useSearchParams();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [refCode, setRefCode] = useState("");
   const [prefilled, setPrefilled] = useState(false);
@@ -33,7 +34,7 @@ export default function Register() {
   }, [params]);
 
   const mutation = useMutation({
-    mutationFn: () => signup({ email, name, password, referral_code: refCode || null }),
+    mutationFn: () => signup({ email, name, phone: phone || null, password, referral_code: refCode || null }),
     onSuccess: (out) => {
       qc.clear();
       sessionStorage.removeItem(REF_KEY);
@@ -75,6 +76,10 @@ export default function Register() {
             <div>
               <Label htmlFor="reg-email">Email</Label>
               <Input id="reg-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" className="mt-1.5 min-h-11" data-testid="register-email-input" />
+            </div>
+            <div>
+              <Label htmlFor="reg-phone">Phone number (optional)</Label>
+              <Input id="reg-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" autoComplete="tel" className="mt-1.5 min-h-11" data-testid="register-phone-input" />
             </div>
             <div>
               <Label htmlFor="reg-password">Password</Label>

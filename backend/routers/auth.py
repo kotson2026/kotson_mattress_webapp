@@ -100,6 +100,7 @@ async def signup(input: SignupIn, request: Request, response: Response):
         "id": user_id,
         "email": email,
         "name": input.name.strip(),
+        "phone": input.phone.strip() if input.phone else None,
         "password_hash": hash_password(input.password),
         "roles": ["customer"],
         "referral_code": referral_code,
@@ -124,14 +125,32 @@ async def signup(input: SignupIn, request: Request, response: Response):
 
 @router.post("/auth/login", response_model=AuthOut)
 async def login(input: LoginIn, request: Request, response: Response):
-    email = normalize_email(str(input.email))
-    if login_rate_limited(f"{email}:{request.client.host if request.client else 'anon'}"):
+    val = (input.identifier or input.email or input.phone or "").strip()
+    if not val:
+        raise HTTPException(status_code=422, detail="Email or phone number is required")
+
+    if login_rate_limited(f"{val}:{request.client.host if request.client else 'anon'}"):
         raise HTTPException(status_code=429, detail="Too many attempts — try again shortly")
-    user = await db.users.find_one({"email": email})
+
+    # Match either email or phone
+    queries = []
+    if "@" in val:
+        queries.append({"email": normalize_email(val)})
+    else:
+        clean_phone = re.sub(r"[^\d+]", "", val)
+        queries.append({"phone": clean_phone})
+        queries.append({"phone": val})
+        if clean_phone.startswith("+91"):
+            queries.append({"phone": clean_phone[3:]})
+        elif len(clean_phone) == 10:
+            queries.append({"phone": f"+91{clean_phone}"})
+        queries.append({"email": normalize_email(val)})
+
+    user = await db.users.find_one({"$or": queries})
     if not user or not verify_password(input.password, user.get("password_hash", "")):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(status_code=401, detail="Invalid email/phone or password")
     if not user.get("is_active", True):
-        raise HTTPException(status_code=403, detail="Account deactivated — contact support")
+        raise HTTPException(status_code=403, detail="Account deactivated — contact administration")
 
     merged = await merge_guest_cart(user["id"], request)
     token = await create_session(user["id"])

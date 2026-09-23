@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import Home from "@/pages/Home";
 import Collections from "@/pages/Collections";
@@ -22,6 +22,7 @@ import ManagerConsole from "@/pages/manager/ManagerConsole";
 import CRMConsole from "@/pages/crm/CRMConsole";
 import OpsConsole from "@/pages/ops/OpsConsole";
 import DealerConsole from "@/pages/dealer/DealerConsole";
+import RoleGuard from "@/components/auth/RoleGuard";
 
 // One <Route> per page in src/pages; BrowserRouter already wraps this in main.tsx.
 export default function App() {
@@ -44,11 +45,42 @@ export default function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/policies/:slug" element={<Policy />} />
         <Route path="/r/:code" element={<RefLanding />} />
-        <Route path="/admin/*" element={<AdminConsole />} />
-        <Route path="/manager/*" element={<ManagerConsole />} />
-        <Route path="/crm/*" element={<CRMConsole />} />
-        <Route path="/ops/*" element={<OpsConsole />} />
-        <Route path="/dealer/*" element={<DealerConsole />} />
+        <Route
+          path="/admin/*"
+          element={
+            <RoleGuard allowedRoles={["owner", "admin", "crm_master"]}>
+              <AdminConsole />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/manager/*"
+          element={
+            <RoleGuard allowedRoles={["owner", "admin", "manager"]}>
+              <ManagerConsole />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/crm/*"
+          element={
+            <RoleGuard allowedRoles={["owner", "admin", "crm_master", "crm_manager", "crm_employee"]}>
+              <CRMConsole />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/ops/*"
+          element={<Navigate to="/admin/dispatch" replace />}
+        />
+        <Route
+          path="/dealer/*"
+          element={
+            <RoleGuard allowedRoles={["owner", "admin", "dealer"]}>
+              <DealerConsole />
+            </RoleGuard>
+          }
+        />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Toaster position="bottom-right" />

@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 
 from lib.crm_intake import capture_checkout_started, convert_on_paid_order
 from lib.db import db
-from lib.security import normalize_email, now_utc, optional_user, audit
+from lib.security import normalize_email, now_utc, optional_user, audit, has_role
 from lib.services import (
     consume_order_reservations,
     record_reward_ledger,
@@ -40,8 +40,18 @@ def rzp_creds() -> tuple[Optional[str], Optional[str]]:
     return (kid, ksec) if kid and ksec else (None, None)
 
 
+def rzp_mode() -> str:
+    """Derive mode from key prefix — 'test' when rzp_test_..., 'live' when rzp_live_....
+    Defaults to 'test' if key is missing (safe: no payments are taken without a key)."""
+    kid = os.environ.get("RAZORPAY_KEY_ID", "").strip()
+    return "live" if kid.startswith("rzp_live_") else "test"
+
+
 def gateway_state() -> str:
-    return "ready" if rzp_creds()[0] else "pending_keys"
+    kid = rzp_creds()[0]
+    if not kid:
+        return "pending_keys"
+    return "ready_live" if kid.startswith("rzp_live_") else "ready_test"
 
 
 class TrackIn(BaseModel):
@@ -52,10 +62,13 @@ class TrackIn(BaseModel):
 @router.get("/checkout/config")
 async def checkout_config():
     kid, _ = rzp_creds()
+    state = gateway_state()
+    # mode is derived from the actual key prefix — never hardcoded
+    mode = rzp_mode() if state != "pending_keys" else "test"
     return {
         "gateway": "razorpay",
-        "mode": "test",
-        "state": gateway_state(),
+        "mode": mode,
+        "state": state,
         "key_id": kid,  # public identifier — the secret never leaves the server
         "currency": "INR",
         "reservation_ttl_minutes": 15,
@@ -104,17 +117,29 @@ async def checkout_start(input: CheckoutStartIn, request: Request, user=Depends(
         shipping_status = "final"
     total = max(0, subtotal - discount + tax + shipping)
 
-    counter = await db.counters.find_one_and_update(
-        {"_id": "orders"}, {"$inc": {"seq": 1}}, upsert=True, return_document=True
-    )
+    while True:
+        counter = await db.counters.find_one_and_update(
+            {"_id": "order_number"}, {"$inc": {"seq": 1}}, upsert=True, return_document=True
+        )
+        candidate_num = f"KS{counter['seq']:05d}"
+        if not await db.orders.find_one({"order_number": candidate_num}):
+            break
     order_id = str(uuid.uuid4())
     order = {
         "id": order_id,
-        "order_number": f"KS{counter['seq']:05d}",
+        "order_number": candidate_num,
         "user_id": user["id"] if user else None,
         "email": normalize_email(input.address.email),
         "guest_access_token": str(uuid.uuid4()) if not user else None,
         "channel": "retail",
+        "buyer_type": "DEALER" if (user and has_role(user, "dealer")) else "CUSTOMER",
+        "order_source": "WEB_REFERRAL" if (ref.get("referred_code") and ref.get("referral_status") in ("valid", "no_published_rule")) else "DIRECT_WEBSITE",
+        "order_channel": "WEBSITE",
+        "sale_date": now_utc(),
+        "payment_verification_source": "PAYMENT_GATEWAY",
+        "employee_id": None,
+        "dealer_id": user["id"] if (user and has_role(user, "dealer")) else None,
+        "source_note": None,
         "cart_token": cart["token"],
         "items": [
             {
@@ -138,9 +163,10 @@ async def checkout_start(input: CheckoutStartIn, request: Request, user=Depends(
         "events": [{"at": now_utc(), "type": "order_created", "detail": "Order created; stock reserved", "actor": "system"}],
         "created_at": now_utc(),
     }
-    if ref["referred_code"]:
+    if ref.get("referred_code"):
         owner = await db.users.find_one({"referral_code": ref["referred_code"]})
         order["referred_by_user_id"] = owner["id"] if owner else None
+        order["order_source"] = "WEB_REFERRAL"
 
     try:
         await reserve_stock(order_id, [{"variant_id": l.variant_id, "qty": l.qty} for l in view.items])
@@ -154,8 +180,10 @@ async def checkout_start(input: CheckoutStartIn, request: Request, user=Depends(
     except Exception:
         logger.exception("CRM checkout-started intake failed for %s", order["id"])
 
-    gateway: dict = {"state": gateway_state(), "mode": "test", "key_id": rzp_creds()[0], "rzp_order_id": None, "amount": total}
-    if gateway["state"] == "ready":
+    _gstate = gateway_state()
+    _gmode = rzp_mode() if _gstate != "pending_keys" else "test"
+    gateway: dict = {"state": _gstate, "mode": _gmode, "key_id": rzp_creds()[0], "rzp_order_id": None, "amount": total}
+    if _gstate in ("ready_test", "ready_live"):
         kid, ksec = rzp_creds()
         try:
             async with httpx.AsyncClient(timeout=20) as hc:

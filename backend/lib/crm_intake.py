@@ -102,11 +102,13 @@ async def _create_lead(**kw) -> dict:
 
 async def capture_registration(user: dict) -> Optional[dict]:
     """Verified signup -> exactly one registration lead. Repeat login/profile edit adds nothing."""
+    phone_val = norm_phone(user.get("phone"))
     event = await record_source_event(
         event_key=f"registration:{user['id']}",
         kind="registration",
         customer_id=user["id"],
         email=norm_email(user.get("email")),
+        phone=phone_val,
         referral_code=user.get("referred_by"),
         payload={"name": user.get("name")},
     )
@@ -120,6 +122,7 @@ async def capture_registration(user: dict) -> Optional[dict]:
         customer_id=user["id"],
         name=user.get("name") or user["email"],
         email=norm_email(user.get("email")),
+        phone=phone_val,
         pipeline_id=await _intake_pipeline_id(),
         stage_code="new",
         qualification="registered",  # explicitly NOT sales-qualified

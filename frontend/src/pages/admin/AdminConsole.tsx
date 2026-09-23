@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Route, Routes } from "react-router-dom";
+import { Link, Route, Routes } from "react-router-dom";
 import { useState } from "react";
 import { toast } from "sonner";
 import { apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
@@ -8,6 +8,21 @@ import { fmtDateTime, inr } from "@/lib/format";
 import { useMe } from "@/lib/session";
 import { AnnouncementEditor, HeroVideoEditor } from "@/components/admin/SiteMediaEditors";
 import ConsoleLayout from "@/components/layout/ConsoleLayout";
+import OwnerDashboard from "@/components/admin/OwnerDashboard";
+import OrdersCentralHub from "@/components/admin/OrdersCentralHub";
+import SalesRevenueDashboard from "@/components/admin/SalesRevenueDashboard";
+import AuditLogView from "@/components/admin/AuditLogView";
+import WebsiteEditStudio from "@/components/admin/WebsiteEditStudio";
+import ClaimsView from "@/components/admin/ClaimsView";
+import TestDataManager from "@/components/admin/TestDataManager";
+import DispatchReturnsHub from "@/components/admin/DispatchReturnsHub";
+import CatalogCentralHub from "@/components/admin/catalog/CatalogCentralHub";
+import ClaimsTrustHub from "@/components/admin/claims/ClaimsTrustHub";
+import AssetLibraryHub from "@/components/admin/assets/AssetLibraryHub";
+import ReferEarnHub from "@/components/admin/referrals/ReferEarnHub";
+import DealerManagementHub from "@/components/admin/dealers/DealerManagementHub";
+import StaffAccessHub from "@/components/admin/staff/StaffAccessHub";
+import DataTablePagination from "@/components/ui/DataTablePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,14 +32,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 const NAV = [
   { to: "/admin", label: "Dashboard" },
+  { to: "/admin/sales", label: "Sales & Revenue" },
   { to: "/admin/orders", label: "Orders" },
-  { to: "/ops", label: "Dispatch & Returns" },
+  { to: "/admin/dispatch", label: "Dispatch & Returns" },
   { to: "/admin/catalog", label: "Catalog" },
-  { to: "/admin/cms", label: "CMS & claims" },
+  { to: "/admin/website-edit", label: "Website Edit" },
+  { to: "/admin/claims", label: "Claims & Trust" },
   { to: "/admin/assets", label: "Assets" },
-  { to: "/admin/referrals", label: "Referrals" },
+  { to: "/admin/referrals", label: "Refer & Earn" },
   { to: "/admin/dealers", label: "Dealers" },
   { to: "/admin/staff", label: "Staff" },
+  { to: "/admin/audit", label: "Audit Log" },
   { to: "/admin/settings", label: "Settings" },
 ];
 
@@ -37,134 +55,11 @@ function Panel({ title, children, testId }: { title: string; children: React.Rea
   );
 }
 
-function DashboardView() {
-  const { data } = useQuery({ queryKey: ["admin-dashboard"], queryFn: () => apiGet<Dashboard>("/admin/dashboard") });
-  const { data: audit } = useQuery({ queryKey: ["admin-audit"], queryFn: () => apiGet<AuditEntry[]>("/admin/audit?limit=12") });
-
-  const stats = [
-    { label: "Verified revenue", value: data ? inr(data.revenue_paid_paise) : "—", testId: "stat-revenue" },
-    { label: "Paid orders", value: data?.paid_orders ?? "—", testId: "stat-paid-orders" },
-    { label: "Orders today", value: data?.orders_today ?? "—", testId: "stat-today" },
-    { label: "Orders (7d)", value: data?.orders_week ?? "—", testId: "stat-week" },
-    { label: "Awaiting payment", value: data?.awaiting_payment ?? "—", testId: "stat-awaiting" },
-    { label: "Stock exceptions", value: data?.stock_exceptions ?? "—", testId: "stat-exceptions" },
-  ];
-
-  return (
-    <div className="grid gap-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="admin-stats">
-        {stats.map((s) => (
-          <div key={s.label} className="rounded-2xl border border-border bg-card p-5" data-testid={s.testId}>
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{s.label}</p>
-            <p className="mt-2 font-heading text-2xl font-black">{s.value}</p>
-          </div>
-        ))}
-      </div>
-      <p className="text-xs text-muted-foreground">Revenue counts only server-verified paid orders. Timezone: {data?.timezone ?? "—"}.</p>
-
-      <Panel title="Low stock (≤5 free units)" testId="admin-low-stock">
-        {(data?.low_stock ?? []).length === 0 ? (
-          <p className="text-sm text-muted-foreground">No low-stock variants.</p>
-        ) : (
-          <Table>
-            <TableHeader><TableRow><TableHead>SKU</TableHead><TableHead>Product</TableHead><TableHead>Size</TableHead><TableHead className="text-right">Free</TableHead></TableRow></TableHeader>
-            <TableBody>
-              {(data?.low_stock ?? []).map((l) => (
-                <TableRow key={l.sku}><TableCell className="font-mono text-xs">{l.sku}</TableCell><TableCell>{l.product_name}</TableCell><TableCell>{l.size}</TableCell><TableCell className="text-right tabular-nums">{l.free_stock}</TableCell></TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </Panel>
-
-      <Panel title="Audit log" testId="admin-audit-panel">
-        <ul className="space-y-2 text-xs">
-          {(audit ?? []).length === 0 && <p className="text-sm text-muted-foreground">No privileged actions recorded yet.</p>}
-          {(audit ?? []).map((a) => (
-            <li key={a.id} className="flex flex-wrap gap-2 border-b border-border pb-2">
-              <span className="font-medium">{a.action}</span>
-              <span className="text-muted-foreground">{a.entity}/{a.entity_id.slice(0, 8)}</span>
-              <span className="text-muted-foreground">{a.detail}</span>
-              <span className="ml-auto text-muted-foreground">{a.actor_email} · {fmtDateTime(a.created_at)}</span>
-            </li>
-          ))}
-        </ul>
-      </Panel>
-    </div>
-  );
-}
-
-function OrdersView() {
-  const qc = useQueryClient();
-  const [q, setQ] = useState("");
-  const { data: orders } = useQuery({ queryKey: ["admin-orders", q], queryFn: () => apiGet<Order[]>(`/admin/orders${q ? `?q=${encodeURIComponent(q)}` : ""}`) });
-
-  const transition = useMutation({
-    mutationFn: (p: { id: string; to: string }) => apiPost(`/admin/orders/${p.id}/transition`, { to: p.to }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-orders"] }); toast.success("Order updated"); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Transition rejected"),
-  });
-
-  const refund = useMutation({
-    mutationFn: (p: { id: string; amount: number }) => apiPost(`/admin/orders/${p.id}/refund`, { amount: p.amount, reason: "Admin-initiated refund" }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-orders"] }); toast.success("Refund recorded (provider transfer pending)"); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Refund rejected"),
-  });
-
-  return (
-    <div className="grid gap-6">
-      <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search order number or email" className="max-w-sm min-h-11" data-testid="admin-orders-search" />
-      {(orders ?? []).length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground" data-testid="admin-orders-empty">
-          No orders match. Orders appear here as soon as customers check out.
-        </p>
-      ) : (
-        <Table data-testid="admin-orders-table">
-          <TableHeader><TableRow><TableHead>Order</TableHead><TableHead>Customer</TableHead><TableHead>Payment</TableHead><TableHead>Fulfilment</TableHead><TableHead className="text-right">Total</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
-          <TableBody>
-            {(orders ?? []).map((o) => (
-              <TableRow key={o.id} data-testid={`admin-order-${o.order_number}`}>
-                <TableCell>
-                  <p className="font-medium">{o.order_number}</p>
-                  <p className="text-xs text-muted-foreground">{fmtDateTime(o.created_at)}</p>
-                  {o.stock_exception && <Badge variant="destructive" className="mt-1">stock exception</Badge>}
-                </TableCell>
-                <TableCell className="text-xs">
-                  <p>{o.email}</p>
-                  <p className="text-muted-foreground">{o.address.city}, {o.address.state} {o.address.pincode}</p>
-                </TableCell>
-                <TableCell><Badge variant={o.payment_status === "paid" ? "default" : "outline"}>{o.payment_status}</Badge></TableCell>
-                <TableCell className="text-xs">{o.fulfilment_status.replace(/_/g, " ")}</TableCell>
-                <TableCell className="text-right tabular-nums">{inr(o.amounts.total)}</TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {["processing", "shipped", "delivered"].map((to) => (
-                      <Button key={to} variant="outline" size="xs" onClick={() => transition.mutate({ id: o.id, to })} data-testid={`admin-order-${o.order_number}-${to}`}>
-                        {to}
-                      </Button>
-                    ))}
-                    {o.payment_status === "paid" && (
-                      <Button variant="ghost" size="xs" onClick={() => refund.mutate({ id: o.id, amount: o.amounts.total })} data-testid={`admin-order-${o.order_number}-refund`}>
-                        refund
-                      </Button>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-      <p className="text-xs text-muted-foreground">
-        Amount and item snapshots are immutable after payment. Orders are never deleted — cancel/archive only, and a paid order needs a
-        refund record before cancellation.
-      </p>
-    </div>
-  );
-}
-
 function CatalogView() {
   const qc = useQueryClient();
+  const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const { data: products } = useQuery({ queryKey: ["admin-products"], queryFn: () => apiGet<Product[]>("/admin/products") });
   const [adjust, setAdjust] = useState<{ variant_id: string; delta: string; reason: string }>({ variant_id: "", delta: "", reason: "" });
 
@@ -184,45 +79,90 @@ function CatalogView() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Adjustment rejected"),
   });
 
+  const filtered = (products ?? []).filter(
+    (p) =>
+      !q ||
+      p.name.toLowerCase().includes(q.toLowerCase()) ||
+      p.category_slug.toLowerCase().includes(q.toLowerCase()) ||
+      p.slug.toLowerCase().includes(q.toLowerCase())
+  );
+  const total = filtered.length;
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+
   return (
     <div className="grid gap-6">
-      {(products ?? []).map((p) => (
-        <Panel key={p.id} title={`${p.name}${p.is_active ? "" : " (inactive)"}`} testId={`admin-product-${p.slug}`}>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline">{p.category_slug}</Badge>
-            {p.is_seed && <Badge variant="secondary">seed data</Badge>}
-            <Button variant="ghost" size="xs" className="ml-auto" onClick={() => deactivate.mutate(p.id)} data-testid={`admin-product-deactivate-${p.slug}`}>
-              Deactivate
-            </Button>
-          </div>
-          <Table className="mt-3">
-            <TableHeader><TableRow><TableHead>SKU</TableHead><TableHead>Variant</TableHead><TableHead className="text-right">Price</TableHead><TableHead className="text-right">Stock</TableHead><TableHead className="text-right">Reserved</TableHead><TableHead /></TableRow></TableHeader>
-            <TableBody>
-              {p.variants.map((v) => (
-                <TableRow key={v.id}>
-                  <TableCell className="font-mono text-xs">{v.sku}</TableCell>
-                  <TableCell className="text-xs">{[v.size, v.thickness, v.firmness].filter(Boolean).join(" · ")}</TableCell>
-                  <TableCell className="text-right tabular-nums">{inr(v.price)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{v.stock}</TableCell>
-                  <TableCell className="text-right tabular-nums">{v.reserved}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="outline" size="xs" onClick={() => setAdjust((a) => ({ ...a, variant_id: v.id }))} data-testid={`admin-variant-select-${v.sku}`}>
-                      Adjust
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Panel>
-      ))}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <Input
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setPage(1);
+          }}
+          placeholder="Filter catalog by product name, slug or category…"
+          className="max-w-sm min-h-11 border-border/80 bg-background"
+          data-testid="admin-catalog-search"
+        />
+        <div className="text-xs font-medium text-muted-foreground">
+          Showing {paginated.length} of {total} products
+        </div>
+      </div>
+
+      {total === 0 ? (
+        <p className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
+          No products match the filter.
+        </p>
+      ) : (
+        paginated.map((p) => (
+          <Panel key={p.id} title={`${p.name}${p.is_active ? "" : " (inactive)"}`} testId={`admin-product-${p.slug}`}>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="border-brand-forest/20 text-brand-forest font-semibold">{p.category_slug}</Badge>
+              {p.is_seed && <Badge variant="secondary">seed data</Badge>}
+              <Button variant="ghost" size="xs" className="ml-auto text-muted-foreground hover:text-destructive" onClick={() => deactivate.mutate(p.id)} data-testid={`admin-product-deactivate-${p.slug}`}>
+                Deactivate
+              </Button>
+            </div>
+            <Table className="mt-3">
+              <TableHeader><TableRow><TableHead>SKU</TableHead><TableHead>Variant</TableHead><TableHead className="text-right">Price</TableHead><TableHead className="text-right">Stock</TableHead><TableHead className="text-right">Reserved</TableHead><TableHead /></TableRow></TableHeader>
+              <TableBody>
+                {p.variants.map((v) => (
+                  <TableRow key={v.id}>
+                    <TableCell className="font-mono text-xs">{v.sku}</TableCell>
+                    <TableCell className="text-xs">{[v.size, v.thickness, v.firmness].filter(Boolean).join(" · ")}</TableCell>
+                    <TableCell className="text-right tabular-nums">{inr(v.price)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{v.stock}</TableCell>
+                    <TableCell className="text-right tabular-nums">{v.reserved}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" size="xs" className="hover:border-brand-forest hover:text-brand-forest" onClick={() => setAdjust((a) => ({ ...a, variant_id: v.id }))} data-testid={`admin-variant-select-${v.sku}`}>
+                        Adjust
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Panel>
+        ))
+      )}
+
+      {total > 0 && (
+        <div className="rounded-2xl border border-border bg-card p-2 shadow-xs">
+          <DataTablePagination
+            totalItems={total}
+            currentPage={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[10, 25, 50]}
+          />
+        </div>
+      )}
 
       <Panel title="Inventory adjustment (audited)" testId="admin-inventory-adjust">
         <div className="grid gap-3 sm:grid-cols-[1fr_120px_1fr_auto]">
           <div><Label>Variant id</Label><Input value={adjust.variant_id} onChange={(e) => setAdjust((a) => ({ ...a, variant_id: e.target.value }))} className="mt-1.5 min-h-11" data-testid="adjust-variant-input" /></div>
           <div><Label>Delta</Label><Input value={adjust.delta} onChange={(e) => setAdjust((a) => ({ ...a, delta: e.target.value }))} inputMode="numeric" placeholder="+5" className="mt-1.5 min-h-11" data-testid="adjust-delta-input" /></div>
           <div><Label>Reason</Label><Input value={adjust.reason} onChange={(e) => setAdjust((a) => ({ ...a, reason: e.target.value }))} className="mt-1.5 min-h-11" data-testid="adjust-reason-input" /></div>
-          <Button className="self-end min-h-11" onClick={() => adjustStock.mutate()} disabled={!adjust.variant_id || !adjust.delta || adjust.reason.length < 3} data-testid="adjust-submit-button">
+          <Button className="self-end min-h-11 bg-brand-forest hover:bg-brand-forest/90 text-white font-medium" onClick={() => adjustStock.mutate()} disabled={!adjust.variant_id || !adjust.delta || adjust.reason.length < 3} data-testid="adjust-submit-button">
             Apply
           </Button>
         </div>
@@ -337,11 +277,16 @@ function CMSView() {
 
 function AssetsView() {
   const qc = useQueryClient();
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const { data: assets } = useQuery({ queryKey: ["admin-assets"], queryFn: () => apiGet<AssetSlot[]>("/admin/assets") });
   const patch = useMutation({
     mutationFn: (p: { slot: string; body: Record<string, string> }) => apiPatch(`/admin/assets/${p.slot}`, p.body),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-assets"] }); toast.success("Asset slot updated"); },
   });
+
+  const total = assets?.length ?? 0;
+  const paginated = (assets ?? []).slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <div className="grid gap-6">
@@ -353,7 +298,7 @@ function AssetsView() {
         <Table>
           <TableHeader><TableRow><TableHead>Slot</TableHead><TableHead>Section</TableHead><TableHead>File URL</TableHead><TableHead>Alt text</TableHead><TableHead>Status</TableHead><TableHead /></TableRow></TableHeader>
           <TableBody>
-            {(assets ?? []).map((a) => (
+            {paginated.map((a) => (
               <TableRow key={a.slot} data-testid={`admin-asset-${a.slot}`}>
                 <TableCell className="font-mono text-xs">{a.slot}</TableCell>
                 <TableCell className="text-xs">{a.section}</TableCell>
@@ -373,6 +318,18 @@ function AssetsView() {
             ))}
           </TableBody>
         </Table>
+        {total > 0 && (
+          <div className="mt-4 border-t border-border pt-2">
+            <DataTablePagination
+              totalItems={total}
+              currentPage={page}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              pageSizeOptions={[10, 25, 50]}
+            />
+          </div>
+        )}
       </Panel>
     </div>
   );
@@ -380,6 +337,10 @@ function AssetsView() {
 
 function ReferralsView() {
   const qc = useQueryClient();
+  const [rulePage, setRulePage] = useState(1);
+  const [rulePageSize, setRulePageSize] = useState(10);
+  const [rewardPage, setRewardPage] = useState(1);
+  const [rewardPageSize, setRewardPageSize] = useState(10);
   const { data: rules } = useQuery({ queryKey: ["admin-rules"], queryFn: () => apiGet<ReferralRule[]>("/admin/referral-rules") });
   const { data: rewards } = useQuery({ queryKey: ["admin-rewards"], queryFn: () => apiGet<RewardEntry[]>("/admin/rewards") });
   const [form, setForm] = useState({ name: "", reward_type: "referee_discount", value_type: "percent", value: "5", min_spend_paise: "0", first_order_only: true });
@@ -398,6 +359,12 @@ function ReferralsView() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-rewards"] }); toast.success("Reward updated"); },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Could not update reward"),
   });
+
+  const totalRules = rules?.length ?? 0;
+  const paginatedRules = (rules ?? []).slice((rulePage - 1) * rulePageSize, rulePage * rulePageSize);
+
+  const totalRewards = rewards?.length ?? 0;
+  const paginatedRewards = (rewards ?? []).slice((rewardPage - 1) * rewardPageSize, rewardPage * rewardPageSize);
 
   return (
     <div className="grid gap-6">
@@ -422,14 +389,14 @@ function ReferralsView() {
               {t}
             </Button>
           ))}
-          <Button className="min-h-11" onClick={() => create.mutate()} disabled={form.name.length < 2} data-testid="rule-create-button">Create draft rule</Button>
+          <Button className="min-h-11 bg-brand-forest hover:bg-brand-forest/90 text-white font-medium" onClick={() => create.mutate()} disabled={form.name.length < 2} data-testid="rule-create-button">Create draft rule</Button>
         </div>
 
         <Table className="mt-6">
           <TableHeader><TableRow><TableHead>Rule</TableHead><TableHead>Type</TableHead><TableHead>Value</TableHead><TableHead>Status</TableHead><TableHead /></TableRow></TableHeader>
           <TableBody>
-            {(rules ?? []).length === 0 && <TableRow><TableCell colSpan={5} className="text-sm text-muted-foreground">No rules — referral value is zero.</TableCell></TableRow>}
-            {(rules ?? []).map((r) => (
+            {totalRules === 0 && <TableRow><TableCell colSpan={5} className="text-sm text-muted-foreground">No rules — referral value is zero.</TableCell></TableRow>}
+            {paginatedRules.map((r) => (
               <TableRow key={r.id} data-testid={`admin-rule-${r.id}`}>
                 <TableCell>{r.name}</TableCell>
                 <TableCell className="text-xs">{r.reward_type.replace("_", " ")}</TableCell>
@@ -444,32 +411,56 @@ function ReferralsView() {
             ))}
           </TableBody>
         </Table>
+        {totalRules > 0 && (
+          <div className="mt-4 border-t border-border pt-2">
+            <DataTablePagination
+              totalItems={totalRules}
+              currentPage={rulePage}
+              pageSize={rulePageSize}
+              onPageChange={setRulePage}
+              onPageSizeChange={setRulePageSize}
+              pageSizeOptions={[10, 25, 50]}
+            />
+          </div>
+        )}
       </Panel>
 
       <Panel title="Reward ledger (append-only)" testId="admin-rewards-panel">
-        {(rewards ?? []).length === 0 ? (
+        {totalRewards === 0 ? (
           <p className="text-sm text-muted-foreground">No accruals yet. Commission accrues only on server-verified paid orders.</p>
         ) : (
-          <Table>
-            <TableHeader><TableRow><TableHead>Order</TableHead><TableHead>Code</TableHead><TableHead className="text-right">Amount</TableHead><TableHead>Status</TableHead><TableHead /></TableRow></TableHeader>
-            <TableBody>
-              {(rewards ?? []).map((r) => (
-                <TableRow key={r.id} data-testid={`admin-reward-${r.id}`}>
-                  <TableCell>{r.order_number}</TableCell>
-                  <TableCell className="font-mono text-xs">{r.code}</TableCell>
-                  <TableCell className="text-right tabular-nums">{inr(r.amount)}</TableCell>
-                  <TableCell><Badge variant="outline">{r.status}</Badge></TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="outline" size="xs" onClick={() => patchReward.mutate({ id: r.id, status: "approved" })}>approve</Button>
-                      <Button variant="ghost" size="xs" onClick={() => patchReward.mutate({ id: r.id, status: "paid" })}>mark paid</Button>
-                      <Button variant="ghost" size="xs" onClick={() => patchReward.mutate({ id: r.id, status: "reversed" })}>reverse</Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <>
+            <Table>
+              <TableHeader><TableRow><TableHead>Order</TableHead><TableHead>Code</TableHead><TableHead className="text-right">Amount</TableHead><TableHead>Status</TableHead><TableHead /></TableRow></TableHeader>
+              <TableBody>
+                {paginatedRewards.map((r) => (
+                  <TableRow key={r.id} data-testid={`admin-reward-${r.id}`}>
+                    <TableCell>{r.order_number}</TableCell>
+                    <TableCell className="font-mono text-xs">{r.code}</TableCell>
+                    <TableCell className="text-right tabular-nums">{inr(r.amount)}</TableCell>
+                    <TableCell><Badge variant="outline">{r.status}</Badge></TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button variant="outline" size="xs" onClick={() => patchReward.mutate({ id: r.id, status: "approved" })}>approve</Button>
+                        <Button variant="ghost" size="xs" onClick={() => patchReward.mutate({ id: r.id, status: "paid" })}>mark paid</Button>
+                        <Button variant="ghost" size="xs" onClick={() => patchReward.mutate({ id: r.id, status: "reversed" })}>reverse</Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <div className="mt-4 border-t border-border pt-2">
+              <DataTablePagination
+                totalItems={totalRewards}
+                currentPage={rewardPage}
+                pageSize={rewardPageSize}
+                onPageChange={setRewardPage}
+                onPageSizeChange={setRewardPageSize}
+                pageSizeOptions={[10, 25, 50]}
+              />
+            </div>
+          </>
         )}
         <p className="mt-3 text-xs text-muted-foreground">
           “Mark paid” records a manual bank transfer confirmation only — no payout provider is integrated, and no transfer is ever simulated.
@@ -481,6 +472,10 @@ function ReferralsView() {
 
 function DealersView() {
   const qc = useQueryClient();
+  const [dealerPage, setDealerPage] = useState(1);
+  const [dealerPageSize, setDealerPageSize] = useState(10);
+  const [quotePage, setQuotePage] = useState(1);
+  const [quotePageSize, setQuotePageSize] = useState(10);
   const { data: dealers } = useQuery({ queryKey: ["admin-dealers"], queryFn: () => apiGet<Dealer[]>("/admin/dealers") });
   const { data: dOrders } = useQuery({ queryKey: ["admin-dealer-orders"], queryFn: () => apiGet<DealerOrder[]>("/admin/dealer-orders") });
 
@@ -493,32 +488,50 @@ function DealersView() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-dealer-orders"] }); toast.success("Dealer order updated"); },
   });
 
+  const totalDealers = dealers?.length ?? 0;
+  const paginatedDealers = (dealers ?? []).slice((dealerPage - 1) * dealerPageSize, dealerPage * dealerPageSize);
+
+  const totalQuotes = dOrders?.length ?? 0;
+  const paginatedQuotes = (dOrders ?? []).slice((quotePage - 1) * quotePageSize, quotePage * quotePageSize);
+
   return (
     <div className="grid gap-6">
       <Panel title="Dealer applications" testId="admin-dealers-panel">
-        {(dealers ?? []).length === 0 ? (
+        {totalDealers === 0 ? (
           <p className="text-sm text-muted-foreground">No dealer applications yet.</p>
         ) : (
-          <Table>
-            <TableHeader><TableRow><TableHead>Organisation</TableHead><TableHead>GSTIN</TableHead><TableHead>Territory</TableHead><TableHead>Status</TableHead><TableHead>Terms</TableHead><TableHead /></TableRow></TableHeader>
-            <TableBody>
-              {(dealers ?? []).map((d) => (
-                <TableRow key={d.id} data-testid={`admin-dealer-${d.id}`}>
-                  <TableCell>{d.org_name}</TableCell>
-                  <TableCell className="font-mono text-xs">{d.gstin}</TableCell>
-                  <TableCell className="text-xs">{d.territory}</TableCell>
-                  <TableCell><Badge variant={d.status === "approved" ? "default" : "outline"}>{d.status}</Badge></TableCell>
-                  <TableCell className="text-xs">{d.terms_status.replace(/_/g, " ")}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="outline" size="xs" onClick={() => patch.mutate({ id: d.id, body: { status: "approved" } })} data-testid={`admin-dealer-${d.id}-approve`}>approve</Button>
-                      <Button variant="ghost" size="xs" onClick={() => patch.mutate({ id: d.id, body: { status: "rejected" } })}>reject</Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <>
+            <Table>
+              <TableHeader><TableRow><TableHead>Organisation</TableHead><TableHead>GSTIN</TableHead><TableHead>Territory</TableHead><TableHead>Status</TableHead><TableHead>Terms</TableHead><TableHead /></TableRow></TableHeader>
+              <TableBody>
+                {paginatedDealers.map((d) => (
+                  <TableRow key={d.id} data-testid={`admin-dealer-${d.id}`}>
+                    <TableCell className="font-medium text-brand-forest">{d.org_name}</TableCell>
+                    <TableCell className="font-mono text-xs">{d.gstin}</TableCell>
+                    <TableCell className="text-xs">{d.territory}</TableCell>
+                    <TableCell><Badge variant={d.status === "approved" ? "default" : "outline"} className={d.status === "approved" ? "bg-brand-leaf text-brand-forest font-semibold" : ""}>{d.status}</Badge></TableCell>
+                    <TableCell className="text-xs">{d.terms_status.replace(/_/g, " ")}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button variant="outline" size="xs" className="hover:border-brand-forest hover:text-brand-forest" onClick={() => patch.mutate({ id: d.id, body: { status: "approved" } })} data-testid={`admin-dealer-${d.id}-approve`}>approve</Button>
+                        <Button variant="ghost" size="xs" className="text-muted-foreground hover:text-destructive" onClick={() => patch.mutate({ id: d.id, body: { status: "rejected" } })}>reject</Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <div className="mt-4 border-t border-border pt-2">
+              <DataTablePagination
+                totalItems={totalDealers}
+                currentPage={dealerPage}
+                pageSize={dealerPageSize}
+                onPageChange={setDealerPage}
+                onPageSizeChange={setDealerPageSize}
+                pageSizeOptions={[10, 25, 50]}
+              />
+            </div>
+          </>
         )}
         <p className="mt-3 text-xs text-muted-foreground">
           Dealer margins, credit limits and tax terms are never assumed — until configured, every dealer line stays quote-only.
@@ -526,27 +539,39 @@ function DealersView() {
       </Panel>
 
       <Panel title="Dealer quote requests" testId="admin-dealer-orders-panel">
-        {(dOrders ?? []).length === 0 ? (
+        {totalQuotes === 0 ? (
           <p className="text-sm text-muted-foreground">No dealer quote requests yet.</p>
         ) : (
-          <Table>
-            <TableHeader><TableRow><TableHead>Organisation</TableHead><TableHead>Lines</TableHead><TableHead>Status</TableHead><TableHead /></TableRow></TableHeader>
-            <TableBody>
-              {(dOrders ?? []).map((o) => (
-                <TableRow key={o.id} data-testid={`admin-dealer-order-${o.id}`}>
-                  <TableCell>{o.org_name}</TableCell>
-                  <TableCell className="text-xs">{o.items.map((i) => `${i.sku} ×${i.qty}`).join(", ")}</TableCell>
-                  <TableCell><Badge variant="outline">{o.status.replace(/_/g, " ")}</Badge></TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="outline" size="xs" onClick={() => patchOrder.mutate({ id: o.id, status: "quoted" })}>quote</Button>
-                      <Button variant="ghost" size="xs" onClick={() => patchOrder.mutate({ id: o.id, status: "approved" })}>approve</Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <>
+            <Table>
+              <TableHeader><TableRow><TableHead>Organisation</TableHead><TableHead>Lines</TableHead><TableHead>Status</TableHead><TableHead /></TableRow></TableHeader>
+              <TableBody>
+                {paginatedQuotes.map((o) => (
+                  <TableRow key={o.id} data-testid={`admin-dealer-order-${o.id}`}>
+                    <TableCell className="font-medium text-brand-forest">{o.org_name}</TableCell>
+                    <TableCell className="text-xs">{o.items.map((i) => `${i.sku} ×${i.qty}`).join(", ")}</TableCell>
+                    <TableCell><Badge variant="outline">{o.status.replace(/_/g, " ")}</Badge></TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button variant="outline" size="xs" className="hover:border-brand-forest hover:text-brand-forest" onClick={() => patchOrder.mutate({ id: o.id, status: "quoted" })}>quote</Button>
+                        <Button variant="ghost" size="xs" className="hover:bg-brand-leaf/20 text-brand-forest font-medium" onClick={() => patchOrder.mutate({ id: o.id, status: "approved" })}>approve</Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <div className="mt-4 border-t border-border pt-2">
+              <DataTablePagination
+                totalItems={totalQuotes}
+                currentPage={quotePage}
+                pageSize={quotePageSize}
+                onPageChange={setQuotePage}
+                onPageSizeChange={setQuotePageSize}
+                pageSizeOptions={[10, 25, 50]}
+              />
+            </div>
+          </>
         )}
       </Panel>
     </div>
@@ -557,6 +582,8 @@ function StaffView() {
   const qc = useQueryClient();
   const { data: me } = useMe();
   const isOwner = !!me?.roles.includes("owner");
+  const [staffPage, setStaffPage] = useState(1);
+  const [staffPageSize, setStaffPageSize] = useState(10);
   const { data: staff } = useQuery({
     queryKey: ["admin-staff"],
     queryFn: () => apiGet<User[]>("/admin/staff"),
@@ -578,6 +605,9 @@ function StaffView() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Owner only"),
   });
 
+  const totalStaff = staff?.length ?? 0;
+  const paginatedStaff = (staff ?? []).slice((staffPage - 1) * staffPageSize, staffPage * staffPageSize);
+
   if (!isOwner) {
     return (
       <Panel title="Staff & roles" testId="admin-staff-denied">
@@ -596,7 +626,7 @@ function StaffView() {
           <div><Label>Email</Label><Input value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className="mt-1.5 min-h-11" data-testid="staff-email-input" /></div>
           <div><Label>Name</Label><Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="mt-1.5 min-h-11" data-testid="staff-name-input" /></div>
           <div><Label>Roles (comma-separated)</Label><Input value={form.roles} onChange={(e) => setForm((f) => ({ ...f, roles: e.target.value }))} className="mt-1.5 min-h-11" data-testid="staff-roles-input" /></div>
-          <Button className="self-end min-h-11" onClick={() => invite.mutate()} disabled={!form.email || form.name.length < 2} data-testid="staff-invite-button">Invite</Button>
+          <Button className="self-end min-h-11 bg-brand-forest hover:bg-brand-forest/90 text-white font-medium" onClick={() => invite.mutate()} disabled={!form.email || form.name.length < 2} data-testid="staff-invite-button">Invite</Button>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
           Roles: owner, admin, manager, crm_master, crm_manager, crm_employee. A one-time password is generated (no hardcoded defaults);
@@ -608,12 +638,12 @@ function StaffView() {
         <Table>
           <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Roles</TableHead><TableHead>Active</TableHead><TableHead /></TableRow></TableHeader>
           <TableBody>
-            {(staff ?? []).map((s) => (
+            {paginatedStaff.map((s) => (
               <TableRow key={s.id} data-testid={`admin-staff-${s.email}`}>
-                <TableCell>{s.name}</TableCell>
+                <TableCell className="font-medium text-brand-forest">{s.name}</TableCell>
                 <TableCell className="text-xs">{s.email}</TableCell>
                 <TableCell className="text-xs">{s.roles.join(", ")}</TableCell>
-                <TableCell><Badge variant={s.is_active ? "default" : "outline"}>{s.is_active ? "active" : "disabled"}</Badge></TableCell>
+                <TableCell><Badge variant={s.is_active ? "default" : "outline"} className={s.is_active ? "bg-brand-leaf text-brand-forest" : ""}>{s.is_active ? "active" : "disabled"}</Badge></TableCell>
                 <TableCell>
                   <Button variant="outline" size="xs" onClick={() => patch.mutate({ id: s.id, body: { is_active: !s.is_active } })} data-testid={`admin-staff-${s.email}-toggle`}>
                     {s.is_active ? "Deactivate" : "Reactivate"}
@@ -623,6 +653,18 @@ function StaffView() {
             ))}
           </TableBody>
         </Table>
+        {totalStaff > 0 && (
+          <div className="mt-4 border-t border-border pt-2">
+            <DataTablePagination
+              totalItems={totalStaff}
+              currentPage={staffPage}
+              pageSize={staffPageSize}
+              onPageChange={setStaffPage}
+              onPageSizeChange={setStaffPageSize}
+              pageSizeOptions={[10, 25, 50]}
+            />
+          </div>
+        )}
       </Panel>
     </div>
   );
@@ -683,18 +725,55 @@ function SettingsView() {
 }
 
 export default function AdminConsole() {
+  const { data: me } = useMe();
+  const isOwner = !!me && me.roles.includes("owner");
+  const isCrmMasterOnly =
+    !!me &&
+    me.roles.includes("crm_master") &&
+    !me.roles.includes("owner") &&
+    !me.roles.includes("admin");
+
+  const baseNav = isOwner
+    ? [
+        ...NAV.slice(0, NAV.length - 1),
+        { to: "/admin/test-data", label: "Test Data" },
+        NAV[NAV.length - 1],
+      ]
+    : NAV;
+
+  const effectiveNav = isCrmMasterOnly
+    ? [
+        { to: "/admin/sales", label: "Sales & Revenue" },
+        { to: "/admin/orders", label: "Orders" },
+        { to: "/crm", label: "CRM Workspace" },
+        { to: "/crm/leads", label: "Leads" },
+      ]
+    : baseNav;
+
+  const title = isCrmMasterOnly ? "CRM Master Admin console" : "Owner / Admin console";
+
   return (
-    <ConsoleLayout area="Admin" title="Owner / Admin console" allowedRoles={["owner", "admin"]} nav={NAV}>
+    <ConsoleLayout area="Admin" title={title} allowedRoles={["owner", "admin", "crm_master"]} nav={effectiveNav}>
       <Routes>
-        <Route index element={<DashboardView />} />
-        <Route path="orders" element={<OrdersView />} />
-        <Route path="catalog" element={<CatalogView />} />
-        <Route path="cms" element={<CMSView />} />
-        <Route path="assets" element={<AssetsView />} />
-        <Route path="referrals" element={<ReferralsView />} />
-        <Route path="dealers" element={<DealersView />} />
-        <Route path="staff" element={<StaffView />} />
-        <Route path="settings" element={<SettingsView />} />
+        <Route index element={isCrmMasterOnly ? <SalesRevenueDashboard /> : <OwnerDashboard />} />
+        <Route path="sales" element={<SalesRevenueDashboard />} />
+        <Route path="orders" element={<OrdersCentralHub />} />
+        <Route path="dispatch/*" element={<DispatchReturnsHub />} />
+        {!isCrmMasterOnly && (
+          <>
+            <Route path="catalog" element={<CatalogCentralHub />} />
+            <Route path="website-edit" element={<WebsiteEditStudio />} />
+            <Route path="cms" element={<WebsiteEditStudio />} />
+            <Route path="claims" element={<ClaimsTrustHub />} />
+            <Route path="assets" element={<AssetLibraryHub />} />
+            <Route path="referrals" element={<ReferEarnHub />} />
+            <Route path="dealers" element={<DealerManagementHub />} />
+            <Route path="staff" element={<StaffAccessHub />} />
+            <Route path="audit" element={<AuditLogView />} />
+            <Route path="test-data" element={<TestDataManager />} />
+            <Route path="settings" element={<SettingsView />} />
+          </>
+        )}
       </Routes>
     </ConsoleLayout>
   );
