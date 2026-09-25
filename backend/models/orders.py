@@ -30,14 +30,20 @@ class CartLine(BaseModel):
     product_name: str
     sku: str
     size: str
+    length: Optional[str] = None
+    width: Optional[str] = None
     thickness: Optional[str] = None
     firmness: Optional[str] = None
     qty: int
-    unit_price: int  # paise, recalculated server-side every read
-    line_total: int
+    unit_price: int  # paise, recalculated server-side every read (selling price)
+    line_total: int  # unit_price * qty
+    mrp: Optional[int] = None  # paise, authoritative original MRP
+    discount_amount: Optional[int] = 0
+    discount_percent: Optional[float] = 0.0
     stock: int
     free_stock: int
     is_active: bool
+    image: Optional[str] = None
 
 
 class MoneyLine(BaseModel):
@@ -50,6 +56,8 @@ class CartView(BaseModel):
     items: List[CartLine] = []
     item_count: int = 0
     subtotal: int = 0
+    total_mrp: Optional[int] = 0
+    total_discount: Optional[int] = 0
     referred_code: Optional[str] = None
     referral_status: str = "none"  # none | valid | invalid | self | no_published_rule
     referral_discount: int = 0
@@ -63,11 +71,16 @@ class OrderItemSnapshot(BaseModel):
     product_name: str
     sku: str
     size: str
+    length: Optional[str] = None
+    width: Optional[str] = None
     thickness: Optional[str] = None
     firmness: Optional[str] = None
     qty: int
     unit_price: int
     line_total: int
+    mrp: Optional[int] = None
+    discount_amount: Optional[int] = 0
+    discount_percent: Optional[float] = 0.0
 
 
 class OrderEvent(BaseModel):
@@ -86,6 +99,12 @@ class Order(BaseModel):
     channel: str = "retail"  # retail | dealer
     buyer_type: str = "CUSTOMER"  # CUSTOMER | DEALER
     order_source: str = "DIRECT_WEBSITE"  # DIRECT_WEBSITE | WEB_REFERRAL | DEALER | EMPLOYEE_ASSISTED | WALK_IN | MANUAL_OTHER
+    sales_source: str = "DIRECT_WEBSITE"  # DIRECT_WEBSITE | CRM | DEALER | REFERRAL | WALK_IN | MANUAL_OTHER
+    crm_lead_id: Optional[str] = None
+    crm_employee_id: Optional[str] = None
+    crm_manager_id: Optional[str] = None
+    crm_pipeline_id: Optional[str] = None
+    crm_campaign_id: Optional[str] = None
     order_channel: str = "WEBSITE"  # WEBSITE | ADMIN_MANUAL
     sale_date: datetime = Field(default_factory=utcnow)
     employee_id: Optional[str] = None

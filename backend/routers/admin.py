@@ -678,6 +678,9 @@ async def put_settings(input: SettingsUpdate, user=Depends(require_role(OWNER, A
     if "gst_rate" in patch and patch["gst_rate"] is not None and not (0 <= patch["gst_rate"] <= 28):
         raise HTTPException(status_code=422, detail="GST rate must be between 0 and 28%")
     await db.settings.update_one({"id": "site"}, {"$set": patch, "$setOnInsert": {"id": "site"}}, upsert=True)
+    if any(k.startswith("promotion_") for k in patch):
+        from lib.pricing import ensure_promotions_and_mrps
+        await ensure_promotions_and_mrps()
     await audit(user, "settings.update", "settings", "site", str(patch))
     s = await db.settings.find_one({"id": "site"}) or {}
     out = SettingsOut(**clean_doc(s))

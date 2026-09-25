@@ -13,30 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 
-interface RazorpayResponse {
-  razorpay_order_id: string;
-  razorpay_payment_id: string;
-  razorpay_signature: string;
-}
-
-interface RazorpayOptions {
-  key: string;
-  amount: number;
-  currency: string;
-  name: string;
-  description: string;
-  order_id: string;
-  prefill: { name: string; email: string; contact: string };
-  theme: { color: string };
-  handler: (res: RazorpayResponse) => void;
-  modal: { ondismiss: () => void };
-}
-
-declare global {
-  interface Window {
-    Razorpay?: new (options: RazorpayOptions) => { open: () => void };
-  }
-}
+import type { RazorpayResponse } from "@/lib/razorpay.d";
 
 function loadRazorpayScript(): Promise<boolean> {
   return new Promise((resolve) => {
@@ -110,7 +87,7 @@ export default function Checkout() {
           order_id: out.gateway.rzp_order_id,
           prefill: { name: address.full_name, email: address.email, contact: address.phone },
           theme: { color: "#467065" },
-          handler: async (res) => {
+          handler: async (res: RazorpayResponse) => {
             try {
               await apiPost("/checkout/verify", res);
               toast.success("Payment verified");
@@ -275,15 +252,41 @@ export default function Checkout() {
               <h2 className="font-heading text-lg font-bold">Order summary</h2>
               <ul className="mt-4 space-y-2 text-sm" data-testid="checkout-summary-items">
                 {cart.items.map((l) => (
-                  <li key={l.variant_id} className="flex justify-between gap-3">
-                    <span className="text-muted-foreground">{l.product_name} × {l.qty}</span>
-                    <span className="tabular-nums">{inr(l.line_total)}</span>
+                  <li key={l.variant_id} className="flex flex-col gap-0.5 border-b border-border/40 pb-2">
+                    <div className="flex justify-between gap-3">
+                      <span className="font-medium text-foreground">{l.product_name} × {l.qty}</span>
+                      <span className="tabular-nums font-bold text-foreground">{inr(l.line_total)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>{[l.size, l.thickness].filter(Boolean).join(" · ")}</span>
+                      {l.mrp && l.mrp > l.unit_price && (
+                        <>
+                          <span>·</span>
+                          <span className="line-through">MRP {inr(l.mrp)}</span>
+                          <span className="text-[#2F5233] font-semibold">({l.discount_percent ? `${Math.round(l.discount_percent)}% OFF` : "40% OFF"})</span>
+                        </>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>
-              <div className="mt-4 flex justify-between border-t border-border pt-4 text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-heading text-xl font-bold tabular-nums" data-testid="checkout-subtotal">{inr(cart.subtotal)}</span>
+
+              {cart.total_mrp && cart.total_mrp > cart.subtotal && (
+                <div className="mt-4 flex justify-between text-sm text-muted-foreground">
+                  <span>Total MRP</span>
+                  <span className="line-through tabular-nums">{inr(cart.total_mrp)}</span>
+                </div>
+              )}
+              {cart.total_discount && cart.total_discount > 0 && (
+                <div className="mt-1 flex justify-between text-sm text-[#2F5233] font-medium">
+                  <span>Sitewide Sale (40% OFF)</span>
+                  <span className="tabular-nums">−{inr(cart.total_discount)}</span>
+                </div>
+              )}
+
+              <div className="mt-2 flex justify-between border-t border-border pt-3 text-sm">
+                <span className="text-foreground font-semibold">Payable Subtotal</span>
+                <span className="font-heading text-xl font-bold tabular-nums text-foreground" data-testid="checkout-subtotal">{inr(cart.subtotal)}</span>
               </div>
               {cart.referral_discount > 0 && (
                 <div className="mt-1 flex justify-between text-sm text-brand-leaf">

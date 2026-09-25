@@ -7,6 +7,19 @@ import { fmtDateTime, inr } from "@/lib/format";
 import { useMe } from "@/lib/session";
 import ConsoleLayout from "@/components/layout/ConsoleLayout";
 import CallForm from "@/components/crm/CallForm";
+import TestDataBanner from "@/components/crm/TestDataBanner";
+import WorkdayGate from "@/components/crm/WorkdayGate";
+import MasterAdminDashboard from "@/components/crm/MasterAdminDashboard";
+import PipelinesWorkspace from "@/components/crm/PipelinesWorkspace";
+import PipelinesPage from "@/components/crm/PipelinesPage";
+import PipelineDetail from "@/components/crm/PipelineDetail";
+import CampaignsPage from "@/components/crm/CampaignsPage";
+import CampaignWorkspace from "@/components/crm/CampaignWorkspace";
+import LeadsContactsHub from "@/components/crm/LeadsContactsHub";
+import AttendanceHub from "@/components/crm/AttendanceHub";
+import LeaveManagementHub from "@/components/crm/LeaveManagementHub";
+import PayrollHub from "@/components/crm/PayrollHub";
+import TrendsAnalyticsHub from "@/components/crm/TrendsAnalyticsHub";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,16 +41,24 @@ import type {
 
 const NAV = [
   { to: "/crm", label: "Dashboard" },
-  { to: "/crm/leads", label: "Sales Leads" },
-  { to: "/crm/intake", label: "Owner Intake Queue" },
+  { to: "/crm/leads", label: "Leads & Contacts" },
+  { to: "/crm/pipelines", label: "Pipelines" },
+  { to: "/crm/campaigns", label: "Campaigns" },
   { to: "/crm/follow-ups", label: "Follow-ups" },
+  { to: "/crm/calls", label: "Calls Log" },
   { to: "/crm/customers", label: "Customers" },
+  { to: "/crm/conversions", label: "Sales & Conversions" },
+  { to: "/crm/team", label: "Managers & Employees" },
+  { to: "/crm/attendance", label: "Attendance" },
+  { to: "/crm/leave", label: "Leave Management" },
+  { to: "/crm/payroll", label: "Payroll" },
+  { to: "/crm/trends", label: "Reports & Analytics" },
+  { to: "/crm/intake", label: "Intake Queue" },
   { to: "/crm/cases", label: "Service Cases" },
   { to: "/crm/dispositions", label: "Call Configuration" },
-  { to: "/crm/reports", label: "CRM Reports" },
 ];
 
-const CRM_ROLES = ["owner", "crm_master", "crm_manager", "crm_employee"];
+const CRM_ROLES = ["owner", "admin", "crm_master", "crm_manager", "crm_employee"];
 
 function Panel({ title, children, testId, note }: { title: string; children: React.ReactNode; testId?: string; note?: string }) {
   return (
@@ -976,20 +997,55 @@ function ReportsView() {
 }
 
 export default function CRMConsole() {
+  const { data: me } = useMe();
+  const [showWorkforceGate, setShowWorkforceGate] = useState(true);
+
+  // Attendance gating applies ONLY to crm_manager and crm_employee.
+  // CRM Master Admin and Owner access CRM immediately — no clock-in required.
+  const needsWorkdayGate = !!me?.roles.some((r) =>
+    ["crm_manager", "crm_employee"].includes(r) &&
+    !me.roles.some((rr) => ["owner", "crm_master"].includes(rr))
+  );
+
   return (
     <ConsoleLayout area="The CRM workspace" title="Kotson CRM" allowedRoles={CRM_ROLES} nav={NAV}>
-      <Routes>
-        <Route index element={<DashboardView />} />
-        <Route path="leads" element={<LeadsView />} />
-        <Route path="leads/:id" element={<LeadWorkspaceView />} />
-        <Route path="intake" element={<IntakeQueueView />} />
-        <Route path="follow-ups" element={<FollowUpsView />} />
-        <Route path="customers" element={<CustomersView />} />
-        <Route path="cases" element={<CasesView />} />
-        <Route path="dispositions" element={<DispositionsView />} />
-        <Route path="call-configuration" element={<DispositionsView />} />
-        <Route path="reports" element={<ReportsView />} />
-      </Routes>
+      <div className="space-y-6">
+        <TestDataBanner />
+        {needsWorkdayGate && showWorkforceGate && (
+          <WorkdayGate
+            allowBypass={true}
+            onBypass={() => setShowWorkforceGate(false)}
+          />
+        )}
+
+        <Routes>
+          <Route index element={<MasterAdminDashboard />} />
+          <Route path="leads" element={<LeadsContactsHub />} />
+          <Route path="leads/:id" element={<LeadWorkspaceView />} />
+          {/* ── Pipeline & Campaign — separate pages ── */}
+          <Route path="pipelines" element={<PipelinesPage />} />
+          <Route path="pipelines/:pipelineId" element={<PipelineDetail />} />
+          <Route path="campaigns" element={<CampaignsPage />} />
+          <Route path="campaigns/:campaignId" element={<CampaignWorkspace />} />
+          {/* ── Legacy workspace (kept for call-config) ── */}
+          <Route path="pipeline-config" element={<PipelinesWorkspace />} />
+          <Route path="attendance" element={<AttendanceHub />} />
+          <Route path="leave" element={<LeaveManagementHub />} />
+          <Route path="payroll" element={<PayrollHub />} />
+          <Route path="trends" element={<TrendsAnalyticsHub />} />
+          <Route path="reports" element={<TrendsAnalyticsHub />} />
+          <Route path="team" element={<ReportsView />} />
+          <Route path="conversions" element={<LeadsContactsHub />} />
+          <Route path="calls" element={<TrendsAnalyticsHub />} />
+          <Route path="intake" element={<IntakeQueueView />} />
+          <Route path="follow-ups" element={<FollowUpsView />} />
+          <Route path="customers" element={<CustomersView />} />
+          <Route path="cases" element={<CasesView />} />
+          <Route path="dispositions" element={<DispositionsView />} />
+          <Route path="call-configuration" element={<DispositionsView />} />
+        </Routes>
+      </div>
     </ConsoleLayout>
   );
 }
+

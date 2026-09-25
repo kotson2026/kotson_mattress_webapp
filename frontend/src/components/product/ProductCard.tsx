@@ -4,40 +4,19 @@ import type { Product } from "@/lib/types";
 import { inr } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { apiPost } from "@/lib/api";
-import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { useState } from "react";
+import PriceDisplay from "./PriceDisplay";
 
 export default function ProductCard({ product }: { product: Product }) {
-  const qc = useQueryClient();
   const navigate = useNavigate();
-  const [busy, setBusy] = useState(false);
   const [hasError, setHasError] = useState(false);
 
   const requiresVariantSelection = product.variants.length > 1;
 
-  const handleAction = async (e: React.MouseEvent) => {
+  const handleAction = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
-    if (requiresVariantSelection) {
-      navigate(`/products/${product.slug}`);
-      return;
-    }
-
-    if (!product.variants[0]) return;
-
-    setBusy(true);
-    try {
-      await apiPost("/cart/items", { variant_id: product.variants[0].id, qty: 1 });
-      qc.invalidateQueries({ queryKey: ["cart"] });
-      toast.success("Added to cart");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not add to cart");
-    } finally {
-      setBusy(false);
-    }
+    navigate(`/products/${product.slug}`);
   };
 
   const rawImage = (product.images && product.images[0]) || product.primary_image;
@@ -95,22 +74,25 @@ export default function ProductCard({ product }: { product: Product }) {
         {product.tagline && <p className="line-clamp-2 text-sm text-muted-foreground">{product.tagline}</p>}
 
         <div className="mt-auto flex flex-col gap-4 pt-3">
-          <div>
-            <p className="font-heading text-lg font-bold" data-testid={`product-price-${product.slug}`}>
-              {requiresVariantSelection && <span className="text-xs font-normal text-muted-foreground mr-1">From</span>}
-              {product.price_from !== null ? inr(product.price_from) : "—"}
-            </p>
+          <div data-testid={`product-price-${product.slug}`}>
+            <PriceDisplay
+              salePrice={product.price_from}
+              mrp={product.mrp_from}
+              discountPercent={product.discount_percent ?? 40}
+              isFrom={requiresVariantSelection}
+              size="md"
+            />
           </div>
 
           <Button
             size="sm"
             onClick={handleAction}
-            disabled={busy || !product.in_stock}
+            disabled={!product.in_stock}
             className="w-full min-h-11 font-semibold transition-colors duration-200"
-            variant={requiresVariantSelection ? "outline" : "default"}
+            variant="default"
             data-testid={`product-action-${product.slug}`}
           >
-            {busy ? "Processing..." : (!product.in_stock ? "Out of stock" : (requiresVariantSelection ? "Add to Cart" : "Add to Cart"))}
+            {!product.in_stock ? "Out of stock" : "Shop Now"}
           </Button>
         </div>
       </div>

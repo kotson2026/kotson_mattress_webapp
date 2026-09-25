@@ -129,7 +129,7 @@ async def checkout_start(input: CheckoutStartIn, request: Request, user=Depends(
         "id": order_id,
         "order_number": candidate_num,
         "user_id": user["id"] if user else None,
-        "email": normalize_email(input.address.email),
+        "email": normalize_email(input.address.email) if input.address.email else ((user.get("email") if user else None) or f"guest_{''.join(c for c in input.address.phone if c.isdigit())}@kotson.in"),
         "guest_access_token": str(uuid.uuid4()) if not user else None,
         "channel": "retail",
         "buyer_type": "DEALER" if (user and has_role(user, "dealer")) else "CUSTOMER",
@@ -144,14 +144,17 @@ async def checkout_start(input: CheckoutStartIn, request: Request, user=Depends(
         "items": [
             {
                 "variant_id": l.variant_id, "product_id": l.product_id, "product_slug": l.product_slug,
-                "product_name": l.product_name, "sku": l.sku, "size": l.size, "thickness": l.thickness,
-                "firmness": l.firmness, "qty": l.qty, "unit_price": l.unit_price, "line_total": l.line_total,
+                "product_name": l.product_name, "sku": l.sku, "size": l.size, "length": l.length, "width": l.width,
+                "thickness": l.thickness, "firmness": l.firmness, "qty": l.qty,
+                "unit_price": l.unit_price, "line_total": l.line_total,
+                "mrp": l.mrp, "discount_amount": l.discount_amount, "discount_percent": l.discount_percent,
             }
             for l in view.items
         ],
         "address": input.address.model_dump(),
         "amounts": {
-            "subtotal": subtotal, "discount": discount, "tax": tax, "tax_status": tax_status,
+            "subtotal": subtotal, "total_mrp": view.total_mrp, "total_discount": view.total_discount,
+            "discount": discount, "tax": tax, "tax_status": tax_status,
             "shipping": shipping, "shipping_status": shipping_status, "total": total,
         },
         "payment_status": "pending",

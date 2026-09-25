@@ -275,6 +275,8 @@
 .hero {
   position: relative;
   width: 100%;
+  height: 100svh;
+  min-height: 100svh;
   margin-top: 0 !important;
   padding-top: 0 !important;
   top: 0 !important;
@@ -287,6 +289,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center center;
   display: block;
 }
 
@@ -345,4 +348,22 @@
   object-fit: contain;
   object-position: center;
 }
+
+/* Kotson Cart Drawer Responsive Widths */
+.kotson-cart-drawer {
+  width: 100vw !important;
+}
+
+@media (min-width: 768px) {
+  .kotson-cart-drawer {
+    width: clamp(380px, 65vw, 540px) !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .kotson-cart-drawer {
+    width: clamp(420px, 44vw, 500px) !important;
+  }
+}
+
 

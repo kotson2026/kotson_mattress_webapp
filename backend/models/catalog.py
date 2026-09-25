@@ -108,6 +108,7 @@ class ProductOut(Product):
     variants: List[VariantOut] = []
     price_from: Optional[int] = None
     mrp_from: Optional[int] = None
+    discount_percent: Optional[float] = 0.0
     in_stock: bool = False
     total_stock: int = 0
 

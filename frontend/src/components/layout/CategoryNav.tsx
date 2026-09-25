@@ -13,7 +13,7 @@ export const CATEGORY_NAV = [
     slug: "mattresses",
     label: "Mattresses",
     slot: "category-mattress",
-    imageUrl: "https://cdn.phototourl.com/member/2026-09-21-becf1398-8387-4f2c-a4bd-729072937fdf.png",
+    imageUrl: "/navbar/mattress.png",
     localFallback: "/navbar/mattress.png",
   },
   {

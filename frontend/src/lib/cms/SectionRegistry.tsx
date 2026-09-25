@@ -78,12 +78,15 @@ registerWebsiteSection({
   type: "shark_tank_feature",
   name: "Shark Tank India Feature",
   category: "Media & Trust",
-  description: "Cinematic banner featuring Shark Tank India Season 5 episode with expandable in-place video player.",
+  description: "Unified premium ivory panel featuring original Shark Tank India poster and responsive YouTube video player.",
   defaultData: {
-    banner_url: "https://cdn.phototourl.com/free/2026-09-22-71b40d3f-ad65-4569-9d86-378e72497548.png",
-    video_url: "https://aiseralab.com/host-file/f/f51eb579-4f7e-45b5-929b-46f16b059ad1",
+    banner_url: "/shark-tank/kotson-shark-tank-square.webp",
+    poster_url: "/shark-tank/kotson-shark-tank-square.webp",
+    video_url: "https://www.youtube.com/watch?v=xF_ri6AQJMo",
+    eyebrow: "AS SEEN ON",
+    caption: "KOTSON × SHARK TANK INDIA",
   },
-  rendererComponent: () => <SharkTankSection />,
+  rendererComponent: ({ config }: { config?: any }) => <SharkTankSection config={config} />,
 });
 
 // 5. What's Inside?

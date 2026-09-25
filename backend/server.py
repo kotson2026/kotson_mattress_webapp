@@ -47,8 +47,12 @@ async def lifespan(app: FastAPI):
         # Ensure CMS restoration of existing website pages and sections
         from lib.cms_migrator import ensure_cms_migrated
         await ensure_cms_migrated()
+
+        # Ensure 40% sitewide discount promotion and non-destructive MRP synchronization
+        from lib.pricing import ensure_promotions_and_mrps
+        await ensure_promotions_and_mrps()
     except Exception as exc:
-        logger.warning("Startup auto-seed / CMS migration check skipped or failed: %s", exc)
+        logger.warning("Startup auto-seed / CMS migration / promotion sync skipped or failed: %s", exc)
     yield
     app.state.sweeper_task.cancel()
     client.close()
@@ -95,12 +99,14 @@ from routers import (  # noqa: E402
     catalog,
     checkout,
     content,
+    coupon,
     crm,
     crm_calls,
     crm_leads,
     dealers,
     fulfilment,
     orders,
+    phone_auth,
     referrals,
     site_media,
     sales,
@@ -109,12 +115,18 @@ from routers import (  # noqa: E402
     dispatch,
     assets,
     claims_trust,
+    crm_workforce,
+    crm_payroll,
+    crm_analytics,
+    crm_test_data,
 )
 
 api_router.include_router(auth.router)
+api_router.include_router(phone_auth.router)
 api_router.include_router(catalog.router)
 api_router.include_router(cart.router)
 api_router.include_router(checkout.router)
+api_router.include_router(coupon.router)
 api_router.include_router(orders.router)
 api_router.include_router(content.router)
 api_router.include_router(admin.router)
@@ -123,6 +135,10 @@ api_router.include_router(dealers.router)
 api_router.include_router(referrals.router)
 api_router.include_router(crm_leads.router)
 api_router.include_router(crm_calls.router)
+api_router.include_router(crm_workforce.router)
+api_router.include_router(crm_payroll.router)
+api_router.include_router(crm_analytics.router)
+api_router.include_router(crm_test_data.router)
 api_router.include_router(fulfilment.router)
 api_router.include_router(site_media.router)
 api_router.include_router(sales.router)

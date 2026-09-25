@@ -49,47 +49,85 @@ class SourceEvent(BaseModel):
 
 # ---------------------------------------------------------------- pipelines
 
+BucketType = Literal["IN_PROGRESS", "CONVERTED", "LOST"]
+
+
 class Stage(BaseModel):
     code: str = Field(min_length=2, max_length=40)  # stable internal code
     label: str = Field(min_length=1, max_length=60)  # editable display label
+    description: str = ""
+    bucket: BucketType = "IN_PROGRESS"
     sort: int = 0
+    color: Optional[str] = None
+    require_follow_up: bool = False
+    require_note: bool = False
+    is_terminal: bool = False
     is_won: bool = False
     is_lost: bool = False
+    is_archived: bool = False
 
 
 class Pipeline(BaseModel):
     id: str = Field(default_factory=_id)
     code: str
     name: str = Field(min_length=2, max_length=80)
+    description: str = ""
+    pipeline_type: str = "Product Sales"
+    associated_products: List[str] = Field(default_factory=list)
     kind: Literal["intake", "sales", "service"] = "sales"
     stages: List[Stage] = Field(default_factory=list)
     is_active: bool = True
+    is_archived: bool = False
     created_at: datetime = Field(default_factory=utcnow)
 
 
 class PipelineIn(BaseModel):
     name: str = Field(min_length=2, max_length=80)
+    code: Optional[str] = None
+    description: str = ""
+    pipeline_type: str = "Product Sales"
+    associated_products: List[str] = Field(default_factory=list)
     kind: Literal["intake", "sales", "service"] = "sales"
     stages: List[Stage] = Field(default_factory=list)
+    is_active: bool = True
 
 
 class Campaign(BaseModel):
     id: str = Field(default_factory=_id)
     code: str = Field(min_length=2, max_length=40)
     name: str = Field(min_length=2, max_length=80)
-    source_kind: str = "manual"  # maps inbound source -> campaign
+    description: str = ""
     pipeline_id: Optional[str] = None
+    lead_source: str = "website"
+    target_count: int = 0
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    associated_products: List[str] = Field(default_factory=list)
+    manager_ids: List[str] = Field(default_factory=list)
+    employee_ids: List[str] = Field(default_factory=list)
+    source_kind: str = "manual"  # maps inbound source -> campaign
     is_active: bool = True
+    status: str = "active"  # active | paused | completed | archived
     # Ad metrics stay explicitly disconnected until a real data source is integrated.
     ad_metrics_source: Literal["not_connected"] = "not_connected"
     created_at: datetime = Field(default_factory=utcnow)
 
 
 class CampaignIn(BaseModel):
-    code: str = Field(min_length=2, max_length=40)
     name: str = Field(min_length=2, max_length=80)
+    code: Optional[str] = None
+    description: str = ""
+    pipeline_id: str
+    lead_source: str = "website"
+    target_count: int = 0
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    associated_products: List[str] = Field(default_factory=list)
+    manager_ids: List[str] = Field(default_factory=list)
+    employee_ids: List[str] = Field(default_factory=list)
     source_kind: str = "manual"
-    pipeline_id: Optional[str] = None
+    is_active: bool = True
+    status: str = "active"
 
 
 # ---------------------------------------------------------------- leads
@@ -107,7 +145,11 @@ class Lead(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     pipeline_id: Optional[str] = None
+    campaign_id: Optional[str] = None
     stage_code: str = "new"
+    bucket: BucketType = "IN_PROGRESS"
+    lost_reason: Optional[str] = None
+    lost_remark: Optional[str] = None
     # Qualification is explicit: a registration lead is NOT a sales-qualified lead.
     qualification: Literal["registered", "cart_intent", "sales_qualified", "converted", "disqualified"] = "registered"
     campaign_code: Optional[str] = None
@@ -135,16 +177,19 @@ class LeadManualIn(BaseModel):
     email: Optional[str] = Field(default=None, max_length=200)
     phone: Optional[str] = Field(default=None, max_length=20)
     pipeline_id: Optional[str] = None
+    campaign_id: Optional[str] = None
     campaign_code: Optional[str] = None
     product_interest: Optional[str] = None
     note: Optional[str] = Field(default=None, max_length=2000)
 
 
 class StageChangeIn(BaseModel):
-    """The ONLY way a stage moves by hand. Reason is mandatory for the audit trail."""
+    """The authoritative way a stage moves. Reasons and lost details captured for audit trail."""
 
     stage_code: str = Field(min_length=2, max_length=40)
-    reason: str = Field(min_length=3, max_length=400)
+    reason: Optional[str] = Field(default="Stage updated", max_length=400)
+    lost_reason: Optional[str] = None  # Not Interested, Price Too High, Unreachable, etc.
+    lost_remark: Optional[str] = None
 
 
 class AssignIn(BaseModel):
@@ -152,6 +197,30 @@ class AssignIn(BaseModel):
     manager_id: Optional[str] = None
     employee_id: Optional[str] = None
     reason: str = Field(min_length=3, max_length=300)
+
+
+class DistributeIn(BaseModel):
+    lead_ids: List[str] = Field(min_length=1)
+    method: Literal["manual", "round_robin", "percentage"] = "round_robin"
+    employee_ids: Optional[List[str]] = None
+    distribution_rules: Optional[List[dict]] = None  # [{"employee_id": "...", "percentage": 50}, ...]
+    manager_id: Optional[str] = None
+    reason: str = "Lead distribution"
+
+
+class LeadImportIn(BaseModel):
+    leads: List[dict] = Field(min_length=1)
+    pipeline_id: Optional[str] = None
+    campaign_code: Optional[str] = None
+
+
+class LeadConvertOrderIn(BaseModel):
+    items: List[dict] = Field(min_length=1)  # [{variant_id, qty, unit_price_paise, product_name}]
+    address: dict  # {full_name, phone, email, line1, line2, city, state, pincode}
+    payment_method: str = "upi"
+    payment_reference: Optional[str] = None
+    notes: Optional[str] = None
+
 
 
 # ---------------------------------------------------------------- follow-ups

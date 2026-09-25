@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 def utcnow() -> datetime:
@@ -80,12 +80,19 @@ class StaffInviteIn(BaseModel):
 class AddressIn(BaseModel):
     full_name: str = Field(min_length=2, max_length=120)
     phone: str = Field(min_length=10, max_length=15)
-    email: EmailStr
+    email: Optional[EmailStr] = None
     line1: str = Field(min_length=5, max_length=200)
     line2: Optional[str] = Field(default=None, max_length=200)
     city: str = Field(min_length=2, max_length=80)
     state: str = Field(min_length=2, max_length=80)
     pincode: str = Field(pattern=r"^[1-9][0-9]{5}$")
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def empty_email_to_none(cls, v):
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return None
+        return v
 
 
 class AddressOut(AddressIn):

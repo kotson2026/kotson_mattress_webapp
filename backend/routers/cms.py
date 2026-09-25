@@ -78,12 +78,12 @@ SECTION_TYPES = [
         "category": "Media & Trust",
         "description": "Cinematic banner featuring Shark Tank India Season 5 episode with expandable in-place video player.",
         "default_config": {
-            "banner_url": "https://cdn.phototourl.com/member/2026-09-22-d4730c43-6e9e-49c8-97a8-edbbdfc1b15e.png",
-            "video_url": "https://aiseralab.com/host-file/f/f51eb579-4f7e-45b5-929b-46f16b059ad1",
-            "title": "Shark Tank India Season 5 — Kotson Feature",
-            "description": "Watch Kotson showcase India's first truly organic, non-toxic Dunlop latex mattress.",
-            "cta_label": "Watch Episode Pitch",
-            "expandable": True,
+            "banner_url": "/shark-tank/kotson-shark-tank-square.webp",
+            "poster_url": "/shark-tank/kotson-shark-tank-square.webp",
+            "youtube_url": "https://www.youtube.com/watch?v=xF_ri6AQJMo",
+            "video_url": "https://www.youtube.com/watch?v=xF_ri6AQJMo",
+            "eyebrow": "AS SEEN ON",
+            "caption": "KOTSON × SHARK TANK INDIA",
         },
     },
     {

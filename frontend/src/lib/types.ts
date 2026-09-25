@@ -18,6 +18,57 @@ export interface AuthOut {
   guest_cart_merged: number;
 }
 
+export interface OtpSessionInfo {
+  otp_token: string;
+  phone: string;
+  customer_id: string | null;
+  customer_name: string | null;
+  customer_email: string | null;
+  is_new_customer: boolean;
+}
+
+export interface SavedAddress {
+  id: string;
+  customer_id: string;
+  label: string;
+  full_name: string;
+  phone: string;
+  email: string | null;
+  line1: string;
+  line2: string | null;
+  landmark: string | null;
+  city: string;
+  state: string;
+  pincode: string;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CouponResult {
+  valid: boolean;
+  code: string;
+  discount_paise: number;
+  discount_type: string;
+  discount_value: number;
+  stackable_with_global_promo: boolean;
+  message: string;
+  coupon_id: string | null;
+}
+
+export type CheckoutStep =
+  | "CART"
+  | "PHONE_ENTRY"
+  | "OTP_VERIFY"
+  | "ADDRESS_SELECT"
+  | "ADDRESS_ADD"
+  | "PAYMENT"
+  | "PROCESSING"
+  | "SUCCESS"
+  | "FAILURE";
+
+
+
 export interface Category {
   id: string;
   slug: string;
@@ -38,8 +89,10 @@ export interface Variant {
   width: string | null;
   thickness: string | null;
   firmness: string | null;
-  price: number; // paise
-  mrp: number | null;
+  price: number; // paise - discounted selling price
+  mrp: number | null; // paise - authoritative original MRP
+  discount_amount?: number;
+  discount_percent?: number;
   stock: number;
   reserved: number;
   free_stock: number;
@@ -66,6 +119,8 @@ export interface Product {
   created_at: string;
   variants: Variant[];
   price_from: number | null;
+  mrp_from?: number | null;
+  discount_percent?: number;
   in_stock: boolean;
   features?: string[];
   specifications?: Record<string, string>;
@@ -86,17 +141,23 @@ export interface CartLine {
   thickness: string | null;
   firmness: string | null;
   qty: number;
-  unit_price: number;
-  line_total: number;
+  unit_price: number; // paise - selling price
+  line_total: number; // paise - unit_price * qty
+  mrp?: number | null; // paise - original MRP
+  discount_amount?: number;
+  discount_percent?: number;
   stock: number;
   free_stock: number;
   is_active: boolean;
+  image?: string | null;
 }
 
 export interface CartView {
   items: CartLine[];
   item_count: number;
   subtotal: number;
+  total_mrp?: number;
+  total_discount?: number;
   referred_code: string | null;
   referral_status: "none" | "valid" | "invalid" | "self" | "no_published_rule";
   referral_discount: number;
@@ -242,6 +303,11 @@ export interface SiteSettings {
   razorpay_state: string;
   mail_state: string;
   analytics_consent: string;
+  promotion_enabled?: boolean;
+  promotion_discount_percent?: number;
+  promotion_title?: string;
+  promotion_discount_type?: string;
+  promotion_scope?: string;
 }
 
 export interface LowStockRow {

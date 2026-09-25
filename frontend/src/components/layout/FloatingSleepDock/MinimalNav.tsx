@@ -1,6 +1,6 @@
 import { ShoppingBag, Menu } from "lucide-react";
-import { Link } from "react-router-dom";
 import SleepDockLogo from "./SleepDockLogo";
+import { useCheckoutDrawer } from "@/components/checkout/CheckoutDrawer";
 
 interface Props {
   cartCount: number;
@@ -15,6 +15,8 @@ export default function MinimalNav({
   onOpenMobileMenu,
   onExpandCompact,
 }: Props) {
+  const { openDrawer } = useCheckoutDrawer();
+
   return (
     <div
       onMouseEnter={onExpandCompact}
@@ -30,7 +32,7 @@ export default function MinimalNav({
         type="button"
         onClick={onOpenShop}
         data-testid="minimal-shop-button"
-        className="px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider text-brand-charcoal hover:text-brand-deep hover:bg-black/[0.04] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-leaf"
+        className="px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider text-brand-charcoal hover:text-brand-deep hover:bg-black/[0.04] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-leaf cursor-pointer"
       >
         Shop
       </button>
@@ -41,21 +43,22 @@ export default function MinimalNav({
         onClick={onOpenMobileMenu}
         aria-label="Open navigation menu"
         data-testid="minimal-menu-button"
-        className="flex h-9 w-9 items-center justify-center rounded-full text-brand-charcoal hover:bg-black/[0.04] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-leaf"
+        className="flex h-9 w-9 items-center justify-center rounded-full text-brand-charcoal hover:bg-black/[0.04] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-leaf cursor-pointer"
       >
         <Menu className="h-4 w-4" />
       </button>
 
       {/* Bag Icon */}
-      <Link
-        to="/cart"
-        aria-label={`Cart, ${cartCount} items`}
+      <button
+        type="button"
+        onClick={openDrawer}
+        aria-label={`Open cart, ${cartCount} items`}
         data-testid="minimal-cart-link"
-        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-brand-charcoal hover:bg-black/[0.04] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-leaf"
+        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-brand-charcoal hover:bg-black/[0.04] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-leaf cursor-pointer"
       >
         <ShoppingBag className="h-4 w-4" />
         <span className="text-xs font-semibold tabular-nums">{cartCount}</span>
-      </Link>
+      </button>
     </div>
   );
 }

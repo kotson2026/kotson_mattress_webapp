@@ -1,5 +1,5 @@
 import { ChevronDown } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import type { CategorySlug } from "./types";
 
 interface Props {
@@ -9,6 +9,19 @@ interface Props {
 }
 
 export default function CompactNav({ isShopOpen, onToggleShop, onOpenCategory }: Props) {
+  const location = useLocation();
+  const pathname = location.pathname;
+
+  const isWhyKotsonActive = pathname === "/about" || pathname === "/why-kotson";
+  const isSleepScienceActive = pathname === "/sleep-science";
+  const isStoresActive = pathname === "/contact";
+  const isShopActive =
+    isShopOpen ||
+    (!isWhyKotsonActive &&
+      !isSleepScienceActive &&
+      !isStoresActive &&
+      (pathname.startsWith("/collections") || pathname.startsWith("/products")));
+
   return (
     <nav
       className="hidden lg:flex items-center gap-1 xl:gap-2"
@@ -21,8 +34,8 @@ export default function CompactNav({ isShopOpen, onToggleShop, onOpenCategory }:
         onMouseEnter={() => onOpenCategory("mattresses")}
         aria-expanded={isShopOpen}
         data-testid="compact-shop-button"
-        className={`group flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[13.5px] font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-leaf ${
-          isShopOpen
+        className={`group flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[13.5px] font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-leaf cursor-pointer ${
+          isShopActive
             ? "bg-brand-deep text-white shadow-sm"
             : "text-brand-charcoal hover:text-brand-deep hover:bg-black/[0.04]"
         }`}
@@ -30,56 +43,50 @@ export default function CompactNav({ isShopOpen, onToggleShop, onOpenCategory }:
         <span>Shop</span>
         <ChevronDown
           className={`h-3.5 w-3.5 transition-transform duration-200 ${
-            isShopOpen ? "rotate-180 text-white" : "text-brand-charcoal/60 group-hover:text-brand-deep"
-          }`}
+            isShopActive ? "text-white" : "text-brand-charcoal/60 group-hover:text-brand-deep"
+          } ${isShopOpen ? "rotate-180" : ""}`}
           aria-hidden="true"
         />
       </button>
 
       {/* Why Kotson */}
-      <a
-        href="#why-kotson"
-        onClick={(e) => {
-          if (window.location.pathname !== "/") {
-            // Let normal navigation take over
-            return;
-          }
-          const el = document.getElementById("why-kotson");
-          if (el) {
-            e.preventDefault();
-            el.scrollIntoView({ behavior: "smooth" });
-          }
-        }}
+      <Link
+        to="/about"
         data-testid="compact-why-kotson"
-        className="px-3.5 py-1.5 rounded-full text-[13.5px] font-medium text-brand-charcoal/80 hover:text-brand-deep hover:bg-black/[0.04] transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-leaf"
+        aria-current={isWhyKotsonActive ? "page" : undefined}
+        className={`px-3.5 py-1.5 rounded-full text-[13.5px] font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-leaf cursor-pointer ${
+          isWhyKotsonActive
+            ? "bg-brand-deep text-white shadow-sm"
+            : "text-brand-charcoal/80 hover:text-brand-deep hover:bg-black/[0.04]"
+        }`}
       >
         Why Kotson
-      </a>
+      </Link>
 
       {/* Sleep Science */}
-      <a
-        href="#zones"
-        onClick={(e) => {
-          if (window.location.pathname !== "/") {
-            return;
-          }
-          const el = document.getElementById("zones");
-          if (el) {
-            e.preventDefault();
-            el.scrollIntoView({ behavior: "smooth" });
-          }
-        }}
+      <Link
+        to="/sleep-science"
         data-testid="compact-sleep-science"
-        className="px-3.5 py-1.5 rounded-full text-[13.5px] font-medium text-brand-charcoal/80 hover:text-brand-deep hover:bg-black/[0.04] transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-leaf"
+        aria-current={isSleepScienceActive ? "page" : undefined}
+        className={`px-3.5 py-1.5 rounded-full text-[13.5px] font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-leaf cursor-pointer ${
+          isSleepScienceActive
+            ? "bg-brand-deep text-white shadow-sm"
+            : "text-brand-charcoal/80 hover:text-brand-deep hover:bg-black/[0.04]"
+        }`}
       >
         Sleep Science
-      </a>
+      </Link>
 
       {/* Stores */}
       <Link
         to="/contact"
         data-testid="compact-stores"
-        className="px-3.5 py-1.5 rounded-full text-[13.5px] font-medium text-brand-charcoal/80 hover:text-brand-deep hover:bg-black/[0.04] transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-leaf"
+        aria-current={isStoresActive ? "page" : undefined}
+        className={`px-3.5 py-1.5 rounded-full text-[13.5px] font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-leaf cursor-pointer ${
+          isStoresActive
+            ? "bg-brand-deep text-white shadow-sm"
+            : "text-brand-charcoal/80 hover:text-brand-deep hover:bg-black/[0.04]"
+        }`}
       >
         Stores
       </Link>

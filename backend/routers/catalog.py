@@ -33,29 +33,34 @@ from models.catalog import (
     VariantOut,
 )
 from models.users import utcnow
+from lib.pricing import get_active_promotion, resolve_variant_pricing
 
 router = APIRouter()
 
 
-def variant_public(v: dict) -> dict:
+def variant_public(v: dict, promotion: Optional[dict] = None) -> dict:
     d = clean_doc(v)
+    pricing = resolve_variant_pricing(v, promotion)
     stock = int(v.get("stock", 0))
     reserved = int(v.get("reserved", 0))
-    price = int(v.get("price", 0))
-    mrp = int(v.get("mrp", price)) if v.get("mrp") else price
+    d["price"] = pricing["price"]
+    d["mrp"] = pricing["mrp"]
+    d["discount_amount"] = pricing["discount_amount"]
+    d["discount_percent"] = pricing["discount_percent"]
     d["free_stock"] = max(0, stock - reserved)
-    d["discount_amount"] = max(0, mrp - price)
-    d["discount_percent"] = round(((mrp - price) / mrp) * 100, 1) if mrp > price else 0.0
     return d
 
 
-async def product_with_variants(p: dict) -> ProductOut:
-    variants = await db.variants.find({"product_id": p["id"]}).sort("price", 1).to_list(100)
-    vp = [variant_public(v) for v in variants]
+async def product_with_variants(p: dict, promotion: Optional[dict] = None) -> ProductOut:
+    promo = promotion or await get_active_promotion()
+    variants = await db.variants.find({"product_id": p["id"]}).to_list(100)
+    vp = [variant_public(v, promo) for v in variants]
+    vp.sort(key=lambda x: x["price"])
     price_from = min((v["price"] for v in vp), default=None)
-    mrp_from = min((v.get("mrp") or v["price"] for v in vp), default=None)
+    mrp_from = min((v["mrp"] for v in vp if v.get("mrp")), default=price_from)
     in_stock = any(v["free_stock"] > 0 for v in vp)
     total_stock = sum(v["free_stock"] for v in vp)
+    discount_percent = promo["discount_percent"] if promo.get("enabled") else 0.0
 
     return ProductOut(
         **{
@@ -63,6 +68,7 @@ async def product_with_variants(p: dict) -> ProductOut:
             "variants": vp,
             "price_from": price_from,
             "mrp_from": mrp_from,
+            "discount_percent": discount_percent,
             "in_stock": in_stock,
             "total_stock": total_stock,
         }
@@ -108,7 +114,8 @@ async def list_products(
         query["$or"] = [{"name": rx}, {"tagline": rx}, {"description": rx}, {"short_description": rx}]
     order = [("display_order", 1), ("sort", 1), ("created_at", -1)] if sort == "featured" else [("name", 1)]
     docs = await db.products.find(query).sort(order).to_list(200)
-    return [await product_with_variants(d) for d in docs]
+    promo = await get_active_promotion()
+    return [await product_with_variants(d, promo) for d in docs]
 
 
 @router.get("/catalog/products/{slug}", response_model=ProductOut)

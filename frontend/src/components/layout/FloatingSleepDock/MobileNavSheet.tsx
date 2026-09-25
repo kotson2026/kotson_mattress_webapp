@@ -1,6 +1,7 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { X, ArrowRight, UserRound, ShoppingBag, ShieldCheck } from "lucide-react";
 import { useMe } from "@/lib/session";
+import { useCheckoutDrawer } from "@/components/checkout/CheckoutDrawer";
 import { DOCK_CATEGORIES } from "./types";
 
 interface Props {
@@ -10,16 +11,17 @@ interface Props {
 }
 
 const SECONDARY_NAV = [
-  { label: "Why Kotson", href: "#why-kotson" },
-  { label: "Sleep Science", href: "#zones" },
+  { label: "Why Kotson", href: "/about" },
+  { label: "Sleep Science", href: "/sleep-science" },
   { label: "Stores", href: "/contact" },
   { label: "Track Order", href: "/track-order" },
-  { label: "About Us", href: "/about" },
   { label: "FAQ", href: "/faq" },
 ];
 
 export default function MobileNavSheet({ isOpen, onClose, cartCount }: Props) {
   const { data: me } = useMe();
+  const { openDrawer } = useCheckoutDrawer();
+  const location = useLocation();
 
   if (!isOpen) return null;
 
@@ -101,16 +103,26 @@ export default function MobileNavSheet({ isOpen, onClose, cartCount }: Props) {
               Discover
             </p>
             <nav className="mt-2 grid grid-cols-2 gap-2" aria-label="Mobile secondary links">
-              {SECONDARY_NAV.map((s) => (
-                <Link
-                  key={s.label}
-                  to={s.href}
-                  onClick={onClose}
-                  className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-brand-charcoal/80 hover:text-brand-deep hover:bg-black/[0.03]"
-                >
-                  {s.label}
-                </Link>
-              ))}
+              {SECONDARY_NAV.map((s) => {
+                const isActive =
+                  location.pathname === s.href ||
+                  (s.href === "/about" && location.pathname === "/why-kotson");
+                return (
+                  <Link
+                    key={s.label}
+                    to={s.href}
+                    onClick={onClose}
+                    aria-current={isActive ? "page" : undefined}
+                    className={`rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                      isActive
+                        ? "bg-brand-deep text-white font-semibold shadow-xs"
+                        : "text-brand-charcoal/80 hover:text-brand-deep hover:bg-black/[0.03]"
+                    }`}
+                  >
+                    {s.label}
+                  </Link>
+                );
+              })}
             </nav>
           </div>
         </div>
@@ -126,14 +138,18 @@ export default function MobileNavSheet({ isOpen, onClose, cartCount }: Props) {
               <UserRound className="h-4 w-4" />
               <span>{me ? "My Account" : "Sign In"}</span>
             </Link>
-            <Link
-              to="/cart"
-              onClick={onClose}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-deep py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-brand-deep/90"
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                openDrawer();
+              }}
+              aria-label={`Open cart, ${cartCount} items`}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-deep py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-brand-deep/90 cursor-pointer"
             >
               <ShoppingBag className="h-4 w-4" />
               <span>Cart ({cartCount})</span>
-            </Link>
+            </button>
           </div>
         </div>
       </div>

@@ -5,6 +5,7 @@ import { ArrowRight, Sparkles } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import type { Product } from "@/lib/types";
 import { inr } from "@/lib/format";
+import PriceDisplay from "@/components/product/PriceDisplay";
 import { DOCK_CATEGORIES, type CategorySlug } from "./types";
 
 interface Props {
@@ -129,9 +130,13 @@ export default function ProductShelf({ activeCategory, onSelectCategory, onClose
               </div>
 
               <div className="mt-3 flex items-center justify-between border-t border-black/[0.04] pt-2.5">
-                <span className="text-xs font-semibold text-brand-charcoal">
-                  {product.price_from ? inr(product.price_from) : "View details"}
-                </span>
+                <PriceDisplay
+                  salePrice={product.price_from}
+                  mrp={product.mrp_from}
+                  discountPercent={product.discount_percent ?? 40}
+                  isFrom={product.variants && product.variants.length > 1}
+                  size="sm"
+                />
                 <span className="text-xs font-medium text-brand-leaf group-hover:underline">
                   View →
                 </span>

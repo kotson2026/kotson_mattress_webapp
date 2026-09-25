@@ -34,6 +34,7 @@ export default function ProductDetail() {
   useEffect(() => {
     if (product) {
       document.title = `${product.name} — Kotson Mattress`;
+      const activeOfferPrice = selectedVariant ? selectedVariant.price : product.price_from;
       const ld = {
         "@context": "https://schema.org",
         "@type": "Product",
@@ -44,7 +45,7 @@ export default function ProductDetail() {
         offers: {
           "@type": "Offer",
           priceCurrency: "INR",
-          price: product.price_from !== null ? (product.price_from / 100).toFixed(2) : undefined,
+          price: activeOfferPrice !== null && activeOfferPrice !== undefined ? (activeOfferPrice / 100).toFixed(2) : undefined,
           availability: product.in_stock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
         },
       };

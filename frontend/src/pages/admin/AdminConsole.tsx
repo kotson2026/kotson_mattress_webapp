@@ -683,13 +683,72 @@ function SettingsView() {
         address: form.address,
         gst_rate: form.gst_rate ? Number(form.gst_rate) : undefined,
         shipping_flat_paise: form.shipping_flat_paise ? Number(form.shipping_flat_paise) : undefined,
+        promotion_enabled: form.promotion_enabled !== undefined ? form.promotion_enabled === "true" : undefined,
+        promotion_discount_percent: form.promotion_discount_percent ? Number(form.promotion_discount_percent) : undefined,
+        promotion_title: form.promotion_title,
       }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-settings"] }); toast.success("Settings saved"); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-settings"] });
+      qc.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Settings & promotion updated");
+    },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Could not save"),
   });
 
   return (
     <div className="grid gap-6">
+      <Panel title="Global Promotion & Sitewide Discounts" testId="admin-promotion-settings">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <Label>Promotion Title</Label>
+            <Input
+              defaultValue={settings?.promotion_title ?? "Sitewide Product Sale"}
+              onChange={(e) => setForm((f) => ({ ...f, promotion_title: e.target.value }))}
+              className="mt-1.5 min-h-11"
+              data-testid="promotion-title-input"
+            />
+          </div>
+          <div>
+            <Label>Discount Percentage (%)</Label>
+            <Input
+              type="number"
+              min="0"
+              max="100"
+              defaultValue={settings?.promotion_discount_percent ?? 40}
+              onChange={(e) => setForm((f) => ({ ...f, promotion_discount_percent: e.target.value }))}
+              className="mt-1.5 min-h-11"
+              data-testid="promotion-discount-input"
+            />
+          </div>
+          <div>
+            <Label>Promotion Status</Label>
+            <select
+              defaultValue={settings?.promotion_enabled !== false ? "true" : "false"}
+              onChange={(e) => setForm((f) => ({ ...f, promotion_enabled: e.target.value }))}
+              className="mt-1.5 flex h-11 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              data-testid="promotion-status-select"
+            >
+              <option value="true">Active — 40% OFF Sitewide</option>
+              <option value="false">Inactive — Full MRP</option>
+            </select>
+          </div>
+          <div>
+            <Label>Scope</Label>
+            <Input
+              readOnly
+              value="All Active Products & Variants (Mattresses, Pillows, Toppers, Baby+Kids)"
+              className="mt-1.5 min-h-11 bg-muted/50 cursor-not-allowed"
+            />
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Central server-side discount: Original product MRPs remain preserved. Calculated selling prices automatically propagate across Catalogue, PDP, Cart, Checkout, and Razorpay.
+        </p>
+        <Button className="mt-4 min-h-11" onClick={() => save.mutate()} data-testid="promotion-save-button">
+          Save Promotion
+        </Button>
+      </Panel>
+
       <Panel title="Integration state (secrets are never shown)" testId="admin-integrations">
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl border border-border p-4"><p className="text-xs text-muted-foreground">Razorpay</p><Badge variant="outline" className="mt-2" data-testid="settings-razorpay-state">{settings?.razorpay_state ?? "—"}</Badge></div>

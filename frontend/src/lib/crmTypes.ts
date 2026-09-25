@@ -348,3 +348,198 @@ export interface PublicTracking {
   }[];
   tracking_note: string;
 }
+
+// ------------------- KOTSON CRM EXPANDED TYPES -------------------
+
+export interface WorkdayStatus {
+  status: "not_clocked_in" | "clocked_in" | "on_break" | "clocked_out";
+  shift?: {
+    name: string;
+    start: string;
+    end: string;
+  };
+  clock_in_at?: string | null;
+  clock_out_at?: string | null;
+  current_break_start?: string | null;
+  gross_minutes?: number;
+  break_minutes?: number;
+  net_minutes?: number;
+  server_time: string;
+  employee_name?: string;
+  is_late?: boolean;
+}
+
+export interface AttendanceRecord {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  date: string;
+  status: "Present" | "Absent" | "Late" | "Half Day" | "On Leave" | "Weekly Off";
+  clock_in_at?: string | null;
+  clock_out_at?: string | null;
+  breaks?: { start: string; end?: string | null; duration_mins?: number }[];
+  gross_hours?: number;
+  break_minutes?: number;
+  net_hours?: number;
+  notes?: string;
+  is_test_data?: boolean;
+}
+
+export interface AttendanceStats {
+  total_employees: number;
+  clocked_in: number;
+  on_break: number;
+  absent: number;
+  on_leave: number;
+}
+
+export interface AttendanceCorrection {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  date: string;
+  requested_status: string;
+  reason: string;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+}
+
+export interface LeaveType {
+  code: string;
+  name: string;
+  days_per_year: number;
+}
+
+export interface LeaveRequest {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  type: string;
+  start_date: string;
+  end_date: string;
+  days: number;
+  reason: string;
+  status: "pending" | "approved" | "rejected";
+  approver_notes?: string;
+  created_at: string;
+}
+
+export interface LeaveBalance {
+  casual: number;
+  sick: number;
+  privilege: number;
+}
+
+export interface Payslip {
+  employee_id: string;
+  employee_name: string;
+  role: string;
+  month: string;
+  working_days: number;
+  present_days: number;
+  paid_leaves: number;
+  unpaid_leaves: number;
+  half_days: number;
+  gross_salary: number;
+  incentives: number;
+  deductions: number;
+  lop_deduction: number;
+  net_payable: number;
+  status: "draft" | "calculated" | "reviewed" | "approved" | "paid";
+  paid_at?: string | null;
+}
+
+export interface PayrollRun {
+  id: string;
+  period: string; // YYYY-MM
+  status: "draft" | "calculated" | "reviewed" | "approved" | "paid";
+  total_gross_paise: number;
+  total_net_paise: number;
+  total_employees: number;
+  calculated_at?: string;
+  approved_at?: string;
+  paid_at?: string;
+  payslips?: Payslip[];
+  is_test_data?: boolean;
+}
+
+export interface DashboardKPIs {
+  kpi_row_1: {
+    total_leads: number;
+    unassigned_leads: number;
+    assigned_leads: number;
+    new_leads: number;
+    follow_ups_due: number;
+    overdue_follow_ups: number;
+  };
+  kpi_row_2: {
+    calls_made: number;
+    connected_calls: number;
+    not_connected: number;
+    conversions: number;
+    crm_sales_paise: number;
+    conversion_rate_pct: number;
+  };
+  kpi_row_3: {
+    managers_active: number;
+    employees_active: number;
+    clocked_in: number;
+    on_break: number;
+    absent: number;
+    on_leave: number;
+  };
+  leads_by_stage: {
+    stage_code: string;
+    label: string;
+    count: number;
+    pct: number;
+  }[];
+  pipelines: {
+    id: string;
+    name: string;
+    campaigns: { code: string; name: string }[];
+  }[];
+}
+
+export interface TrendsAnalytics {
+  summary: {
+    total_calls: number;
+    connected_calls: number;
+    connect_rate_pct: number;
+    avg_call_duration_mins?: number;
+    total_conversions: number;
+    conversion_rate_pct: number;
+    total_revenue_paise: number;
+  };
+  calls_by_employee: {
+    employee_id: string;
+    employee_name: string;
+    calls: number;
+    connected: number;
+    conversions: number;
+    revenue_paise: number;
+  }[];
+  daily_trends?: {
+    date: string;
+    total_calls: number;
+    connected_calls: number;
+    conversions: number;
+  }[];
+  sources_breakdown?: {
+    source: string;
+    count: number;
+    converted: number;
+  }[];
+}
+
+export interface TestDataStatus {
+  is_test_data_active: boolean;
+  counts?: {
+    leads?: number;
+    calls?: number;
+    staff?: number;
+    attendance?: number;
+    payroll?: number;
+  };
+}
+

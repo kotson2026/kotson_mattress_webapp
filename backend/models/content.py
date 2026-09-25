@@ -77,6 +77,11 @@ class SettingsOut(BaseModel):
     razorpay_state: str = "pending_keys"
     mail_state: str = "pending_provider"
     analytics_consent: str = "not_configured"
+    promotion_enabled: bool = True
+    promotion_discount_percent: float = 40.0
+    promotion_title: str = "Sitewide Product Sale"
+    promotion_discount_type: str = "percentage"
+    promotion_scope: str = "all_products"
 
 
 class SettingsUpdate(BaseModel):
@@ -86,6 +91,11 @@ class SettingsUpdate(BaseModel):
     gst_rate: Optional[float] = None
     shipping_flat_paise: Optional[int] = None
     free_shipping_enabled: Optional[bool] = None
+    promotion_enabled: Optional[bool] = None
+    promotion_discount_percent: Optional[float] = None
+    promotion_title: Optional[str] = None
+    promotion_discount_type: Optional[str] = None
+    promotion_scope: Optional[str] = None
 
 
 class InquiryNote(BaseModel):

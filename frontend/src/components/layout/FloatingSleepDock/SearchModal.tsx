@@ -5,6 +5,7 @@ import { Search, X, ArrowRight } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import type { Product } from "@/lib/types";
 import { inr } from "@/lib/format";
+import PriceDisplay from "@/components/product/PriceDisplay";
 
 interface Props {
   isOpen: boolean;
@@ -113,9 +114,13 @@ export default function SearchModal({ isOpen, onClose }: Props) {
                     </span>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-xs font-semibold text-brand-charcoal">
-                      {p.price_from ? inr(p.price_from) : ""}
-                    </span>
+                    <PriceDisplay
+                      salePrice={p.price_from}
+                      mrp={p.mrp_from}
+                      discountPercent={p.discount_percent ?? 40}
+                      isFrom={p.variants && p.variants.length > 1}
+                      size="sm"
+                    />
                     <ArrowRight className="h-4 w-4 text-brand-leaf opacity-0 transition-opacity group-hover:opacity-100" />
                   </div>
                 </Link>

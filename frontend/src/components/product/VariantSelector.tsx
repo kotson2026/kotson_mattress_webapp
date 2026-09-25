@@ -1,13 +1,14 @@
 import { useState, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
 import type { Product, Variant } from "@/lib/types";
 import { inr } from "@/lib/format";
 import { apiPost } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import MattressVariantSelector from "./MattressVariantSelector";
 import TopperVariantSelector from "./TopperVariantSelector";
+import PriceDisplay from "./PriceDisplay";
+import { useCheckoutDrawer } from "@/components/checkout/CheckoutDrawer";
 
 interface VariantSelectorProps {
   product: Product;
@@ -16,7 +17,7 @@ interface VariantSelectorProps {
 
 export default function VariantSelector({ product, onVariantChange }: VariantSelectorProps) {
   const qc = useQueryClient();
-  const navigate = useNavigate();
+  const { openDrawer } = useCheckoutDrawer();
   
   // Default variant for pillows or products with 1 variant
   const defaultVariant = product.variants.length === 1 ? product.variants[0] : null;
@@ -41,18 +42,12 @@ export default function VariantSelector({ product, onVariantChange }: VariantSel
   const handleAddToCart = useCallback(() => {
     if (!selectedVariant) return;
     mutation.mutate(selectedVariant.id, {
-      onSuccess: () => toast.success("Added to cart"),
-    });
-  }, [selectedVariant, mutation]);
-
-  const handleBuyItNow = useCallback(() => {
-    if (!selectedVariant) return;
-    mutation.mutate(selectedVariant.id, {
       onSuccess: () => {
-        navigate("/checkout");
-      }
+        toast.success("Added to cart");
+        openDrawer();
+      },
     });
-  }, [selectedVariant, mutation, navigate]);
+  }, [selectedVariant, mutation, openDrawer]);
 
   return (
     <div className="flex flex-col gap-6" data-testid="unified-variant-selector">
@@ -66,17 +61,18 @@ export default function VariantSelector({ product, onVariantChange }: VariantSel
       )}
 
       {/* Price and Stock Summary */}
-      <div className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card p-5">
-        <div>
-          <p className="font-heading text-3xl font-bold tracking-tight text-foreground" data-testid="variant-price">
-            {selectedVariant ? inr(selectedVariant.price) : (product.price_from ? inr(product.price_from) : "—")}
-          </p>
-          {selectedVariant?.mrp && selectedVariant.mrp > selectedVariant.price && (
-            <p className="mt-1 text-sm text-muted-foreground">
-              MRP <s>{inr(selectedVariant.mrp)}</s> <span className="text-brand-leaf ml-1 font-medium">({Math.round(((selectedVariant.mrp - selectedVariant.price) / selectedVariant.mrp) * 100)}% OFF)</span>
-            </p>
-          )}
-          <p className="mt-2 text-xs text-muted-foreground">incl. of all taxes</p>
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-card p-5">
+        <div className="flex flex-col gap-1">
+          <div data-testid="variant-price">
+            <PriceDisplay
+              salePrice={selectedVariant ? selectedVariant.price : (product.price_from ?? 0)}
+              mrp={selectedVariant ? selectedVariant.mrp : product.mrp_from}
+              discountPercent={selectedVariant ? selectedVariant.discount_percent : (product.discount_percent ?? 40)}
+              isFrom={!selectedVariant && product.variants.length > 1}
+              size="xl"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">incl. of all taxes</p>
         </div>
         <div className="text-right flex flex-col justify-end">
           {selectedVariant ? (
@@ -104,21 +100,11 @@ export default function VariantSelector({ product, onVariantChange }: VariantSel
           size="lg"
           variant="default"
           disabled={!selectedVariant || selectedVariant.stock === 0 || mutation.isPending}
-          onClick={handleBuyItNow}
-          className="min-h-14 w-full text-base font-semibold shadow-lg hover:shadow-xl transition-all"
-          data-testid="buy-it-now-btn"
-        >
-          {mutation.isPending ? "Processing…" : selectedVariant && selectedVariant.stock === 0 ? "Out of stock" : "Buy It Now"}
-        </Button>
-        <Button
-          size="lg"
-          variant="outline"
-          disabled={!selectedVariant || selectedVariant.stock === 0 || mutation.isPending}
           onClick={handleAddToCart}
-          className="min-h-14 w-full text-base font-medium border-2 hover:bg-brand-sand/30 transition-colors"
+          className="min-h-14 w-full text-base font-semibold shadow-lg hover:shadow-xl transition-all"
           data-testid="add-to-cart-btn"
         >
-          {mutation.isPending ? "Processing…" : "Add to Cart"}
+          {mutation.isPending ? "Processing…" : selectedVariant && selectedVariant.stock === 0 ? "Out of stock" : "Add to Cart"}
         </Button>
       </div>
       

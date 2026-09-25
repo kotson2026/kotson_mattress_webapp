@@ -111,7 +111,7 @@ export default function VideoHero() {
 
   return (
     <section
-      className="hero relative w-full min-h-svh overflow-hidden m-0 p-0 bg-black"
+      className="hero relative w-full h-[100svh] min-h-[100svh] overflow-hidden m-0 p-0 bg-black"
       aria-label="Kotson hero video"
       data-testid="hero-video"
     >

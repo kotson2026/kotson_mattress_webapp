@@ -110,10 +110,135 @@ async def main() -> None:
     }):
         created["form"] += 1
 
+    # ── 5 Sales Pipelines with custom funnel stages ──────────────────
+    def make_stages(product: str) -> list:
+        return [
+            {"code": "fresh_lead",      "label": "Fresh Lead",      "bucket": "IN_PROGRESS", "sort": 10, "is_terminal": False, "is_won": False, "is_lost": False, "is_archived": False, "color": "#7C9C59", "require_follow_up": False, "require_note": False, "description": ""},
+            {"code": "contacted",       "label": "Contacted",       "bucket": "IN_PROGRESS", "sort": 20, "is_terminal": False, "is_won": False, "is_lost": False, "is_archived": False, "color": "#7C9C59", "require_follow_up": False, "require_note": False, "description": ""},
+            {"code": "interested",      "label": "Interested",      "bucket": "IN_PROGRESS", "sort": 30, "is_terminal": False, "is_won": False, "is_lost": False, "is_archived": False, "color": "#467065", "require_follow_up": True,  "require_note": False, "description": ""},
+            {"code": "follow_up",       "label": "Follow-up",       "bucket": "IN_PROGRESS", "sort": 40, "is_terminal": False, "is_won": False, "is_lost": False, "is_archived": False, "color": "#467065", "require_follow_up": True,  "require_note": False, "description": ""},
+            {"code": "hot_lead",        "label": "Hot Lead",        "bucket": "IN_PROGRESS", "sort": 50, "is_terminal": False, "is_won": False, "is_lost": False, "is_archived": False, "color": "#16241C", "require_follow_up": True,  "require_note": False, "description": ""},
+            {"code": "order_initiated", "label": "Order Initiated", "bucket": "IN_PROGRESS", "sort": 60, "is_terminal": False, "is_won": False, "is_lost": False, "is_archived": False, "color": "#16241C", "require_follow_up": False, "require_note": True,  "description": ""},
+            {"code": "converted",       "label": "Converted",       "bucket": "CONVERTED",   "sort": 70, "is_terminal": True,  "is_won": True,  "is_lost": False, "is_archived": False, "color": "#467065", "require_follow_up": False, "require_note": False, "description": ""},
+            {"code": "not_interested",  "label": "Not Interested",  "bucket": "LOST",        "sort": 80, "is_terminal": True,  "is_won": False, "is_lost": True,  "is_archived": False, "color": "#EF4444", "require_follow_up": False, "require_note": True,  "description": ""},
+            {"code": "unreachable",     "label": "Unreachable",     "bucket": "LOST",        "sort": 90, "is_terminal": True,  "is_won": False, "is_lost": True,  "is_archived": False, "color": "#EF4444", "require_follow_up": False, "require_note": False, "description": ""},
+        ]
+
+    PIPELINES = [
+        {
+            "code": "mattress-sales", "name": "Mattress Sales",
+            "description": "Sales pipeline for all mattress enquiries and campaigns.",
+            "pipeline_type": "Product Sales", "kind": "sales",
+            "associated_products": ["Ortho Therapy Mattress", "Spine Balance Mattress", "Ortho Core Max Mattress"],
+        },
+        {
+            "code": "pillow-sales", "name": "Pillow Sales",
+            "description": "Sales pipeline for all pillow Categories.",
+            "pipeline_type": "Product Category", "kind": "sales",
+            "associated_products": ["Standard Pillow", "Ortho Wave Pillow", "Jumbo Pillow"],
+        },
+        {
+            "code": "topper-sales", "name": "Topper Sales",
+            "description": "Sales pipeline for mattress topper products.",
+            "pipeline_type": "Product Sales", "kind": "sales",
+            "associated_products": ["Kotson Topper"],
+        },
+        {
+            "code": "baby-kids-sales", "name": "Baby + Kids Sales",
+            "description": "Sales pipeline for baby and kids mattress range.",
+            "pipeline_type": "Product Category", "kind": "sales",
+            "associated_products": ["Baby Mattress", "Kids Mattress"],
+        },
+        {
+            "code": "abandoned-cart-recovery", "name": "Abandoned Cart Recovery",
+            "description": "Recovery pipeline for customers who abandoned cart without purchasing.",
+            "pipeline_type": "Abandoned Cart", "kind": "sales",
+            "associated_products": [],
+        },
+    ]
+
+    pipeline_ids = {}
+    for p_data in PIPELINES:
+        pid = str(uuid.uuid4())
+        pipeline_ids[p_data["code"]] = pid
+        if await upsert("pipelines", {"code": p_data["code"]}, {
+            "id": pid,
+            "code": p_data["code"],
+            "name": p_data["name"],
+            "description": p_data["description"],
+            "pipeline_type": p_data["pipeline_type"],
+            "kind": p_data["kind"],
+            "associated_products": p_data["associated_products"],
+            "stages": make_stages(p_data["name"]),
+            "is_active": True,
+            "is_archived": False,
+            "is_test_data": True,
+            "created_at": now_utc(),
+        }):
+            created["pipeline"] += 1
+
+    # ── 25 Campaigns (5 per pipeline) ────────────────────────────────
+    CAMPAIGNS = [
+        # Mattress Sales
+        ("mattress-sales", "sep-website-mattress",    "September Website Mattress Leads",    "website",      "active"),
+        ("mattress-sales", "hyd-mattress-campaign",   "Hyderabad Mattress Campaign",         "walk_in",      "active"),
+        ("mattress-sales", "ortho-therapy-leads",     "Ortho Therapy Leads",                 "instagram",    "active"),
+        ("mattress-sales", "spine-balance-leads",     "Spine Balance Leads",                 "google_ads",   "paused"),
+        ("mattress-sales", "walkin-mattress-leads",   "Walk-in Mattress Leads",              "walk_in",      "active"),
+        # Pillow Sales
+        ("pillow-sales",   "website-pillow-leads",    "Website Pillow Leads",                "website",      "active"),
+        ("pillow-sales",   "ortho-pillow-leads",      "Ortho Pillow Leads",                  "instagram",    "active"),
+        ("pillow-sales",   "standard-pillow-leads",   "Standard Pillow Leads",               "google_ads",   "active"),
+        ("pillow-sales",   "referral-pillow-leads",   "Referral Pillow Leads",               "referral",     "active"),
+        ("pillow-sales",   "hyd-pillow-leads",        "Hyderabad Pillow Leads",              "walk_in",      "paused"),
+        # Topper Sales
+        ("topper-sales",   "sep-topper-leads",        "September Topper Leads",              "website",      "active"),
+        ("topper-sales",   "topper-instagram",        "Topper Instagram Campaign",           "instagram",    "active"),
+        ("topper-sales",   "topper-referral",         "Topper Referral Leads",               "referral",     "active"),
+        ("topper-sales",   "topper-google-ads",       "Topper Google Ads",                   "google_ads",   "paused"),
+        ("topper-sales",   "topper-walkin",           "Topper Walk-in Enquiries",            "walk_in",      "active"),
+        # Baby + Kids
+        ("baby-kids-sales","baby-mattress-leads",     "Baby Mattress Leads",                 "website",      "active"),
+        ("baby-kids-sales","kids-mattress-referral",  "Kids Mattress Referral",              "referral",     "active"),
+        ("baby-kids-sales","baby-instagram-leads",    "Baby Instagram Campaign",             "instagram",    "active"),
+        ("baby-kids-sales","baby-google-ads",         "Baby + Kids Google Ads",              "google_ads",   "paused"),
+        ("baby-kids-sales","baby-walkin",             "Baby Walk-in Enquiries",              "walk_in",      "active"),
+        # Abandoned Cart
+        ("abandoned-cart-recovery","cart-mattress-recovery",   "Mattress Cart Recovery",    "website",      "active"),
+        ("abandoned-cart-recovery","cart-pillow-recovery",     "Pillow Cart Recovery",      "website",      "active"),
+        ("abandoned-cart-recovery","cart-topper-recovery",     "Topper Cart Recovery",      "website",      "active"),
+        ("abandoned-cart-recovery","cart-high-value-recovery", "High Value Cart Recovery",  "website",      "active"),
+        ("abandoned-cart-recovery","cart-repeat-visitors",     "Repeat Visitor Recovery",   "website",      "paused"),
+    ]
+
+    camp_created = 0
+    for pipeline_code, code, name, source, status in CAMPAIGNS:
+        pid = pipeline_ids.get(pipeline_code)
+        if not pid:
+            continue
+        cid = str(uuid.uuid4())
+        if await upsert("campaigns", {"code": code}, {
+            "id": cid, "code": code, "name": name,
+            "pipeline_id": pid,
+            "lead_source": source,
+            "status": status,
+            "manager_ids": [], "employee_ids": [],
+            "associated_products": [],
+            "target_count": 50,
+            "is_active": status == "active",
+            "is_test_data": True,
+            "ad_metrics_source": "not_connected",
+            "created_at": now_utc(),
+        }):
+            camp_created += 1
+
     print("Created:", created)
+    print(f"Pipelines: {created['pipeline']} (5 Kotson sales pipelines with 9 custom stages each)")
+    print(f"Campaigns: {camp_created} (25 campaigns across 5 pipelines)")
     print("ALL call options are INACTIVE drafts — activate them in /crm/dispositions after approving the wording.")
     print("Until activated, saving a call is correctly rejected: the empty state is honest, not fake.")
 
 
 if __name__ == "__main__":
     asyncio.run(main())
+

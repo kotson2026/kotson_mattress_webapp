@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
 import type { CartView } from "@/lib/types";
@@ -13,6 +14,9 @@ import MobileNavSheet from "./MobileNavSheet";
 import type { DockState, CategorySlug } from "./types";
 
 export default function FloatingSleepDock() {
+  const location = useLocation();
+  const isHome = location.pathname === "/";
+
   // Navigation mode states: Landing and Compact
   const [dockState, setDockState] = useState<DockState>("landing");
   const [activeCategory, setActiveCategory] = useState<CategorySlug | null>(null);
@@ -20,6 +24,13 @@ export default function FloatingSleepDock() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [prefersReduced, setPrefersReduced] = useState(false);
+
+  // Close menus when route changes
+  useEffect(() => {
+    setActiveCategory(null);
+    setIsMobileMenuOpen(false);
+    setIsSearchOpen(false);
+  }, [location.pathname]);
 
   // Cart query
   const { data: cart } = useQuery({
@@ -124,15 +135,15 @@ export default function FloatingSleepDock() {
     }, 180);
   }, []);
 
-  const isLanding = dockState === "landing";
+  const isLanding = isHome && dockState === "landing";
 
   return (
     <>
-      {/* Floating Sleep Dock Container — centered, 18-20px from top */}
+      {/* Floating Sleep Dock Container — centered, 14-20px from top with safe-area */}
       <div
         ref={containerRef}
         onMouseLeave={handleShelfClose}
-        className="fixed top-[18px] sm:top-5 inset-x-0 z-50 flex justify-center pointer-events-none px-4 sm:px-6"
+        className="fixed top-[max(14px,env(safe-area-inset-top))] sm:top-[18px] lg:top-5 inset-x-0 z-50 flex justify-center pointer-events-none px-3.5 sm:px-6"
         data-testid="floating-sleep-dock-container"
       >
         {/* DESKTOP DOCK (lg:flex) — Rounded pill dock centered over the hero */}

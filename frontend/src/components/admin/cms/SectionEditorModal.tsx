@@ -418,49 +418,69 @@ export default function SectionEditorModal({
             <div className="space-y-4 rounded-xl border border-border p-5 bg-card">
               <div className="flex items-center gap-2 text-sm font-bold text-foreground">
                 <Video className="w-4 h-4 text-primary" />
-                Shark Tank India Feature
+                Shark Tank India Feature (Design 2 Unified Panel)
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-xs">Feature Banner Image URL</Label>
+                  <Label className="text-xs">Original Poster Image URL</Label>
                   <Input
-                    value={configData.banner_url || ""}
-                    onChange={(e) => handleConfigChange("banner_url", e.target.value)}
+                    value={configData.banner_url || configData.poster_url || ""}
+                    onChange={(e) => {
+                      handleConfigChange("banner_url", e.target.value);
+                      handleConfigChange("poster_url", e.target.value);
+                    }}
+                    placeholder="/shark-tank/kotson-shark-tank-square.webp"
                     className="mt-1 text-xs font-mono"
                   />
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    Authoritative poster artwork with GOLS organic latex branding.
+                  </p>
                 </div>
                 <div>
-                  <Label className="text-xs">Episode Video Stream URL</Label>
+                  <Label className="text-xs">YouTube URL or Video ID</Label>
                   <Input
-                    value={configData.video_url || ""}
-                    onChange={(e) => handleConfigChange("video_url", e.target.value)}
+                    value={configData.youtube_url || configData.video_url || ""}
+                    onChange={(e) => {
+                      handleConfigChange("youtube_url", e.target.value);
+                      handleConfigChange("video_url", e.target.value);
+                    }}
+                    placeholder="https://www.youtube.com/watch?v=xF_ri6AQJMo or xF_ri6AQJMo"
                     className="mt-1 text-xs font-mono"
                   />
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    Accepts standard YouTube links, short links, or direct 11-char ID.
+                  </p>
                 </div>
               </div>
 
-              {configData.banner_url && (
-                <div className="rounded-xl overflow-hidden border border-border bg-black/5 aspect-21/9 max-h-40 flex items-center justify-center">
-                  <img src={configData.banner_url} alt="Shark Tank Banner" className="w-full h-full object-cover" />
+              {(configData.banner_url || configData.poster_url) && (
+                <div className="rounded-xl overflow-hidden border border-border bg-black/5 max-h-48 flex items-center justify-center p-2">
+                  <img
+                    src={configData.banner_url || configData.poster_url}
+                    alt="Shark Tank Poster Preview"
+                    className="max-h-44 object-contain"
+                  />
                 </div>
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-xs">Title</Label>
+                  <Label className="text-xs">Eyebrow Text</Label>
                   <Input
-                    value={configData.title || ""}
-                    onChange={(e) => handleConfigChange("title", e.target.value)}
-                    className="mt-1 text-xs"
+                    value={configData.eyebrow ?? "AS SEEN ON"}
+                    onChange={(e) => handleConfigChange("eyebrow", e.target.value)}
+                    placeholder="AS SEEN ON"
+                    className="mt-1 text-xs uppercase"
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">CTA Label</Label>
+                  <Label className="text-xs">Bottom Caption</Label>
                   <Input
-                    value={configData.cta_label || ""}
-                    onChange={(e) => handleConfigChange("cta_label", e.target.value)}
-                    className="mt-1 text-xs"
+                    value={configData.caption ?? "KOTSON × SHARK TANK INDIA"}
+                    onChange={(e) => handleConfigChange("caption", e.target.value)}
+                    placeholder="KOTSON × SHARK TANK INDIA"
+                    className="mt-1 text-xs uppercase"
                   />
                 </div>
               </div>

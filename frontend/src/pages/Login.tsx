@@ -63,10 +63,67 @@ export default function Login() {
               <Label htmlFor="login-password">Password</Label>
               <Input id="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" className="mt-1.5 min-h-11" data-testid="login-password-input" />
             </div>
-            <Button type="submit" size="lg" className="min-h-12" disabled={mutation.isPending} data-testid="login-form-submit-button">
+            <Button type="submit" size="lg" className="min-h-12 bg-[#7C9C59] hover:bg-[#6c8a4c] text-white font-bold" disabled={mutation.isPending} data-testid="login-form-submit-button">
               {mutation.isPending ? "Signing in…" : "Sign in"}
             </Button>
           </form>
+
+          {/* Quick-Fill Demo Credentials Helper */}
+          <div className="mt-8 rounded-2xl border border-[#7C9C59]/30 bg-[#7C9C59]/5 p-4 space-y-3">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#467065] block">
+              Quick-Fill Test Credentials:
+            </span>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEmail("crm@kotsonmattress.com");
+                  setPassword("Kotson-CRM-2026!");
+                }}
+                className="h-8 text-[11px] border-border/80 hover:border-[#7C9C59] hover:bg-white"
+              >
+                CRM Master Admin
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEmail("crm.employee@kotsonmattress.com");
+                  setPassword("Kotson-CRMEmp-2026!");
+                }}
+                className="h-8 text-[11px] border-border/80 hover:border-[#7C9C59] hover:bg-white"
+              >
+                CRM Employee
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEmail("hello@kotsonmattress.com");
+                  setPassword("Kotson-Owner-2026!");
+                }}
+                className="h-8 text-[11px] border-border/80 hover:border-[#7C9C59] hover:bg-white"
+              >
+                Owner Admin
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEmail("manager@kotsonmattress.com");
+                  setPassword("Kotson-Manager-2026!");
+                }}
+                className="h-8 text-[11px] border-border/80 hover:border-[#7C9C59] hover:bg-white"
+              >
+                Ops Manager
+              </Button>
+            </div>
+          </div>
 
           <p className="mt-6 text-sm text-muted-foreground">
             New here?{" "}

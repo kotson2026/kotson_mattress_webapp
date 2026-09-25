@@ -5,10 +5,12 @@ import StorefrontHeader from "@/components/layout/StorefrontHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
 
 const TITLES: Record<string, string> = {
-  policy_shipping: "Shipping policy",
-  policy_returns: "Returns & 100-night trial",
-  policy_privacy: "Privacy policy",
-  policy_terms: "Terms of service",
+  policy_shipping: "Shipping Policy",
+  policy_returns: "Returns & 100-Night Trial",
+  policy_privacy: "Privacy Policy",
+  policy_terms: "Terms of Service",
+  policy_warranty: "Warranty & Care",
+  policy_refund: "Refund & Cancellation Policy",
 };
 
 export default function Policy() {

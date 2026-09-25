@@ -81,9 +81,14 @@ async def evaluate_referral(code: Optional[str], user, subtotal: int) -> dict:
     return out
 
 
+from lib.pricing import get_active_promotion, resolve_variant_pricing
+
+
 async def cart_view(cart: dict, user) -> CartView:
+    promo = await get_active_promotion()
     lines: list[CartLine] = []
     subtotal = 0
+    total_mrp = 0
     for item in cart.get("items", []):
         v = await db.variants.find_one({"id": item["variant_id"]})
         if not v:
@@ -91,20 +96,35 @@ async def cart_view(cart: dict, user) -> CartView:
         p = await db.products.find_one({"id": v["product_id"]})
         if not p:
             continue
+        pricing = resolve_variant_pricing(v, promo)
+        unit_price = pricing["price"]
+        mrp = pricing["mrp"]
         free_stock = max(0, int(v["stock"]) - int(v.get("reserved", 0)))
         qty = int(item["qty"])
+        line_total = unit_price * qty
+        img = None
+        if p.get("images") and len(p["images"]) > 0:
+            img = p["images"][0]
+        elif p.get("primary_image"):
+            img = p["primary_image"]
+
         line = CartLine(
             variant_id=v["id"], product_id=p["id"], product_slug=p["slug"], product_name=p["name"],
-            sku=v["sku"], size=v["size"], thickness=v.get("thickness"), firmness=v.get("firmness"),
-            qty=qty, unit_price=int(v["price"]), line_total=int(v["price"]) * qty,
+            sku=v["sku"], size=v["size"], length=v.get("length"), width=v.get("width"),
+            thickness=v.get("thickness"), firmness=v.get("firmness"),
+            qty=qty, unit_price=unit_price, line_total=line_total,
+            mrp=mrp, discount_amount=pricing["discount_amount"], discount_percent=pricing["discount_percent"],
             stock=int(v["stock"]), free_stock=free_stock, is_active=bool(v.get("is_active")) and bool(p.get("is_active")),
+            image=img,
         )
         lines.append(line)
         if line.is_active:
             subtotal += line.line_total
+            total_mrp += mrp * qty
     ref = await evaluate_referral(cart.get("referred_code"), user, subtotal)
     return CartView(
         items=lines, item_count=sum(l.qty for l in lines if l.is_active), subtotal=subtotal,
+        total_mrp=total_mrp, total_discount=max(0, total_mrp - subtotal),
         referred_code=ref["referred_code"], referral_status=ref["referral_status"],
         referral_discount=ref["referral_discount"], referral_note=ref["referral_note"],
     )

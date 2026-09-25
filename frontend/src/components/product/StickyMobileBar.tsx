@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useCheckoutDrawer } from "@/components/checkout/CheckoutDrawer";
 import { Button } from "@/components/ui/button";
 import { inr } from "@/lib/format";
 import { apiPost } from "@/lib/api";
 import type { Product, Variant } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import PriceDisplay from "./PriceDisplay";
 
 interface StickyMobileBarProps {
   product: Product;
@@ -15,7 +16,7 @@ interface StickyMobileBarProps {
 
 export default function StickyMobileBar({ product, selectedVariant }: StickyMobileBarProps) {
   const qc = useQueryClient();
-  const navigate = useNavigate();
+  const { openDrawer } = useCheckoutDrawer();
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -39,10 +40,13 @@ export default function StickyMobileBar({ product, selectedVariant }: StickyMobi
     onError: (e) => toast.error(e instanceof Error ? e.message : "Could not add to cart"),
   });
 
-  const handleBuyItNow = () => {
+  const handleAddToCart = () => {
     if (!selectedVariant) return;
     mutation.mutate(selectedVariant.id, {
-      onSuccess: () => navigate("/checkout"),
+      onSuccess: () => {
+        toast.success("Added to cart");
+        openDrawer();
+      },
     });
   };
 
@@ -60,17 +64,22 @@ export default function StickyMobileBar({ product, selectedVariant }: StickyMobi
         <span className="text-xs font-medium text-muted-foreground truncate max-w-[150px]">
           {product.name}
         </span>
-        <span className="font-heading text-lg font-bold text-foreground">
-          {selectedVariant ? inr(selectedVariant.price) : (product.price_from ? inr(product.price_from) : "—")}
-        </span>
+        <PriceDisplay
+          salePrice={selectedVariant ? selectedVariant.price : (product.price_from ?? 0)}
+          mrp={selectedVariant ? selectedVariant.mrp : product.mrp_from}
+          discountPercent={selectedVariant ? selectedVariant.discount_percent : (product.discount_percent ?? 40)}
+          isFrom={!selectedVariant && product.variants.length > 1}
+          size="sm"
+        />
       </div>
       <Button
         size="default"
-        onClick={handleBuyItNow}
+        onClick={handleAddToCart}
         disabled={!selectedVariant || selectedVariant.stock === 0 || mutation.isPending}
         className="h-10 px-6 font-semibold"
+        data-testid="sticky-add-to-cart-btn"
       >
-        {mutation.isPending ? "Processing..." : "Buy It Now"}
+        {mutation.isPending ? "Processing..." : "Add to Cart"}
       </Button>
     </div>
   );

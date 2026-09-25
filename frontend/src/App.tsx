@@ -1,5 +1,7 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
+import { CheckoutDrawerProvider } from "@/components/checkout/CheckoutDrawer";
 import Home from "@/pages/Home";
 import Collections from "@/pages/Collections";
 import CollectionCategory from "@/pages/CollectionCategory";
@@ -12,6 +14,7 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Account from "@/pages/Account";
 import About from "@/pages/About";
+import SleepScience from "@/pages/SleepScience";
 import FAQ from "@/pages/FAQ";
 import Contact from "@/pages/Contact";
 import Policy from "@/pages/Policy";
@@ -23,11 +26,23 @@ import CRMConsole from "@/pages/crm/CRMConsole";
 import OpsConsole from "@/pages/ops/OpsConsole";
 import DealerConsole from "@/pages/dealer/DealerConsole";
 import RoleGuard from "@/components/auth/RoleGuard";
+import KotsonChatbot from "@/components/chat/KotsonChatbot";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+}
 
 // One <Route> per page in src/pages; BrowserRouter already wraps this in main.tsx.
 export default function App() {
   return (
-    <>
+    <CheckoutDrawerProvider>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/collections" element={<Collections />} />
@@ -41,6 +56,8 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/about" element={<About />} />
+        <Route path="/why-kotson" element={<Navigate to="/about" replace />} />
+        <Route path="/sleep-science" element={<SleepScience />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/policies/:slug" element={<Policy />} />
@@ -83,7 +100,8 @@ export default function App() {
         />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <KotsonChatbot />
       <Toaster position="bottom-right" />
-    </>
+    </CheckoutDrawerProvider>
   );
 }
