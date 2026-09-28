@@ -1,9 +1,11 @@
 """CMS router: dynamic visual page builder, 22 section types, header/navigation, footer, branding, and draft->publish rollback."""
 
+import os
 import uuid
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
 from lib.cms_migrator import ensure_cms_migrated
 from lib.db import db
@@ -20,6 +22,7 @@ from models.cms import (
     FooterColumn,
     FooterConfig,
     HeaderConfig,
+    CustomerSupportConfig,
 )
 
 router = APIRouter()
@@ -176,7 +179,7 @@ SECTION_TYPES = [
         "description": "High-impact closing banner before footer with phone order hotline and Buy button.",
         "default_config": {
             "heading": "Where Better Sleep Begins.",
-            "subheading": "Experience the contouring purity of 100% organic Dunlop latex with our 100-night home trial.",
+            "subheading": "Experience the contouring purity of 100% organic Dunlop latex with our 30-night home trial.",
             "cta_label": "Shop the collection",
             "cta_link": "/collections",
             "bg_color": "#16241C",
@@ -219,12 +222,12 @@ SECTION_TYPES = [
         },
     },
     {
-        "type": "trial_100_night_banner",
-        "name": "100-Night Trial Guarantee Banner",
+        "type": "trial_30_night_banner",
+        "name": "30-Night Trial Guarantee Banner",
         "category": "Trust & Information",
-        "description": "Confidence builder banner explaining hassle-free 100-night trial and doorstep pickup.",
+        "description": "Confidence builder banner explaining hassle-free 30-night trial and doorstep pickup.",
         "default_config": {
-            "title": "Sleep on it for 100 Nights. Love it or Return It.",
+            "title": "Sleep on it for 30 Nights. Love it or Return It.",
             "points": ["100% Full Refund", "Zero Pickup Charges", "Donated to Charity"],
         },
     },
@@ -235,7 +238,7 @@ SECTION_TYPES = [
         "description": "Categorized FAQ answers for trials, custom sizes, delivery, and care.",
         "default_config": {
             "items": [
-                {"q": "How does the 100-night trial work?", "a": "Sleep on your Kotson mattress for at least 30 nights to adjust. If still not delighted, contact us for full refund and pickup."},
+                {"q": "How does the 30-night trial work?", "a": "Sleep on your Kotson mattress for at least 10 nights to adjust. If still not delighted, contact us for full refund and pickup."},
                 {"q": "Can I order custom sizes for an antique bedframe?", "a": "Yes! We manufacture custom millimeter-precise sizes with 5-day dispatch."},
                 {"q": "What is the warranty coverage?", "a": "Kotson mattresses carry a comprehensive 10-year warranty covering sagging over 1 inch and foam defects."},
             ],
@@ -370,9 +373,45 @@ async def get_cms_pages(user=Depends(optional_user)):
     return [clean_doc(p) for p in pages]
 
 
+@router.get("/public/homepage")
+async def get_public_homepage():
+    """Returns only published customer-facing homepage configuration efficiently."""
+    page = await db.cms_pages.find_one({"slug": "home", "status": "published"})
+    if not page:
+        await ensure_cms_migrated()
+        page = await db.cms_pages.find_one({"slug": "home"})
+        if not page:
+            raise HTTPException(status_code=404, detail="Homepage not found")
+
+    doc = clean_doc(page)
+    sections = doc.get("published_sections") or doc.get("sections", [])
+    
+    # Filter only visible sections and clean customer-facing fields
+    safe_sections = []
+    for s in sorted(sections, key=lambda x: x.get("order", 0)):
+        if s.get("is_visible") is False:
+            continue
+        safe_sections.append({
+            "id": s.get("id"),
+            "type": s.get("type"),
+            "title": s.get("title"),
+            "subtitle": s.get("subtitle"),
+            "order": s.get("order", 0),
+            "config": s.get("config", {}),
+        })
+
+    return {
+        "slug": "home",
+        "title": doc.get("title"),
+        "seo_title": doc.get("seo_title"),
+        "seo_description": doc.get("seo_description"),
+        "sections": safe_sections,
+    }
+
+
 @router.get("/cms/pages/{slug}")
-async def get_cms_page_by_slug(slug: str, user=Depends(optional_user)):
-    """Fetch page by slug."""
+async def get_cms_page_by_slug(slug: str, preview: bool = False, user=Depends(optional_user)):
+    """Fetch page by slug. Returns published_sections for live site, or draft sections if staff preview."""
     is_staff = user and any(r in user.get("roles", []) for r in (OWNER, ADMIN))
     query = {"slug": slug.strip().lower()}
     if not is_staff:
@@ -380,7 +419,13 @@ async def get_cms_page_by_slug(slug: str, user=Depends(optional_user)):
     page = await db.cms_pages.find_one(query)
     if not page:
         raise HTTPException(status_code=404, detail="Page not found")
-    return clean_doc(page)
+    
+    doc = clean_doc(page)
+    # If not staff explicitly previewing draft, present published_sections
+    if not (is_staff and preview):
+        if "published_sections" in doc and doc["published_sections"]:
+            doc["sections"] = doc["published_sections"]
+    return doc
 
 
 @router.get("/admin/cms/pages/{page_id}")
@@ -516,9 +561,17 @@ async def update_page_section(page_id: str, section_id: str, section_data: dict,
 
     await db.cms_pages.update_one(
         {"id": page_id},
-        {"$set": {"sections": new_sections, "updated_at": now_utc()}}
+        {
+            "$set": {
+                "sections": new_sections,
+                "has_draft_changes": True,
+                "updated_at": now_utc(),
+                "updated_by": user.get("email"),
+            }
+        },
     )
-    return {"status": "success", "message": "Section updated"}
+    await audit(user, "homepage.section.updated", "cms_page", page_id, f"Draft updated section {section_id} on {page.get('slug')}")
+    return {"status": "success", "message": "Section draft updated"}
 
 
 @router.delete("/admin/cms/pages/{page_id}/sections/{section_id}")
@@ -534,9 +587,16 @@ async def delete_page_section(page_id: str, section_id: str, user=Depends(requir
 
     await db.cms_pages.update_one(
         {"id": page_id},
-        {"$set": {"sections": sections, "updated_at": now_utc()}}
+        {
+            "$set": {
+                "sections": sections,
+                "has_draft_changes": True,
+                "updated_at": now_utc(),
+                "updated_by": user.get("email"),
+            }
+        },
     )
-    await audit(user, "cms.section.delete", "cms_page", page_id, f"Deleted section {section_id}")
+    await audit(user, "homepage.section.deleted", "cms_page", page_id, f"Deleted section {section_id} on {page.get('slug')}")
     return {"status": "success", "message": "Section deleted"}
 
 
@@ -562,9 +622,39 @@ async def reorder_page_sections(page_id: str, section_ids: List[str], user=Depen
 
     await db.cms_pages.update_one(
         {"id": page_id},
-        {"$set": {"sections": reordered, "updated_at": now_utc()}}
+        {
+            "$set": {
+                "sections": reordered,
+                "has_draft_changes": True,
+                "updated_at": now_utc(),
+                "updated_by": user.get("email"),
+            }
+        },
     )
+    await audit(user, "homepage.section.reordered", "cms_page", page_id, f"Reordered sections on {page.get('slug')}")
     return {"status": "success", "message": "Sections reordered"}
+
+
+@router.post("/admin/cms/pages/{page_id}/discard-draft")
+async def discard_page_draft(page_id: str, user=Depends(require_role(OWNER, ADMIN))):
+    """Discards working draft and restores sections to the currently published live state."""
+    page = await db.cms_pages.find_one({"id": page_id})
+    if not page:
+        raise HTTPException(status_code=404, detail="Page not found")
+
+    published = page.get("published_sections") or page.get("sections", [])
+    await db.cms_pages.update_one(
+        {"id": page_id},
+        {
+            "$set": {
+                "sections": published,
+                "has_draft_changes": False,
+                "updated_at": now_utc(),
+            }
+        },
+    )
+    await audit(user, "homepage.draft.discarded", "cms_page", page_id, f"Discarded draft changes on {page.get('slug')}")
+    return {"status": "success", "message": "Draft changes discarded, restored to live published state"}
 
 
 # ----------------- Header & Navigation -----------------
@@ -615,7 +705,7 @@ async def get_cms_footer():
                     {"label": "Memory Foam Pillows", "href": "/collections/pillows"},
                 ]),
                 FooterColumn(title="Customer Care", links=[
-                    {"label": "100-Night Free Trial", "href": "/trial-policy"},
+                    {"label": "30-Night Free Trial", "href": "/trial-policy"},
                     {"label": "10-Year Warranty Claim", "href": "/warranty"},
                     {"label": "Track Doorstep Delivery", "href": "/track-order"},
                     {"label": "Contact Sleep Experts", "href": "/contact"},
@@ -623,6 +713,7 @@ async def get_cms_footer():
                 FooterColumn(title="Company", links=[
                     {"label": "Our Sleep Philosophy", "href": "/about"},
                     {"label": "Verified Certifications", "href": "/claims-trust"},
+                    {"label": "Blogs", "href": "/blogs"},
                     {"label": "Dealer Partner Network", "href": "/dealer/apply"},
                     {"label": "Refer & Earn Program", "href": "/referrals"},
                 ]),
@@ -682,6 +773,48 @@ async def update_cms_branding(input: BrandingConfig, user=Depends(require_role(O
     return clean_doc(doc)
 
 
+# ----------------- Customer Support (Call & WhatsApp) -----------------
+
+@router.get("/cms/support")
+@router.get("/admin/cms/support")
+async def get_cms_support():
+    support = await db.cms_support_config.find_one({"id": "main_support"})
+    if not support:
+        default_support = CustomerSupportConfig().model_dump()
+        default_support["id"] = "main_support"
+        await db.cms_support_config.insert_one(default_support)
+        support = default_support
+    return clean_doc(support)
+
+
+@router.put("/admin/cms/support")
+async def update_cms_support(input: CustomerSupportConfig, user=Depends(require_role(OWNER, ADMIN))):
+    import re
+    # Validate Indian phone numbers (10 digits)
+    clean_phone = re.sub(r"\D", "", input.phone)
+    if clean_phone.startswith("91") and len(clean_phone) == 12:
+        clean_phone = clean_phone[2:]
+    if len(clean_phone) != 10:
+        raise HTTPException(status_code=400, detail="Invalid phone number: must be a 10-digit Indian phone number.")
+
+    clean_whatsapp = re.sub(r"\D", "", input.whatsapp)
+    if clean_whatsapp.startswith("91") and len(clean_whatsapp) == 12:
+        clean_whatsapp = clean_whatsapp[2:]
+    if len(clean_whatsapp) != 10:
+        raise HTTPException(status_code=400, detail="Invalid WhatsApp number: must be a 10-digit Indian phone number.")
+
+    doc = input.model_dump()
+    doc["id"] = "main_support"
+    doc["phone"] = clean_phone
+    doc["whatsapp"] = clean_whatsapp
+    doc["updated_at"] = now_utc()
+    doc["updated_by"] = user.get("email")
+
+    await db.cms_support_config.update_one({"id": "main_support"}, {"$set": doc}, upsert=True)
+    await audit(user, "cms.support.update", "cms_support", "main_support", f"Updated support contact: Call {clean_phone}, WhatsApp {clean_whatsapp}")
+    return clean_doc(doc)
+
+
 # ----------------- Safe Publish / Versioning / Rollback -----------------
 
 @router.post("/admin/cms/publish")
@@ -706,9 +839,23 @@ async def publish_cms_changes(note: Optional[str] = "Owner website publication",
     }
     await db.cms_versions.insert_one(snapshot)
 
-    # 2. Mark draft pages as published
-    await db.cms_pages.update_many({"status": "draft"}, {"$set": {"status": "published", "updated_at": now_utc()}})
-    await audit(user, "cms.publish", "cms", version_id, f"Published live site checkpoint {version_id}: {note}")
+    # 2. Mark draft pages as published and promote sections to published_sections
+    for p in pages:
+        current_sections = p.get("sections", [])
+        await db.cms_pages.update_one(
+            {"id": p["id"]},
+            {
+                "$set": {
+                    "status": "published",
+                    "published_sections": current_sections,
+                    "has_draft_changes": False,
+                    "published_at": now_utc(),
+                    "published_by": user.get("email"),
+                    "updated_at": now_utc(),
+                }
+            },
+        )
+    await audit(user, "homepage.section.published", "cms", version_id, f"Published live site checkpoint {version_id}: {note}")
     
     return {
         "status": "success",
@@ -757,3 +904,149 @@ async def rollback_cms_version(version_id: str, user=Depends(require_role(OWNER,
 
     await audit(user, "cms.rollback", "cms", version_id, f"Rolled back website state to version {version_id}")
     return {"status": "success", "message": f"Rolled back to version {version_id} successfully"}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Central Customer Support Configuration (Call + WhatsApp)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get("/cms/support")
+async def get_public_customer_support():
+    """Returns the central customer support configuration for storefront callers."""
+    doc = await db.cms_support_config.find_one({"id": "main_support"})
+    if not doc:
+        doc = {
+            "phone": "8009800936",
+            "country_code": "+91",
+            "whatsapp": "8009800936",
+            "phone_enabled": True,
+            "whatsapp_enabled": True,
+            "whatsapp_default_message": "Hi Kotson, I need help choosing the right product.",
+        }
+    
+    phone = doc.get("phone", "8009800936")
+    cc = doc.get("country_code", "+91")
+    raw_wa = doc.get("whatsapp", "8009800936")
+    digits_wa = "".join(filter(str.isdigit, raw_wa))
+    clean_wa = f"91{digits_wa}" if len(digits_wa) == 10 else digits_wa
+
+    return {
+        "phone": phone,
+        "countryCode": cc,
+        "canonicalPhone": f"{cc}{phone.replace(' ', '')}" if not phone.startswith("+") else phone,
+        "whatsapp": raw_wa,
+        "canonicalWhatsApp": f"+{clean_wa}",
+        "cleanWhatsAppNumber": clean_wa,
+        "phoneEnabled": doc.get("phone_enabled", True),
+        "whatsappEnabled": doc.get("whatsapp_enabled", True),
+        "whatsappDefaultMessage": doc.get(
+            "whatsapp_default_message", "Hi Kotson, I need help choosing the right product."
+        ),
+    }
+
+
+@router.get("/admin/cms/support")
+async def get_admin_customer_support(user=Depends(require_role(OWNER, ADMIN))):
+    """Admin endpoint to view editable customer support parameters."""
+    return await get_public_customer_support()
+
+
+@router.put("/admin/cms/support")
+async def update_customer_support(payload: CustomerSupportConfig, user=Depends(require_role(OWNER, ADMIN))):
+    """Updates the central Customer Support configuration with Indian number validation."""
+    clean_phone_digits = "".join(filter(str.isdigit, payload.phone))
+    clean_wa_digits = "".join(filter(str.isdigit, payload.whatsapp))
+
+    if len(clean_phone_digits) not in (10, 12):
+        raise HTTPException(status_code=400, detail="Phone number must be a valid 10-digit Indian number.")
+    if len(clean_wa_digits) not in (10, 12):
+        raise HTTPException(status_code=400, detail="WhatsApp number must be a valid 10-digit Indian number.")
+
+    update_doc = {
+        "id": "main_support",
+        "phone": payload.phone.strip(),
+        "country_code": payload.country_code.strip() or "+91",
+        "whatsapp": payload.whatsapp.strip(),
+        "phone_enabled": payload.phone_enabled,
+        "whatsapp_enabled": payload.whatsapp_enabled,
+        "whatsapp_default_message": (
+            payload.whatsapp_default_message.strip()
+            or "Hi Kotson, I need help choosing the right product."
+        ),
+        "updated_at": now_utc(),
+        "updated_by": user.get("email"),
+    }
+
+    await db.cms_support_config.update_one({"id": "main_support"}, {"$set": update_doc}, upsert=True)
+    await audit(user, "cms.update_support", "cms", "main_support", f"Updated customer support configuration: {payload.phone}")
+
+    return await get_public_customer_support()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CMS Media & Certification Proof Image Upload
+# ─────────────────────────────────────────────────────────────────────────────
+
+CMS_UPLOAD_DIR = Path(__file__).parent.parent / "uploads" / "certifications"
+CMS_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+ALLOWED_IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"}
+
+
+@router.post("/admin/cms/upload-image")
+async def upload_cms_image(
+    file: UploadFile = File(...),
+    user=Depends(require_role(OWNER, ADMIN)),
+):
+    """Upload and validate CMS certification / section image. Saves persistently and logs into asset library."""
+    if not file.content_type or file.content_type.lower() not in ALLOWED_IMAGE_MIMES:
+        raise HTTPException(
+            status_code=415,
+            detail=f"Unsupported file type '{file.content_type}'. Allowed types: JPG, PNG, WEBP, GIF, SVG."
+        )
+
+    orig_name = file.filename or "image.png"
+    ext = os.path.splitext(orig_name)[1].lower()
+    if ext not in [".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"]:
+        ext = ".png"
+
+    asset_id = str(uuid.uuid4())
+    stored_filename = f"{asset_id}{ext}"
+    dest_path = CMS_UPLOAD_DIR / stored_filename
+
+    contents = await file.read()
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File size exceeds the 10 MB limit.")
+
+    with open(dest_path, "wb") as f:
+        f.write(contents)
+
+    relative_url = f"/api/uploads/certifications/{stored_filename}"
+    size_kb = round(len(contents) / 1024, 1)
+
+    # Record in asset_library for enterprise reuse
+    await db.asset_library.insert_one({
+        "id": asset_id,
+        "title": orig_name,
+        "url": relative_url,
+        "category": "Certifications",
+        "file_size_kb": size_kb,
+        "file_type": file.content_type,
+        "alt_text": orig_name,
+        "tags": ["certification", "cms"],
+        "used_in_count": 1,
+        "is_test_data": False,
+        "created_at": now_utc(),
+        "updated_at": now_utc(),
+    })
+
+    await audit(user, "cms.upload_image", "assets", asset_id, f"Uploaded CMS certification image {orig_name} ({size_kb} KB)")
+
+    return {
+        "status": "success",
+        "asset_id": asset_id,
+        "url": relative_url,
+        "filename": stored_filename,
+        "original_name": orig_name,
+        "size_kb": size_kb,
+    }
+

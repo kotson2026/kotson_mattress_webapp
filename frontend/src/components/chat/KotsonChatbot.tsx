@@ -145,7 +145,8 @@ export default function KotsonChatbot() {
     location.pathname.startsWith("/manager") ||
     location.pathname.startsWith("/crm") ||
     location.pathname.startsWith("/dealer") ||
-    location.pathname.startsWith("/ops");
+    location.pathname.startsWith("/ops") ||
+    location.pathname.startsWith("/internal");
 
   if (isRestrictedPage || isCartOpen) {
     return null;
@@ -183,7 +184,7 @@ export default function KotsonChatbot() {
           aria-haspopup="dialog"
           aria-expanded={isOpen}
           data-testid="kotson-floating-chat-button"
-          className="fixed z-40 right-4 sm:right-6 md:right-7 bottom-[max(16px,env(safe-area-inset-bottom))] sm:bottom-6 md:bottom-7 w-[52px] h-[52px] sm:w-[58px] sm:h-[58px] rounded-full bg-[#1E3A2F] text-white flex items-center justify-center shadow-[0_8px_24px_rgba(30,58,47,0.28)] hover:shadow-[0_12px_28px_rgba(30,58,47,0.36)] hover:scale-[1.05] active:scale-[0.98] transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-deep focus-visible:ring-offset-2 cursor-pointer"
+          className="fixed z-40 right-[max(16px,env(safe-area-inset-right))] sm:right-6 md:right-7 bottom-[max(16px,env(safe-area-inset-bottom))] sm:bottom-6 md:bottom-7 w-[54px] h-[54px] sm:w-[58px] sm:h-[58px] rounded-full bg-[#1E3A2F] text-white flex items-center justify-center shadow-[0_8px_24px_rgba(30,58,47,0.28)] hover:shadow-[0_12px_28px_rgba(30,58,47,0.36)] hover:scale-[1.05] active:scale-[0.98] transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-deep focus-visible:ring-offset-2 cursor-pointer"
         >
           <MessageSquare className="w-6 h-6 sm:w-6 sm:h-6 text-white" />
 

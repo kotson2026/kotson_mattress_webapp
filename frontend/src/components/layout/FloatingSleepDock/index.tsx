@@ -139,11 +139,15 @@ export default function FloatingSleepDock() {
 
   return (
     <>
-      {/* Floating Sleep Dock Container — centered, 14-20px from top with safe-area */}
+      {/* Floating Sleep Dock Container — for Desktop/Tablet on Home, and all sizes on non-home */}
       <div
         ref={containerRef}
         onMouseLeave={handleShelfClose}
-        className="fixed top-[max(14px,env(safe-area-inset-top))] sm:top-[18px] lg:top-5 inset-x-0 z-50 flex justify-center pointer-events-none px-3.5 sm:px-6"
+        className={`${
+          isHome
+            ? "hidden md:flex fixed top-[18px] lg:top-5 inset-x-0 z-50 justify-center pointer-events-none px-6"
+            : "fixed top-[max(14px,env(safe-area-inset-top))] sm:top-[18px] lg:top-5 inset-x-0 z-50 flex justify-center pointer-events-none px-3.5 sm:px-6"
+        }`}
         data-testid="floating-sleep-dock-container"
       >
         {/* DESKTOP DOCK (lg:flex) — Rounded pill dock centered over the hero */}
@@ -202,16 +206,45 @@ export default function FloatingSleepDock() {
           )}
         </div>
 
-        {/* MOBILE DOCK */}
-        <div className="pointer-events-auto flex lg:hidden w-full justify-center">
+        {/* TABLET DOCK (When isHome on tablet 768px-1023px) */}
+        {isHome && (
+          <div className="pointer-events-auto hidden md:flex lg:hidden w-full justify-center">
+            <MobileDock
+              isScrolled={!isLanding}
+              cartCount={cartCount}
+              onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
+              onOpenShop={() => setIsMobileMenuOpen(true)}
+            />
+          </div>
+        )}
+
+        {/* NON-HOME MOBILE & TABLET DOCK (< lg) */}
+        {!isHome && (
+          <div className="pointer-events-auto flex lg:hidden w-full justify-center">
+            <MobileDock
+              isScrolled={!isLanding}
+              cartCount={cartCount}
+              onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
+              onOpenShop={() => setIsMobileMenuOpen(true)}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* MOBILE HOMEPAGE HEADER (<= 767px): In normal document flow, does NOT overlay hero video */}
+      {isHome && (
+        <header
+          className="mobile-header mobile-home-header block md:hidden"
+          data-testid="mobile-home-header"
+        >
           <MobileDock
-            isScrolled={!isLanding}
+            isScrolled={false}
             cartCount={cartCount}
             onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
             onOpenShop={() => setIsMobileMenuOpen(true)}
           />
-        </div>
-      </div>
+        </header>
+      )}
 
       {/* SEARCH MODAL */}
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />

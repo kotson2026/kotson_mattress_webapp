@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import MattressVariantSelector from "./MattressVariantSelector";
 import TopperVariantSelector from "./TopperVariantSelector";
 import PriceDisplay from "./PriceDisplay";
+import ProductSupportAssistance from "./ProductSupportAssistance";
 import { useCheckoutDrawer } from "@/components/checkout/CheckoutDrawer";
 
 interface VariantSelectorProps {
@@ -94,6 +95,13 @@ export default function VariantSelector({ product, onVariantChange }: VariantSel
         </div>
       </div>
 
+      {/* Need help choosing the right size? */}
+      <ProductSupportAssistance
+        mode="pdp"
+        productName={product.name}
+        productId={product.id}
+      />
+
       {/* CTAs */}
       <div className="flex flex-col gap-3">
         <Button
@@ -111,7 +119,7 @@ export default function VariantSelector({ product, onVariantChange }: VariantSel
       <div className="mt-2 flex items-center justify-center gap-6 text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
-           <span>100-Night Trial</span>
+           <span>30-Night Trial</span>
         </div>
         <div className="flex items-center gap-2">
            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>

@@ -207,7 +207,7 @@ export function generateBotResponse(
     };
   }
 
-  // 8. 100-Night Trial / Warranty
+  // 8. 30-Night Trial / Warranty
   if (
     query.includes("trial") ||
     query.includes("warranty") ||
@@ -218,7 +218,7 @@ export function generateBotResponse(
     return {
       id,
       sender: "bot",
-      text: "Our Customer Assurance Policies:\n\n• 100-Night Risk-Free Trial: Sleep on your mattress in your home for 100 nights. If it's not the right fit, we coordinate doorstep return pickup.\n• 10-Year Warranty: Covers structural core integrity and natural latex durability.\n• GOLS & OEKO-TEX Certified natural materials.",
+      text: "Our Customer Assurance Policies:\n\n• 30-Night Risk-Free Trial: Sleep on your mattress in your home for 30 nights. If it's not the right fit, we coordinate doorstep return pickup.\n• 10-Year Warranty: Covers structural core integrity and natural latex durability.\n• GOLS & OEKO-TEX Certified natural materials.",
       timestamp,
       quickReplies: [
         { id: "warranty_policy", label: "View Warranty Policy", action: "nav_route", payload: "/policies/warranty" },

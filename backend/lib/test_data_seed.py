@@ -752,18 +752,18 @@ async def seed_kotson_test_data(db, force: bool = False) -> Dict[str, Any]:
                 "created_at": s_date,
             })
 
-    # Return requests (Returns & 100-Night Sleep Trial)
+    # Return requests (Returns & 30-Night Sleep Trial)
     return_specs = [
         # Regular Returns (4)
         ("ret_001", "KS10021", "RET-9901", "return", "requested", "Wrong Size delivered [TEST]", "Customer ordered King size but received Queen size", d["yesterday"]),
         ("ret_002", "KS10022", "RET-9902", "return", "under_review", "Damaged Product [TEST]", "Outer protective packaging damaged during transit", d["days_3_ago"]),
         ("ret_003", "KS10023", "RET-9903", "return", "inspected", "Manufacturing Issue [TEST]", "QC verified: minor stitch asymmetry, item eligible for restock", d["week_ago"]),
         ("ret_004", "KS10024", "RET-9904", "return", "refunded", "Changed Mind [TEST]", "Customer requested refund before unrolling, gateway refund completed", d["days_12_ago"]),
-        # 100-Night Sleep Trials (4)
+        # 30-Night Sleep Trials (4)
         ("trl_001", "KS10025", "TRL-9905", "trial", "requested", "Trial comfort adjustment [TEST]", "Mattress is slightly firmer than expected for side sleeper", d["yesterday"]),
         ("trl_002", "KS10026", "TRL-9906", "trial", "under_review", "Trial layer exchange [TEST]", "Customer seeking softer comfort topper layer consultation", d["days_3_ago"]),
-        ("trl_003", "KS10027", "TRL-9907", "trial", "approved", "100-Night Trial return authorized [TEST]", "Sleep trial return approved by manager for reverse logistics pickup", d["week_ago"]),
-        ("trl_004", "KS10028", "TRL-9908", "trial", "completed", "100-Night Trial replacement completed [TEST]", "Replacement mattress delivered and original inspected", d["days_20_ago"]),
+        ("trl_003", "KS10027", "TRL-9907", "trial", "approved", "30-Night Trial return authorized [TEST]", "Sleep trial return approved by manager for reverse logistics pickup", d["week_ago"]),
+        ("trl_004", "KS10028", "TRL-9908", "trial", "completed", "30-Night Trial replacement completed [TEST]", "Replacement mattress delivered and original inspected", d["days_20_ago"]),
     ]
 
     for key, onum, rnum, kind, r_status, reason, notes, r_date in return_specs:
@@ -898,7 +898,7 @@ async def seed_kotson_test_data(db, force: bool = False) -> Dict[str, Any]:
         ("asset_001", "Kotson Master Brand Identity Logo", "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=500&auto=format&fit=crop&q=60", "Logos", "512x128", 512, 128, 48.5, "image/webp", "Official Kotson Brand Logo", ["branding", "logo", "header"]),
         ("asset_002", "7-Zone Orthopedic Layer Breakdown Diagram", "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=1200&auto=format&fit=crop&q=80", "Product Media", "1200x800", 1200, 800, 245.0, "image/webp", "Exploded Anatomical Foam Structure", ["diagram", "ortho", "7-zone"]),
         ("asset_003", "CertiPUR-US Certified Seal Emblem", "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&auto=format&fit=crop&q=80", "Certifications", "400x400", 400, 400, 38.0, "image/webp", "CertiPUR-US Seal of Safety", ["cert", "trust", "seal"]),
-        ("asset_004", "100-Night Risk-Free Sleep Trial Seal", "https://images.unsplash.com/photo-1579656592043-a20e25a4aa4b?w=400&auto=format&fit=crop&q=80", "Trust", "400x400", 400, 400, 42.0, "image/webp", "100-Night Trial Guarantee", ["trial", "warranty", "badge"]),
+        ("asset_004", "30-Night Risk-Free Sleep Trial Seal", "https://images.unsplash.com/photo-1579656592043-a20e25a4aa4b?w=400&auto=format&fit=crop&q=80", "Trust", "400x400", 400, 400, 42.0, "image/webp", "30-Night Trial Guarantee", ["trial", "warranty", "badge"]),
         ("asset_005", "Organic Pin-Core Latex Cross Section", "https://images.unsplash.com/photo-1629949009765-40fc74c95018?w=1080&auto=format&fit=crop&q=80", "Product Media", "1080x720", 1080, 720, 195.0, "image/webp", "Natural Organic Pin-Core Latex", ["latex", "materials", "macro"]),
         ("asset_006", "Festive Sleep Season Promotional Banner", "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=1920&auto=format&fit=crop&q=80", "Banners", "1920x600", 1920, 600, 410.0, "image/jpeg", "Festive Season Bedroom Showcase", ["hero", "festive", "sale"]),
     ]
@@ -965,7 +965,7 @@ async def seed_kotson_test_data(db, force: bool = False) -> Dict[str, Any]:
         ("claim_002", "10-Year Sag-Proof Height Retention Guarantee", "Simulated 140kg mechanical roller test shows <1.8mm indentation after 100,000 cycles.", "Durability", "VERIFIED", 2),
         ("claim_003", "100% Breathable Natural Pin-Core Latex", "Open-cell micro-ventilation drops mattress sleeping microclimate temperature by 3.2°C.", "Materials", "VERIFIED", 3),
         ("claim_004", "7-Zone Ergonomic Targeted Spinal Alignment", "Clinical posture pressure mapping proves 41% reduced peak lumbar and shoulder stress.", "Ergonomics", "VERIFIED", 4),
-        ("claim_005", "100-Night Zero-Risk At-Home Sleep Trial", "100% full money-back guarantee with zero collection or transport fee deduction.", "Trial & Warranty", "VERIFIED", 5),
+        ("claim_005", "30-Night Zero-Risk At-Home Sleep Trial", "100% full money-back guarantee with zero collection or transport fee deduction.", "Trial & Warranty", "VERIFIED", 5),
     ]
 
     for cl_key, cl_title, cl_proof, cl_cat, cl_vstat, cl_ord in claims_spec:

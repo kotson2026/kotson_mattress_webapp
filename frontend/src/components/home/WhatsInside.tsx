@@ -283,14 +283,14 @@ export default function WhatsInside() {
 
       {/* Responsive grid rules */}
       <style>{`
-        /* ── Mobile: single column, image above layers ── */
+        /* ── Mobile: single column, content first then mattress image ── */
         .wi-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 20px;
+          gap: clamp(24px, 5vw, 32px);
         }
-        .wi-left  { order: 2; }
-        .wi-right { order: 1; }
+        .wi-left  { order: 1; }
+        .wi-right { order: 2; }
 
         /* ── Tablet ≥ 768px: 2-column ── */
         @media (min-width: 768px) {

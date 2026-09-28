@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Copy, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { apiGet, apiPost } from "@/lib/api";
@@ -12,10 +12,13 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import CustomerReferralPortal from "@/components/account/CustomerReferralPortal";
 
 export default function Account() {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") || "orders";
   const { data: me, isLoading } = useMe();
 
   const { data: orders } = useQuery({ queryKey: ["orders"], queryFn: () => apiGet<Order[]>("/orders"), enabled: !!me });
@@ -85,12 +88,11 @@ export default function Account() {
           </div>
         </div>
 
-        <Tabs defaultValue="orders" className="mt-8">
+        <Tabs defaultValue={initialTab} className="mt-8">
           <TabsList variant="line">
             <TabsTrigger value="orders" data-testid="account-tab-orders">Orders</TabsTrigger>
             <TabsTrigger value="addresses" data-testid="account-tab-addresses">Addresses</TabsTrigger>
             <TabsTrigger value="referrals" data-testid="account-tab-referrals">Refer &amp; Earn</TabsTrigger>
-            <TabsTrigger value="dealer" data-testid="account-tab-dealer">Dealer &amp; B2B</TabsTrigger>
           </TabsList>
 
           <TabsContent value="orders" className="mt-6">
@@ -148,38 +150,7 @@ export default function Account() {
           </TabsContent>
 
           <TabsContent value="referrals" className="mt-6">
-            <div className="rounded-2xl border border-border bg-card p-6" data-testid="account-referrals">
-              <h2 className="font-heading text-lg font-bold">Your referral link</h2>
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <code className="rounded-lg bg-muted px-3 py-2 font-mono text-sm" data-testid="referral-code">{referrals?.referral_code ?? "—"}</code>
-                <span className="truncate text-sm text-muted-foreground" data-testid="referral-url">{referrals?.share_url}</span>
-                <Button variant="outline" size="sm" onClick={copyLink} data-testid="referral-copy-button">
-                  <Copy className="h-4 w-4" /> Copy
-                </Button>
-              </div>
-              <dl className="mt-6 grid grid-cols-3 gap-4 text-center">
-                <div className="rounded-xl bg-muted p-4"><dt className="text-xs text-muted-foreground">Visits</dt><dd className="font-heading text-2xl font-bold" data-testid="referral-clicks">{referrals?.clicks ?? 0}</dd></div>
-                <div className="rounded-xl bg-muted p-4"><dt className="text-xs text-muted-foreground">Signups</dt><dd className="font-heading text-2xl font-bold" data-testid="referral-signups">{referrals?.attributed_signups ?? 0}</dd></div>
-                <div className="rounded-xl bg-muted p-4"><dt className="text-xs text-muted-foreground">Qualified orders</dt><dd className="font-heading text-2xl font-bold" data-testid="referral-orders">{referrals?.qualified_orders ?? 0}</dd></div>
-              </dl>
-
-              <h3 className="mt-8 font-semibold">Rewards</h3>
-              {(referrals?.rewards ?? []).length === 0 ? (
-                <p className="mt-2 text-sm text-muted-foreground" data-testid="referral-rewards-empty">
-                  No rewards yet. {referrals?.economics_configured ? "" : "Referral economics are not published yet, so no value is promised."}
-                </p>
-              ) : (
-                <ul className="mt-2 space-y-2 text-sm" data-testid="referral-rewards-list">
-                  {(referrals?.rewards ?? []).map((r) => (
-                    <li key={r.id} className="flex justify-between rounded-lg border border-border p-3">
-                      <span>{r.order_number ?? r.type}</span>
-                      <span className="flex items-center gap-3"><Badge variant="outline">{r.status}</Badge><span className="tabular-nums">{inr(r.amount)}</span></span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <p className="mt-6 rounded-xl bg-brand-deep/5 p-4 text-xs text-muted-foreground" data-testid="referral-policy">{referrals?.policy}</p>
-            </div>
+            <CustomerReferralPortal />
           </TabsContent>
 
           <TabsContent value="dealer" className="mt-6">

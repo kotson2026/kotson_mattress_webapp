@@ -150,14 +150,16 @@ CRM_MASTER = "crm_master"
 CRM_MASTER_ADMIN = "crm_master"
 CRM_MANAGER = "crm_manager"
 CRM_EMPLOYEE = "crm_employee"
+STOCK_POINT_MANAGER = "stock_point_manager"
 DEALER = "dealer"
 AFFILIATE = "affiliate"
 CUSTOMER = "customer"
 
-STAFF_ROLES = [OWNER, ADMIN, MANAGER, CRM_MASTER, CRM_MANAGER, CRM_EMPLOYEE]
+STAFF_ROLES = [OWNER, ADMIN, MANAGER, CRM_MASTER, CRM_MANAGER, CRM_EMPLOYEE, STOCK_POINT_MANAGER]
 CATALOG_MANAGERS = [OWNER, ADMIN]  # pricing/CMS/product CRUD
 FULFILMENT = [OWNER, ADMIN, MANAGER]
 CRM_SCOPED = [OWNER, CRM_MASTER, CRM_MANAGER, CRM_EMPLOYEE]
+STOCK_POINT_ROLES = [OWNER, ADMIN, STOCK_POINT_MANAGER]
 
 
 def can(user: dict, feature: str) -> bool:
@@ -172,6 +174,8 @@ def can(user: dict, feature: str) -> bool:
         return has_role(user, CRM_MASTER, CRM_MANAGER, CRM_EMPLOYEE)
     if feature in ("manage_orders", "fulfilment"):
         return has_role(user, MANAGER)
+    if feature in ("stock_point_ops", "dispatch_products", "export_stock"):
+        return has_role(user, STOCK_POINT_MANAGER)
     if feature == "dealer_portal":
         return has_role(user, DEALER)
     return False

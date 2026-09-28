@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { toast } from "sonner";
 import { login } from "@/lib/session";
+import AuthBrandPanel from "@/components/auth/AuthBrandPanel";
 import LogoMark from "@/components/layout/LogoMark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,7 @@ export default function Login() {
       const roles = out.user.roles;
       if (roles.includes("owner") || roles.includes("admin")) navigate("/admin");
       else if (roles.includes("manager")) navigate("/manager");
+      else if (roles.includes("stock_point_manager")) navigate("/stock-point");
       else if (roles.some((r) => r.startsWith("crm"))) navigate("/crm");
       else navigate("/account");
     },
@@ -31,21 +33,17 @@ export default function Login() {
 
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
-      <div className="hidden flex-col justify-between bg-brand-deep p-12 text-white lg:flex">
-        <LogoMark light />
-        <div>
-          <h2 className="font-heading text-4xl font-black leading-tight">Organic latex, made in India.</h2>
-          <p className="mt-4 max-w-sm text-white/75">
-            Sign in to see your orders, addresses and your Refer &amp; Earn link.
-          </p>
-        </div>
-        <p className="text-xs text-white/50">KOTSON NATURALS PRIVATE LIMITED</p>
-      </div>
+      <AuthBrandPanel
+        heading="Organic latex, made in India."
+        subheading="Sign in to see your orders, addresses and your Refer & Earn link."
+      />
 
       <div className="flex flex-col justify-center px-6 py-12 sm:px-12">
         <div className="mx-auto w-full max-w-sm">
-          <Link to="/" className="lg:hidden"><LogoMark /></Link>
-          <h1 className="mt-6 font-heading text-3xl font-black tracking-tight">Sign in</h1>
+          <Link to="/" className="lg:hidden inline-block mb-3" aria-label="Kotson Home">
+            <LogoMark className="w-[150px] sm:w-[170px]" />
+          </Link>
+          <h1 className="mt-2 font-heading text-3xl font-black tracking-tight">Sign in</h1>
           <p className="mt-2 text-sm text-muted-foreground">Customers and staff use the same sign-in.</p>
 
           <form
@@ -121,6 +119,18 @@ export default function Login() {
                 className="h-8 text-[11px] border-border/80 hover:border-[#7C9C59] hover:bg-white"
               >
                 Ops Manager
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEmail("stock@kotsonmattress.com");
+                  setPassword("Kotson-Stock-2026!");
+                }}
+                className="h-8 text-[11px] border-border/80 hover:border-[#7C9C59] hover:bg-white"
+              >
+                Stock Point
               </Button>
             </div>
           </div>

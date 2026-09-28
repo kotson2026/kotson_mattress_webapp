@@ -55,6 +55,23 @@ async def reserve_stock(order_id: str, items: list[dict]) -> list[dict]:
     for item in items:
         vid = item["variant_id"]
         qty = int(item["qty"])
+        is_custom = bool(item.get("is_custom", False))
+
+        if is_custom:
+            res = {
+                "id": str(__import__("uuid").uuid4()),
+                "order_id": order_id,
+                "variant_id": vid,
+                "is_custom": True,
+                "qty": qty,
+                "status": "active",
+                "created_at": now_utc(),
+                "expires_at": now_utc() + timedelta(minutes=RESERVATION_TTL_MINUTES),
+            }
+            await db.reservations.insert_one(dict(res))
+            reservations.append(res)
+            continue
+
         variant = await db.variants.find_one_and_update(
             {
                 "id": vid,

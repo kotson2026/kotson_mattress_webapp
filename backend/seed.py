@@ -117,7 +117,7 @@ PRODUCTS = [
         "Jumbo Pillow",
         "pillows",
         3999,
-        "https://cdn.phototourl.com/member/2026-09-23-ea4945c6-f120-409b-984b-ff5f7f0fb7fd.jpg",
+        "https://cdn.phototourl.com/member/2026-09-26-162f483d-4221-4fec-bfd1-3321e88daff4.jpg",
     ),
     (
         "dualis-arc-pillow",
@@ -203,7 +203,7 @@ CLAIMS = [
     ("gols_certified", "100% GOLS-certified organic latex"),
     ("one_of_five_india", "One of five GOLS-certified mattress companies in India"),
     ("shark_tank_india", "Featured on Shark Tank India"),
-    ("trial_100_nights", "100-night trial"),
+    ("trial_30_nights", "30-night trial"),
     ("warranty_10_years", "10-year warranty"),
     ("free_shipping", "Free shipping across India"),
 ]
@@ -358,19 +358,19 @@ async def main() -> None:
         ("testimonials_heading", "What sleepers say", "text"),
         ("testimonials", str(TESTIMONIALS).replace("'", '"').replace("True", "true").replace("False", "false"), "json"),
         ("final_cta_heading", "Ready for deeper sleep?", "text"),
-        ("final_cta_sub", "Try any mattress at home for 100 nights (trial terms pending owner approval).", "text"),
+        ("final_cta_sub", "Try any mattress at home for 30 nights (trial terms pending owner approval).", "text"),
         ("final_cta_label", "Shop the collection", "text"),
         ("footer_about", "KOTSON NATURALS PRIVATE LIMITED, trading as KOTSON MATTRESS. Organic latex bedding made in India. Contact details are pending owner validation.", "text"),
         ("footer_contact", '{"support_email": "", "support_phone": "", "address": "", "contact_status": "pending_owner_validation"}', "json"),
         ("about_title", "About Kotson Naturals", "text"),
         ("about_body", "SEED SAMPLE — Kotson Naturals Private Limited manufactures organic latex mattresses and bedding in India. This page copy is a placeholder pending owner-approved brand copy.", "text"),
-        ("faq_items", '[{"q": "Is the latex really organic?", "a": "Owner answer pending — this claim is published only with approved GOLS evidence."}, {"q": "How does the 100-night trial work?", "a": "Trial terms are pending owner approval and will be published here."}, {"q": "Do you ship across India?", "a": "Shipping coverage and charges are pending owner configuration."}]', "json"),
+        ("faq_items", '[{"q": "Is the latex really organic?", "a": "Owner answer pending — this claim is published only with approved GOLS evidence."}, {"q": "How does the 30-night trial work?", "a": "Trial terms are pending owner approval and will be published here."}, {"q": "Do you ship across India?", "a": "Shipping coverage and charges are pending owner configuration."}]', "json"),
         ("policy_shipping", "PENDING OWNER APPROVAL — final shipping policy terms will be published here.", "text"),
         ("policy_returns", "PENDING OWNER APPROVAL — final returns/trial policy terms will be published here.", "text"),
         ("policy_privacy", "PENDING OWNER APPROVAL — final privacy policy will be published here.", "text"),
         ("policy_terms", "PENDING OWNER APPROVAL — final terms of service will be published here.", "text"),
         ("seo_title", "Kotson Mattress — Organic Latex Mattresses Made in India", "text"),
-        ("seo_description", "GOLS-certified organic latex mattresses with 7-zone anatomical support. 100-night trial, 10-year warranty, free shipping (claims pending owner verification).", "text"),
+        ("seo_description", "GOLS-certified organic latex mattresses with 7-zone anatomical support. 30-night trial, 10-year warranty, free shipping (claims pending owner verification).", "text"),
     ]
     for key, value, btype in blocks:
         existing = await db.blocks.find_one({"key": key})

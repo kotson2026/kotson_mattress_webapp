@@ -184,11 +184,11 @@ async def seed_realistic_crm_test_data() -> dict:
         
     # 3. Campaigns (5 realistic campaigns)
     campaign_configs = [
-        {"id": "camp-ortho-therapy", "code": "ortho-therapy-sept", "name": "September Ortho Therapy Campaign", "pipeline_id": "pipe-mattress", "source_kind": "website"},
-        {"id": "camp-spine-balance", "code": "spine-balance-drive", "name": "Spine Balance Mattress Drive", "pipeline_id": "pipe-mattress", "source_kind": "popup"},
-        {"id": "camp-dualis-pillow", "code": "dualis-pillow-leads", "name": "Dualis Ergonomic Pillow Blitz", "pipeline_id": "pipe-pillow", "source_kind": "cart_opportunity"},
-        {"id": "camp-crib-kids", "code": "crib-comfort-kids", "name": "Organic Crib Mattress Consults", "pipeline_id": "pipe-baby-kids", "source_kind": "contact"},
-        {"id": "camp-cart-rescue", "code": "cart-rescue-24h", "name": "Midnight Cart Recovery Blitz", "pipeline_id": "pipe-abandoned-cart", "source_kind": "cart_intent"},
+        {"id": "camp-ortho-therapy", "code": "ortho-therapy-sept", "name": "September Ortho Therapy Campaign", "pipeline_id": "pipe-mattress", "source_kind": "website", "manager_ids": ["mgr-rajesh-01"], "employee_ids": ["emp-vikram-01", "emp-priya-02"]},
+        {"id": "camp-spine-balance", "code": "spine-balance-drive", "name": "Spine Balance Mattress Drive", "pipeline_id": "pipe-mattress", "source_kind": "popup", "manager_ids": ["mgr-rajesh-01"], "employee_ids": ["emp-vikram-01", "emp-priya-02"]},
+        {"id": "camp-dualis-pillow", "code": "dualis-pillow-leads", "name": "Dualis Ergonomic Pillow Blitz", "pipeline_id": "pipe-pillow", "source_kind": "cart_opportunity", "manager_ids": ["mgr-ananya-02"], "employee_ids": ["emp-amit-03"]},
+        {"id": "camp-crib-kids", "code": "crib-comfort-kids", "name": "Organic Crib Mattress Consults", "pipeline_id": "pipe-baby-kids", "source_kind": "contact", "manager_ids": ["mgr-rajesh-01"], "employee_ids": ["emp-vikram-01"]},
+        {"id": "camp-cart-rescue", "code": "cart-rescue-24h", "name": "Midnight Cart Recovery Blitz", "pipeline_id": "pipe-abandoned-cart", "source_kind": "cart_intent", "manager_ids": ["mgr-rajesh-01", "mgr-ananya-02"], "employee_ids": ["emp-vikram-01", "emp-priya-02", "emp-amit-03"]},
     ]
     
     for c in campaign_configs:
@@ -198,6 +198,8 @@ async def seed_realistic_crm_test_data() -> dict:
             name=c["name"],
             pipeline_id=c["pipeline_id"],
             source_kind=c["source_kind"],
+            manager_ids=c.get("manager_ids", []),
+            employee_ids=c.get("employee_ids", []),
         ).model_dump()
         camp_dict["is_test_data"] = True
         await db.campaigns.insert_one(camp_dict)

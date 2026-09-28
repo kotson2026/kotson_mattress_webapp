@@ -59,7 +59,8 @@ async def merge_guest_cart(user_id: str, request: Request) -> int:
             if cap <= 0:
                 continue
             new_items.append({"variant_id": vid, "qty": min(qty, cap, 10)})
-        await db.carts.update_one({"id": own["id"]}, {"$set": {"items": new_items}})
+        ref_code = own.get("referred_code") or guest.get("referred_code")
+        await db.carts.update_one({"id": own["id"]}, {"$set": {"items": new_items, "referred_code": ref_code}})
         await db.carts.delete_one({"id": guest["id"]})
         merged = len(new_items)
     else:
@@ -79,22 +80,21 @@ async def signup(input: SignupIn, request: Request, response: Response):
     user_id = str(uuid.uuid4())
     referral_code = await unique_referral_code()
 
-    # Optional referral attribution at signup — a manual code may override a prefilled one
-    # BEFORE signup confirmation; post-signup it is immutable.
-    referred_by = None
+    # Optional referral attribution at signup:
+    # 1. Manual code from input (or prefilled)
+    # 2. Or from the active guest cart session token if not explicitly passed
+    cart_token = request.cookies.get(CART_COOKIE)
     ref_code = (input.referral_code or "").strip().upper()
+    if not ref_code and cart_token:
+        guest_cart = await db.carts.find_one({"token": cart_token})
+        if guest_cart and guest_cart.get("referred_code"):
+            ref_code = guest_cart["referred_code"]
+
+    referred_by = None
     if ref_code:
         owner = await db.users.find_one({"referral_code": ref_code, "is_active": True})
         if owner and owner["id"] != user_id:
             referred_by = ref_code
-            await db.referral_attributions.update_one(
-                {"customer_id": user_id},
-                {
-                    "$set": {"code": ref_code, "source": "signup", "owner_user_id": owner["id"]},
-                    "$setOnInsert": {"created_at": now_utc()},
-                },
-                upsert=True,
-            )
 
     user = {
         "id": user_id,
@@ -109,6 +109,11 @@ async def signup(input: SignupIn, request: Request, response: Response):
         "created_at": now_utc(),
     }
     await db.users.insert_one(user)
+
+    # Safely attach/merge guest referral attribution into the customer account (no duplicate leads!)
+    if referred_by:
+        from lib.referral_lead_service import merge_lead_on_signup
+        await merge_lead_on_signup(user_id=user_id, user=user, cart_token=cart_token, ref_code=referred_by)
 
     # CRM intake: exactly ONE registration lead per verified signup (idempotent on event_key).
     try:
@@ -152,7 +157,34 @@ async def login(input: LoginIn, request: Request, response: Response):
     if not user.get("is_active", True):
         raise HTTPException(status_code=403, detail="Account deactivated — contact administration")
 
+    cart_token = request.cookies.get(CART_COOKIE)
     merged = await merge_guest_cart(user["id"], request)
+
+    # Merge guest lead attribution into customer profile if customer has no prior attribution
+    if cart_token:
+        guest_lead = await db.referral_attributions.find_one({"guest_cart_token": cart_token})
+        if guest_lead and not guest_lead.get("customer_id"):
+            from lib.referral_lead_service import mask_email, mask_phone
+            await db.referral_attributions.update_one(
+                {"id": guest_lead["id"]},
+                {
+                    "$set": {
+                        "customer_id": user["id"],
+                        "customer_name": user.get("name"),
+                        "customer_email_masked": mask_email(user.get("email")),
+                        "customer_phone_masked": mask_phone(user.get("phone")),
+                    },
+                    "$push": {
+                        "events": {"type": "CUSTOMER_LOGGED_IN", "at": now_utc(), "detail": "Customer logged in; guest attribution linked to user"}
+                    }
+                }
+            )
+
+    if not user.get("referral_code"):
+        code = await unique_referral_code()
+        await db.users.update_one({"id": user["id"]}, {"$set": {"referral_code": code}})
+        user["referral_code"] = code
+
     token = await create_session(user["id"])
     set_session_cookie(response, token)
     return AuthOut(user=UserOut(**user), guest_cart_merged=merged)
@@ -169,4 +201,10 @@ async def logout(request: Request, response: Response):
 
 @router.get("/auth/me", response_model=Optional[UserOut])
 async def me(user=Depends(optional_user)):
-    return UserOut(**user) if user else None
+    if not user:
+        return None
+    if not user.get("referral_code"):
+        code = await unique_referral_code()
+        await db.users.update_one({"id": user["id"]}, {"$set": {"referral_code": code}})
+        user["referral_code"] = code
+    return UserOut(**user)

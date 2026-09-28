@@ -1,6 +1,6 @@
 """Dispatch & Returns router: order fulfilment, warehouse packing, multi-carrier shipments,
 delivery tracking, delivery exceptions, return inspections, restock, refunds, replacements,
-and 100-night trial tracking.
+and 30-night trial tracking.
 Gated to Owner, Admin, and Operations Managers.
 """
 
@@ -27,6 +27,24 @@ from lib.security import (
 from lib.services import clean_doc
 
 router = APIRouter(prefix="/admin/dispatch", tags=["admin-dispatch"])
+
+
+def to_utc_datetime(val: Any) -> datetime:
+    if not val:
+        return now_utc()
+    if isinstance(val, datetime):
+        if val.tzinfo is None:
+            return val.replace(tzinfo=timezone.utc)
+        return val
+    if isinstance(val, str):
+        try:
+            dt = datetime.fromisoformat(val.replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt
+        except Exception:
+            pass
+    return now_utc()
 
 
 def parse_date_range(preset: str = "month", date_from: Optional[str] = None, date_to: Optional[str] = None):
@@ -263,7 +281,7 @@ async def dispatch_overview(
         "status": {"$nin": ["completed", "refunded", "rejected", "cancelled"]},
     })
 
-    # 8. 100-Night Trial Requests / Active Claims
+    # 8. 30-Night Trial Requests / Active Claims
     trial_requests_count = await db.return_requests.count_documents({
         "kind": "trial",
         "status": {"$nin": ["completed", "refunded", "rejected", "cancelled"]},
@@ -303,7 +321,9 @@ async def dispatch_overview(
                     break
 
         if created and dispatched:
-            delta = (dispatched - created).total_seconds() / 3600.0
+            created_dt = to_utc_datetime(created)
+            dispatched_dt = to_utc_datetime(dispatched)
+            delta = (dispatched_dt - created_dt).total_seconds() / 3600.0
             if delta <= sla_target_hours:
                 within_target_count += 1
         elif created:
@@ -427,9 +447,7 @@ async def dispatch_orders(
     for o in orders:
         addr = o.get("address") or {}
         items = o.get("items") or []
-        created_at = o.get("created_at") or now
-        if created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
+        created_at = to_utc_datetime(o.get("created_at"))
 
         # Compute age in queue
         age_seconds = max(0, (now - created_at).total_seconds())
@@ -1080,18 +1098,18 @@ async def create_replacement_order(
 
 
 # -----------------------------------------------------------------------------
-# 8. 100-Night Trial Tracking (Strictly from Delivery Date)
+# 8. 30-Night Trial Tracking (Strictly from Delivery Date)
 # -----------------------------------------------------------------------------
 
 @router.get("/trials")
-async def list_100_night_trials(
+async def list_30_night_trials(
     status: Optional[str] = None,
     q: Optional[str] = None,
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=100),
     user=Depends(require_role(OWNER, ADMIN, MANAGER)),
 ):
-    """100-Night Trial lifecycle table. Trial duration is calculated strictly
+    """30-Night Trial lifecycle table. Trial duration is calculated strictly
     from Delivery Date, never order placement date.
     """
     # Find all delivered orders with mattress items
@@ -1106,7 +1124,7 @@ async def list_100_night_trials(
 
     delivered_orders = await db.orders.find(query).sort("created_at", -1).to_list(500)
     now = now_utc()
-    trial_days_default = 100
+    trial_days_default = 30
 
     rows = []
     for o in delivered_orders:
@@ -1126,9 +1144,7 @@ async def list_100_night_trials(
                 delivered_date = o.get("created_at")
 
         # Trial calculations
-        trial_start = delivered_date or now
-        if trial_start.tzinfo is None:
-            trial_start = trial_start.replace(tzinfo=timezone.utc)
+        trial_start = to_utc_datetime(delivered_date)
         trial_end = trial_start + timedelta(days=trial_days_default)
         days_used = max(0, int((now - trial_start).total_seconds() // 86400))
         days_remaining = max(0, trial_days_default - days_used)
@@ -1332,13 +1348,13 @@ async def get_dispatch_policy(user=Depends(require_role(OWNER, ADMIN, MANAGER)))
     policy = await db.settings.find_one({"id": "dispatch_policy"})
     if not policy:
         return {
-            "trial_days": 100,
+            "trial_days": 30,
             "eligible_categories": ["mattresses"],
-            "min_usage_days": 30,
+            "min_usage_days": 10,
             "return_window_days": 14,
             "allow_replacement": True,
             "allow_refund": True,
-            "policy_notes": "Kotson 100-Night Sleep Trial applies to mattresses with minimum 30 days adaptation.",
+            "policy_notes": "Kotson 30-Night Sleep Trial applies to mattresses with minimum 10 days adaptation.",
         }
     return clean_doc(policy)
 

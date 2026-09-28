@@ -118,6 +118,135 @@ async def list_products(
     return [await product_with_variants(d, promo) for d in docs]
 
 
+@router.get("/catalog/customizable-products", response_model=List[ProductOut])
+async def list_customizable_products(category: Optional[str] = None):
+    """Retrieve authoritative products enabled for customization."""
+    query: dict = {
+        "is_active": True,
+        "status": {"$nin": ["PAUSED", "ARCHIVED", "paused", "archived"]},
+        "website_visibility": {"$ne": "HIDDEN"},
+        "customization.enabled": True,
+    }
+    if category:
+        query["category_slug"] = category
+    docs = await db.products.find(query).sort([("display_order", 1), ("sort", 1)]).to_list(200)
+    promo = await get_active_promotion()
+    return [await product_with_variants(d, promo) for d in docs]
+
+
+class CustomConfigValidateIn(BaseModel):
+    product_id: str
+    dimensions: Dict[str, Any] = {}
+    unit: str = "inch"
+    options: List[Dict[str, Any]] = []
+    is_standard: bool = False
+    standard_variant_id: Optional[str] = None
+
+
+@router.post("/custom-config/validate-and-price")
+async def validate_and_price_config(payload: CustomConfigValidateIn):
+    from lib.custom_pricing import CustomPricingService
+
+    p = await db.products.find_one({"id": payload.product_id, "is_active": True})
+    if not p:
+        raise HTTPException(status_code=404, detail="Product not found or inactive")
+
+    standard_v = None
+    if payload.is_standard and payload.standard_variant_id:
+        standard_v = await db.variants.find_one({"id": payload.standard_variant_id, "product_id": p["id"], "is_active": True})
+        if not standard_v:
+            raise HTTPException(status_code=404, detail="Selected standard variant not found")
+    else:
+        valid, msg = CustomPricingService.validate_dimensions(p, payload.dimensions)
+        if not valid:
+            raise HTTPException(status_code=422, detail=msg)
+
+    valid_opts, opt_msg, resolved_opts = CustomPricingService.validate_and_resolve_options(p, payload.options)
+    if not valid_opts:
+        raise HTTPException(status_code=422, detail=opt_msg)
+
+    pricing = await CustomPricingService.calculate_custom_price(
+        product=p,
+        dimensions=payload.dimensions,
+        resolved_options=resolved_opts,
+        is_standard=payload.is_standard,
+        standard_variant=standard_v,
+    )
+
+    return {
+        "valid": True,
+        "product_id": p["id"],
+        "product_name": p["name"],
+        "product_slug": p["slug"],
+        "dimensions": payload.dimensions,
+        "unit": payload.unit,
+        "options": resolved_opts,
+        "is_standard": payload.is_standard,
+        "standard_variant_id": payload.standard_variant_id,
+        "pricing": pricing,
+    }
+
+
+@router.post("/custom-config/save")
+async def save_custom_configuration(payload: CustomConfigValidateIn):
+    from lib.custom_pricing import CustomPricingService
+
+    p = await db.products.find_one({"id": payload.product_id, "is_active": True})
+    if not p:
+        raise HTTPException(status_code=404, detail="Product not found or inactive")
+
+    standard_v = None
+    if payload.is_standard and payload.standard_variant_id:
+        standard_v = await db.variants.find_one({"id": payload.standard_variant_id, "product_id": p["id"], "is_active": True})
+        if not standard_v:
+            raise HTTPException(status_code=404, detail="Selected standard variant not found")
+    else:
+        valid, msg = CustomPricingService.validate_dimensions(p, payload.dimensions)
+        if not valid:
+            raise HTTPException(status_code=422, detail=msg)
+
+    valid_opts, opt_msg, resolved_opts = CustomPricingService.validate_and_resolve_options(p, payload.options)
+    if not valid_opts:
+        raise HTTPException(status_code=422, detail=opt_msg)
+
+    pricing = await CustomPricingService.calculate_custom_price(
+        product=p,
+        dimensions=payload.dimensions,
+        resolved_options=resolved_opts,
+        is_standard=payload.is_standard,
+        standard_variant=standard_v,
+    )
+
+    config_id = f"cfg_{uuid.uuid4().hex[:16]}"
+    doc = {
+        "id": config_id,
+        "product_id": p["id"],
+        "product_name": p["name"],
+        "product_slug": p["slug"],
+        "dimensions": payload.dimensions,
+        "unit": payload.unit,
+        "options": resolved_opts,
+        "is_standard": payload.is_standard,
+        "standard_variant_id": payload.standard_variant_id,
+        "pricing": pricing,
+        "created_at": now_utc(),
+    }
+    await db.custom_configurations.insert_one(doc)
+
+    return {
+        "custom_configuration_id": config_id,
+        "config": clean_doc(doc),
+    }
+
+
+@router.get("/custom-config/{config_id}")
+async def get_custom_configuration(config_id: str):
+    doc = await db.custom_configurations.find_one({"id": config_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Custom configuration not found")
+    return clean_doc(doc)
+
+
 @router.get("/catalog/products/{slug}", response_model=ProductOut)
 async def get_product(slug: str):
     p = await db.products.find_one({

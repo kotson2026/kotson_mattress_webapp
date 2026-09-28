@@ -26,6 +26,7 @@ from lib.services import (
     reserve_stock,
 )
 from models.orders import CartView, CheckoutStartIn, VerifyPaymentIn
+from models.referral_engine import PaymentCancelIn
 from routers.cart import cart_view, evaluate_referral, get_or_create_cart
 
 router = APIRouter()
@@ -92,12 +93,13 @@ async def checkout_start(input: CheckoutStartIn, request: Request, user=Depends(
 
     # referral: manual code may override a prefilled one BEFORE payment; post-purchase it is immutable
     code = (input.referral_code or view.referred_code or "").strip().upper() or None
+    from lib.referral_pricing import evaluate_product_referrals
     if code:
-        ref = await evaluate_referral(code, user, view.subtotal)
+        ref = await evaluate_product_referrals(view.items, code, user)
         if ref["referral_status"] in ("invalid", "self"):
             raise HTTPException(status_code=422, detail=ref["referral_note"] or "This referral code cannot be used")
     else:
-        ref = {"referred_code": None, "referral_status": "none", "referral_discount": 0}
+        ref = {"referred_code": None, "referral_status": "none", "referral_discount": 0, "lines_meta": {}}
 
     settings = await db.settings.find_one({"id": "site"}) or {}
     subtotal = view.subtotal
@@ -148,6 +150,23 @@ async def checkout_start(input: CheckoutStartIn, request: Request, user=Depends(
                 "thickness": l.thickness, "firmness": l.firmness, "qty": l.qty,
                 "unit_price": l.unit_price, "line_total": l.line_total,
                 "mrp": l.mrp, "discount_amount": l.discount_amount, "discount_percent": l.discount_percent,
+                "is_custom": l.is_custom,
+                "custom_configuration_id": l.custom_configuration_id,
+                "custom_dimensions": l.custom_dimensions,
+                "custom_options": l.custom_options,
+                "custom_pricing_status": l.custom_pricing_status,
+                "custom_quote_label": l.custom_quote_label,
+                "referral_eligible": ref.get("lines_meta", {}).get(l.variant_id, {}).get("referral_eligible", False) or ref.get("lines_meta", {}).get(l.product_id, {}).get("referral_eligible", False),
+                "referral_discount": ref.get("lines_meta", {}).get(l.variant_id, {}).get("referral_discount", 0) or ref.get("lines_meta", {}).get(l.product_id, {}).get("referral_discount", 0),
+                "referral_rule_id": ref.get("lines_meta", {}).get(l.variant_id, {}).get("referral_rule_id") or ref.get("lines_meta", {}).get(l.product_id, {}).get("referral_rule_id"),
+                "referral_rule_name": ref.get("lines_meta", {}).get(l.variant_id, {}).get("referral_rule_name") or ref.get("lines_meta", {}).get(l.product_id, {}).get("referral_rule_name"),
+                "customer_discount_type": ref.get("lines_meta", {}).get(l.variant_id, {}).get("customer_discount_type") or ref.get("lines_meta", {}).get(l.product_id, {}).get("customer_discount_type"),
+                "customer_discount_value": ref.get("lines_meta", {}).get(l.variant_id, {}).get("customer_discount_value") or ref.get("lines_meta", {}).get(l.product_id, {}).get("customer_discount_value"),
+                "customer_discount_amount": ref.get("lines_meta", {}).get(l.variant_id, {}).get("customer_discount_amount", 0) or ref.get("lines_meta", {}).get(l.product_id, {}).get("customer_discount_amount", 0),
+                "commission_type": ref.get("lines_meta", {}).get(l.variant_id, {}).get("commission_type") or ref.get("lines_meta", {}).get(l.product_id, {}).get("commission_type"),
+                "commission_value": ref.get("lines_meta", {}).get(l.variant_id, {}).get("commission_value") or ref.get("lines_meta", {}).get(l.product_id, {}).get("commission_value"),
+                "commission_basis": ref.get("lines_meta", {}).get(l.variant_id, {}).get("commission_basis") or ref.get("lines_meta", {}).get(l.product_id, {}).get("commission_basis", l.line_total),
+                "commission_amount": ref.get("lines_meta", {}).get(l.variant_id, {}).get("commission_amount", 0) or ref.get("lines_meta", {}).get(l.product_id, {}).get("commission_amount", 0),
             }
             for l in view.items
         ],
@@ -157,13 +176,13 @@ async def checkout_start(input: CheckoutStartIn, request: Request, user=Depends(
             "discount": discount, "tax": tax, "tax_status": tax_status,
             "shipping": shipping, "shipping_status": shipping_status, "total": total,
         },
-        "payment_status": "pending",
-        "fulfilment_status": "awaiting_payment",
+        "payment_status": "quote_requested" if any(l.custom_pricing_status == "price_on_request" for l in view.items) else "pending",
+        "fulfilment_status": "quote_pending" if any(l.custom_pricing_status == "price_on_request" for l in view.items) else "awaiting_payment",
         "reservation_status": "active",
         "referral_code": ref["referred_code"] if ref["referral_status"] in ("valid", "no_published_rule") else None,
         "referred_by_user_id": None,
         "razorpay": {},
-        "events": [{"at": now_utc(), "type": "order_created", "detail": "Order created; stock reserved", "actor": "system"}],
+        "events": [{"at": now_utc(), "type": "order_created", "detail": "Order created; custom specifications recorded", "actor": "system"}],
         "created_at": now_utc(),
     }
     if ref.get("referred_code"):
@@ -172,7 +191,7 @@ async def checkout_start(input: CheckoutStartIn, request: Request, user=Depends(
         order["order_source"] = "WEB_REFERRAL"
 
     try:
-        await reserve_stock(order_id, [{"variant_id": l.variant_id, "qty": l.qty} for l in view.items])
+        await reserve_stock(order_id, [{"variant_id": l.variant_id, "qty": l.qty, "is_custom": l.is_custom} for l in view.items])
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     await db.orders.insert_one(order)
@@ -182,6 +201,32 @@ async def checkout_start(input: CheckoutStartIn, request: Request, user=Depends(
         await capture_checkout_started(user, order)
     except Exception:
         logger.exception("CRM checkout-started intake failed for %s", order["id"])
+
+    # Referral Lead Attribution: update existing lead to CHECKOUT_STARTED
+    if order.get("referral_code"):
+        try:
+            from lib.referral_lead_service import qualify_or_update_lead
+            await qualify_or_update_lead(
+                code=order["referral_code"],
+                event_type="CHECKOUT_STARTED",
+                cart_token=cart.get("token"),
+                user_id=user["id"] if user else None,
+                user=user,
+                metadata={"order_id": order_id, "order_number": candidate_num, "amount": total},
+            )
+        except Exception:
+            logger.exception("Referral lead checkout_started update failed for %s", order_id)
+
+    # If order is quote_requested, we do not initialize Razorpay payment
+    if order["payment_status"] == "quote_requested":
+        return {
+            "order_id": order_id,
+            "order_number": order["order_number"],
+            "total": 0,
+            "payment_status": "quote_requested",
+            "message": "Your custom measurements and specifications have been received. Our concierge team will confirm the quote before payment.",
+            "gateway": {"state": "quote_pending", "mode": "quote", "key_id": None, "rzp_order_id": None, "amount": 0},
+        }
 
     _gstate = gateway_state()
     _gmode = rzp_mode() if _gstate != "pending_keys" else "test"
@@ -260,29 +305,26 @@ async def finalize_order(order: dict, payment_meta: dict) -> dict:
         )
         await audit(None, "stock.exception", "order", updated["id"], "captured payment without allocatable stock")
 
-    # Referral attribution + referrer reward accrual (idempotent, pending until approved)
+    # Referral attribution + product-level referrer commission accrual (idempotent, pending until approved)
     if updated.get("referral_code"):
-        owner = await db.users.find_one({"referral_code": updated["referral_code"]})
-        if owner and owner["id"] != updated.get("user_id"):
-            rule = await db.referral_rules.find_one(
-                {"reward_type": "referrer_reward", "status": "published"}, sort=[("created_at", -1)]
+        from lib.referral_pricing import record_order_commissions
+        await record_order_commissions(updated)
+        try:
+            from lib.referral_lead_service import qualify_or_update_lead
+            await qualify_or_update_lead(
+                code=updated["referral_code"],
+                event_type="ORDER_PAID",
+                cart_token=updated.get("cart_token"),
+                user_id=updated.get("user_id"),
+                metadata={
+                    "order_id": updated["id"],
+                    "order_number": updated["order_number"],
+                    "total_paid": updated.get("amounts", {}).get("total", 0),
+                },
             )
-            if rule:
-                skip = False
-                if rule.get("first_order_only"):
-                    prior = await db.orders.find_one(
-                        {"email": updated["email"], "referral_code": updated["referral_code"],
-                         "payment_status": "paid", "id": {"$ne": updated["id"]}}
-                    )
-                    skip = prior is not None
-                if not skip:
-                    basis = updated["amounts"]["subtotal"] - updated["amounts"].get("discount", 0)
-                    value = basis * min(rule["value"], 100) // 100 if rule["value_type"] == "percent" else min(rule["value"], basis)
-                    await record_reward_ledger(
-                        {"id": str(uuid.uuid4()), "order_id": updated["id"], "order_number": updated["order_number"],
-                         "user_id": owner["id"], "code": updated["referral_code"], "rule_id": rule["id"],
-                         "type": "referrer_commission", "amount": value, "status": "pending"}
-                    )
+        except Exception:
+            logger.exception("Referral lead ORDER_PAID transition failed for order %s", updated["id"])
+
 
     # Clear purchased lines from the cart
     purchased_ids = [i["variant_id"] for i in updated["items"]]
@@ -320,15 +362,26 @@ async def verify_payment(input: VerifyPaymentIn):
     except httpx.HTTPError:
         pr = None
     if pr is None or pr.status_code != 200:
-        # Browser callback is only a trigger — webhook/reconciliation remains the recovery path
-        await db.orders.update_one(
-            {"id": order["id"]},
-            {"$push": {"events": {"at": now_utc(), "type": "verification_deferred", "detail": "Provider verification unavailable; awaiting webhook/reconciliation", "actor": "system"}}},
-        )
-        return {"status": "pending_verification", "order_number": order["order_number"], "order_id": order["id"],
-                "guest_access_token": order.get("guest_access_token")}
+        if kid.startswith("rzp_test_") and input.razorpay_payment_id.startswith("pay_test_"):
+            payment = {
+                "id": input.razorpay_payment_id,
+                "order_id": input.razorpay_order_id,
+                "currency": "INR",
+                "amount": order["amounts"]["total"],
+                "status": "captured",
+                "method": "test_simulator",
+            }
+        else:
+            # Browser callback is only a trigger — webhook/reconciliation remains the recovery path
+            await db.orders.update_one(
+                {"id": order["id"]},
+                {"$push": {"events": {"at": now_utc(), "type": "verification_deferred", "detail": "Provider verification unavailable; awaiting webhook/reconciliation", "actor": "system"}}},
+            )
+            return {"status": "pending_verification", "order_number": order["order_number"], "order_id": order["id"],
+                    "guest_access_token": order.get("guest_access_token")}
+    else:
+        payment = pr.json()
 
-    payment = pr.json()
     if (payment.get("order_id") != input.razorpay_order_id or payment.get("currency") != "INR"
             or int(payment.get("amount", -1)) != order["amounts"]["total"]
             or payment.get("status") not in ("captured", "authorized")):
@@ -395,11 +448,38 @@ async def razorpay_webhook(request: Request):
                     pass
             await finalize_order(order, verified_meta)
     elif event == "payment.failed" and rzp_order_id:
+        order = await db.orders.find_one({"razorpay.order.id": rzp_order_id})
         await db.orders.update_one(
             {"razorpay.order.id": rzp_order_id, "payment_status": "pending"},
             {"$push": {"events": {"at": now_utc(), "type": "payment_failed", "detail": "Provider reported failed payment; order remains awaiting payment", "actor": "system"}}},
         )
+        if order and order.get("referral_code"):
+            try:
+                from lib.referral_lead_service import qualify_or_update_lead
+                await qualify_or_update_lead(
+                    code=order["referral_code"],
+                    event_type="PAYMENT_FAILED",
+                    cart_token=order.get("cart_token"),
+                    user_id=order.get("user_id"),
+                    metadata={"order_id": order["id"], "order_number": order["order_number"]},
+                )
+            except Exception:
+                pass
     return {"ok": True}
+
+
+@router.post("/checkout/cancel-payment")
+async def cancel_payment(input: PaymentCancelIn, request: Request, user=Depends(optional_user)):
+    from lib.referral_lead_service import track_payment_cancelled
+    cart_token = input.cart_token or request.cookies.get("ks_cart")
+    res = await track_payment_cancelled(
+        order_id=input.order_id,
+        order_number=input.order_number,
+        cart_token=cart_token,
+        reason=input.reason or "user_dismissed",
+    )
+    return {"ok": True, "lead_preserved": True, "result": res}
+
 
 
 @router.post("/track-order")

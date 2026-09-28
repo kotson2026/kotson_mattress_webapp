@@ -275,13 +275,22 @@ function QtyStepper({
 }
 
 /** Individual cart line inside the drawer */
-function DrawerCartItem({ line, onQty, onRemove, busy }: {
+function DrawerCartItem({ line, onQty, onRemove, onEditCustom, busy }: {
   line: CartLine;
   onQty: (qty: number) => void;
   onRemove: () => void;
+  onEditCustom?: () => void;
   busy: boolean;
 }) {
-  const dims = [line.size, line.thickness, line.firmness].filter(Boolean).join(" · ");
+  const isCustom = Boolean(line.is_custom);
+  const customDims = line.custom_dimensions
+    ? `${line.custom_dimensions.length} × ${line.custom_dimensions.breadth} × ${line.custom_dimensions.thickness} in`
+    : line.size;
+  const customOptionsSummary = line.custom_options && Array.isArray(line.custom_options)
+    ? line.custom_options.map((o: any) => `${o.option_label || o.option_name}: ${o.value_label || o.value_name}`).join(" · ")
+    : null;
+  const dims = isCustom ? customDims : [line.size, line.thickness, line.firmness].filter(Boolean).join(" · ");
+
   return (
     <motion.div
       layout
@@ -313,11 +322,33 @@ function DrawerCartItem({ line, onQty, onRemove, busy }: {
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 700, fontSize: 14, color: C.charcoal, lineHeight: 1.3 }}>
-          {line.product_name}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <span style={{ fontWeight: 700, fontSize: 14, color: C.charcoal, lineHeight: 1.3 }}>
+            {line.product_name}
+          </span>
+          {isCustom && (
+            <span style={{
+              fontSize: 10, fontWeight: 700, background: C.greenBg, color: C.green,
+              padding: "2px 6px", borderRadius: 4, letterSpacing: "0.02em", textTransform: "uppercase"
+            }}>
+              Custom Size
+            </span>
+          )}
         </div>
         {dims && (
-          <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{dims}</div>
+          <div style={{ fontSize: 12, fontWeight: isCustom ? 600 : 400, color: isCustom ? C.charcoal : C.muted, marginTop: 2 }}>
+            {dims}
+          </div>
+        )}
+        {customOptionsSummary && (
+          <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>
+            {customOptionsSummary}
+          </div>
+        )}
+        {line.custom_pricing_status === "price_on_request" && (
+          <div style={{ fontSize: 11, fontWeight: 600, color: C.amber, marginTop: 2 }}>
+            Price to be confirmed
+          </div>
         )}
         <div style={{ marginTop: 6 }}>
           <PriceDisplay
@@ -327,14 +358,39 @@ function DrawerCartItem({ line, onQty, onRemove, busy }: {
             size="sm"
           />
         </div>
+        {line.referral_discount && line.referral_discount > 0 ? (
+          <div style={{ fontSize: 11, fontWeight: 600, color: C.green, marginTop: 3 }}>
+            Referral Discount: −{inr(line.referral_discount)}
+          </div>
+        ) : null}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
-          <QtyStepper
-            qty={line.qty}
-            maxQty={Math.min(line.free_stock, 10)}
-            onDecrease={() => onQty(line.qty - 1)}
-            onIncrease={() => onQty(line.qty + 1)}
-            loading={busy}
-          />
+          {isCustom ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Qty: {line.qty}</span>
+              {onEditCustom && (
+                <button
+                  onClick={onEditCustom}
+                  style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    padding: "3px 6px", color: C.green, fontSize: 11, fontWeight: 700,
+                    display: "flex", alignItems: "center", gap: 4,
+                  }}
+                  aria-label={`Edit customization for ${line.product_name}`}
+                >
+                  <Pencil size={12} />
+                  <span>Edit Customization</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <QtyStepper
+              qty={line.qty}
+              maxQty={Math.min(line.free_stock, 10)}
+              onDecrease={() => onQty(line.qty - 1)}
+              onIncrease={() => onQty(line.qty + 1)}
+              loading={busy}
+            />
+          )}
           <button
             onClick={onRemove}
             style={{
@@ -506,9 +562,11 @@ function DrawerRecommendations({ cart, onClose }: { cart: CartView; onClose: () 
 /** Order total summary panel */
 function DrawerOrderTotal({ cart, couponDiscount }: { cart: CartView; couponDiscount: number }) {
   const totalMrp = cart.total_mrp && cart.total_mrp > cart.subtotal ? cart.total_mrp : Math.round(cart.subtotal * 1.4);
-  const subtotal = cart.subtotal;
-  const savings = (totalMrp > subtotal ? totalMrp - subtotal : 0) + couponDiscount;
-  const finalTotal = Math.max(0, subtotal - couponDiscount);
+  const kotsonDiscount = Math.max(0, totalMrp - cart.subtotal);
+  const sellingPrice = cart.subtotal;
+  const referralDiscount = cart.referral_discount || 0;
+  const finalTotal = Math.max(0, sellingPrice - referralDiscount - couponDiscount);
+  const totalSavings = kotsonDiscount + referralDiscount + couponDiscount;
 
   return (
     <div style={{
@@ -516,13 +574,37 @@ function DrawerOrderTotal({ cart, couponDiscount }: { cart: CartView; couponDisc
       border: `1px solid ${C.border}`, fontSize: 13,
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", color: C.muted, marginBottom: 8 }}>
-        <span>Subtotal</span>
+        <span>MRP</span>
         <span style={{ fontWeight: 600, color: C.charcoal }}>{inr(totalMrp)}</span>
       </div>
-      {savings > 0 && (
+      {kotsonDiscount > 0 && (
         <div style={{ display: "flex", justifyContent: "space-between", color: C.green, fontWeight: 600, marginBottom: 8 }}>
-          <span>Total Discount (40% Off)</span>
-          <span>−{inr(savings)}</span>
+          <span>Kotson Product Discount</span>
+          <span>−{inr(kotsonDiscount)}</span>
+        </div>
+      )}
+      <div style={{ display: "flex", justifyContent: "space-between", color: C.charcoal, fontWeight: 600, marginBottom: 8, borderTop: `1px dashed ${C.border}`, paddingTop: 6 }}>
+        <span>Selling Price</span>
+        <span>{inr(sellingPrice)}</span>
+      </div>
+      {cart.referred_code && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", color: C.charcoal, marginBottom: 8 }}>
+          <span>Referral Code</span>
+          <span style={{ fontWeight: 700, color: C.green, background: C.greenBg, padding: "2px 8px", borderRadius: 4, fontSize: 12 }}>
+            {cart.referred_code} ✓
+          </span>
+        </div>
+      )}
+      {referralDiscount > 0 && (
+        <div style={{ display: "flex", justifyContent: "space-between", color: C.green, fontWeight: 600, marginBottom: 8 }}>
+          <span>Referral Discount</span>
+          <span>−{inr(referralDiscount)}</span>
+        </div>
+      )}
+      {couponDiscount > 0 && (
+        <div style={{ display: "flex", justifyContent: "space-between", color: C.green, fontWeight: 600, marginBottom: 8 }}>
+          <span>Coupon Discount</span>
+          <span>−{inr(couponDiscount)}</span>
         </div>
       )}
       <div style={{ display: "flex", justifyContent: "space-between", color: C.muted, marginBottom: 8 }}>
@@ -536,9 +618,18 @@ function DrawerOrderTotal({ cart, couponDiscount }: { cart: CartView; couponDisc
         borderTop: `1px solid ${C.border}`, paddingTop: 12, marginTop: 4,
         fontWeight: 700, fontSize: 16, color: C.charcoal,
       }}>
-        <span>Total</span>
+        <span>FINAL AMOUNT TO PAY</span>
         <span style={{ color: C.green }}>{inr(finalTotal)}</span>
       </div>
+      {totalSavings > 0 && (
+        <div style={{
+          display: "flex", justifyContent: "space-between",
+          color: C.green, fontWeight: 600, fontSize: 12, marginTop: 6,
+        }}>
+          <span>You Save</span>
+          <span>{inr(totalSavings)}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -546,7 +637,8 @@ function DrawerOrderTotal({ cart, couponDiscount }: { cart: CartView; couponDisc
 /** Collapsible order summary for checkout steps */
 function OrderSummaryAccordion({ cart, couponDiscount }: { cart: CartView; couponDiscount: number }) {
   const [open, setOpen] = useState(false);
-  const finalTotal = Math.max(0, cart.subtotal - couponDiscount);
+  const finalTotal = Math.max(0, cart.subtotal - (cart.referral_discount || 0) - couponDiscount);
+
 
   return (
     <div style={{
@@ -587,9 +679,13 @@ function OrderSummaryAccordion({ cart, couponDiscount }: { cart: CartView; coupo
           >
             <div style={{ padding: "0 16px 14px" }}>
               {cart.items.map(line => {
-                const dims = [line.size, line.thickness, line.firmness].filter(Boolean).join(" · ");
+                const isCustom = Boolean(line.is_custom);
+                const customDims = line.custom_dimensions
+                  ? `${line.custom_dimensions.length} × ${line.custom_dimensions.breadth} × ${line.custom_dimensions.thickness} in`
+                  : line.size;
+                const dims = isCustom ? customDims : [line.size, line.thickness, line.firmness].filter(Boolean).join(" · ");
                 return (
-                  <div key={line.variant_id} style={{
+                  <div key={line.custom_configuration_id || line.variant_id} style={{
                     display: "flex", gap: 10, paddingTop: 10, paddingBottom: 10,
                     borderBottom: `1px solid ${C.border}`,
                   }}>
@@ -600,8 +696,18 @@ function OrderSummaryAccordion({ cart, couponDiscount }: { cart: CartView; coupo
                       <Package size={18} color={C.muted} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{line.product_name} × {line.qty}</div>
-                      {dims && <div style={{ fontSize: 11, color: C.muted }}>{dims}</div>}
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>
+                        {line.product_name} × {line.qty}
+                        {isCustom && (
+                          <span style={{
+                            marginLeft: 6, fontSize: 10, fontWeight: 700,
+                            background: C.greenBg, color: C.green, padding: "1px 5px", borderRadius: 3,
+                          }}>
+                            Custom
+                          </span>
+                        )}
+                      </div>
+                      {dims && <div style={{ fontSize: 11, color: isCustom ? C.charcoal : C.muted }}>{dims}</div>}
                       <PriceDisplay salePrice={line.unit_price} mrp={line.mrp} discountPercent={line.discount_percent} size="sm" />
                     </div>
                     <div style={{ fontWeight: 700, fontSize: 14, color: C.charcoal, flexShrink: 0 }}>
@@ -1141,9 +1247,10 @@ export function CheckoutDrawer({ open, onClose }: CheckoutDrawerProps) {
     dispatch({ type: "SET_STEP", step: "PROCESSING" });
 
     try {
+      const activeRef = cart?.referred_code || sessionStorage.getItem("kotson_ref") || localStorage.getItem("kotson_ref") || undefined;
       const out = await apiPost<CheckoutStartOut>("/checkout/start", {
         address: addressPayload,
-        referral_code: undefined,
+        referral_code: activeRef,
         coupon_id: state.couponResult?.valid ? state.couponResult.coupon_id : undefined,
       });
 
@@ -1184,10 +1291,17 @@ export function CheckoutDrawer({ open, onClose }: CheckoutDrawerProps) {
           },
           modal: {
             ondismiss: () => {
-              toast.info("Payment window closed — your order is saved as awaiting payment");
+              apiPost("/checkout/cancel-payment", {
+                order_id: out.order_id,
+                order_number: out.order_number,
+                reason: "payment_dismissed_by_user",
+              }).catch(() => {});
+
+              toast.info("Payment window closed — referral lead & cart preserved");
               dispatch({ type: "ORDER_FAILURE", reason: "Payment window closed" });
             },
           },
+
         });
         rzp.open();
       } else if (out.gateway.state === "pending_keys") {
@@ -1282,7 +1396,7 @@ export function CheckoutDrawer({ open, onClose }: CheckoutDrawerProps) {
                   <AnimatePresence>
                     {cart.items.map(line => (
                       <DrawerCartItem
-                        key={line.variant_id}
+                        key={line.custom_configuration_id || line.variant_id}
                         line={line}
                         busy={busyVariant === line.variant_id}
                         onQty={(qty) => {
@@ -1291,9 +1405,18 @@ export function CheckoutDrawer({ open, onClose }: CheckoutDrawerProps) {
                             onSettled: () => setBusyVariant(null),
                           });
                         }}
+                        onEditCustom={() => {
+                          onClose();
+                          navigate(
+                            `/customizable-products/customize/${line.product_slug}${
+                              line.custom_configuration_id ? `?configId=${line.custom_configuration_id}` : ""
+                            }`
+                          );
+                        }}
                         onRemove={() => {
                           setBusyVariant(line.variant_id);
-                          removeItem.mutate(line.variant_id, {
+                          const targetId = line.custom_configuration_id || line.variant_id;
+                          removeItem.mutate(targetId, {
                             onSettled: () => setBusyVariant(null),
                           });
                         }}
@@ -1607,7 +1730,7 @@ export function CheckoutDrawer({ open, onClose }: CheckoutDrawerProps) {
                       transition: "all 0.18s", letterSpacing: "0.04em",
                     }}
                   >
-                    {paying ? "Processing…" : `Pay ${cart ? inr(Math.max(0, cart.subtotal - couponDiscount)) : ""}`}
+                    {paying ? "Processing…" : `Pay ${cart ? inr(Math.max(0, cart.subtotal - (cart.referral_discount || 0) - couponDiscount)) : ""}`}
                   </button>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 10 }}>
                     <ShieldCheck size={13} color={C.muted} />

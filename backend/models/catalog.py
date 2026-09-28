@@ -59,6 +59,50 @@ class VariantOut(Variant):
     discount_percent: Optional[float] = 0.0
 
 
+class DimensionRule(BaseModel):
+    min: float = 30.0
+    max: float = 84.0
+    step: float = 1.0
+    allowed_values: Optional[List[float]] = None
+
+
+class CustomizationOptionValue(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4())[:8])
+    name: str
+    display_label: str = ""
+    image: str = ""
+    description: str = ""
+    additional_price: int = 0  # paise
+    enabled: bool = True
+    sort_order: int = 0
+
+
+class CustomizationOption(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4())[:8])
+    name: str  # e.g. "Cover Material", "Firmness"
+    display_label: str = ""
+    required: bool = True
+    enabled: bool = True
+    sort_order: int = 0
+    values: List[CustomizationOptionValue] = []
+
+
+class CustomPricingRule(BaseModel):
+    pricing_mode: str = "quote_pending"  # "quote_pending" | "formula" | "base_variant_ratio"
+    base_rate_per_sq_inch_paise: int = 0
+    thickness_multiplier: float = 1.0
+    min_price_paise: Optional[int] = None
+    promotion_eligible: bool = False
+
+
+class ProductCustomizationConfig(BaseModel):
+    enabled: bool = False
+    unit: str = "inch"  # "inch" | "cm"
+    dimensions: Dict[str, DimensionRule] = {}
+    options: List[CustomizationOption] = []
+    pricing: CustomPricingRule = Field(default_factory=CustomPricingRule)
+
+
 class Product(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     slug: str
@@ -100,6 +144,7 @@ class Product(BaseModel):
     is_seed: bool = False
     is_active: bool = True
     sort: int = 0
+    customization: Optional[ProductCustomizationConfig] = None
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: Optional[datetime] = None
 
@@ -165,6 +210,7 @@ class ProductUpsertIn(BaseModel):
     referral_reward: Optional[Dict[str, Any]] = None
     dealer_pricing: Optional[Dict[str, Any]] = None
     is_active: bool = True
+    customization: Optional[ProductCustomizationConfig] = None
     variants: Optional[List[VariantIn]] = None
 
 

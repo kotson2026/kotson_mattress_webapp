@@ -30,6 +30,10 @@ class CMSPage(BaseModel):
     status: str = "published"  # published | draft
     page_type: str = "content"  # content | system | commerce
     sections: List[CMSSection] = []
+    published_sections: List[CMSSection] = []
+    has_draft_changes: bool = False
+    published_at: Optional[datetime] = None
+    published_by: Optional[str] = None
     is_system_page: bool = False  # home, collections, about, contact, track-order
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)
@@ -67,7 +71,7 @@ class CMSNavItem(BaseModel):
 
 class HeaderConfig(BaseModel):
     announcement_enabled: bool = True
-    announcement_text: str = "Sleep Better Tonight — Get 100 Nights Risk-Free Trial + Free Shipping Pan India"
+    announcement_text: str = "Sleep Better Tonight — Get 30 Nights Risk-Free Trial + Free Shipping Pan India"
     announcement_link: Optional[str] = "/collections/mattresses"
     phone_hotline: str = "+91 98765 43210"
     nav_items: List[CMSNavItem] = []
@@ -88,10 +92,10 @@ class FooterConfig(BaseModel):
     tagline: str = "Ergonomically engineered for deep sleep and spinal alignment."
     columns: List[FooterColumn] = []
     social_links: Dict[str, str] = {
-        "instagram": "https://instagram.com/kotsonmattress",
-        "facebook": "https://facebook.com/kotsonmattress",
-        "youtube": "https://youtube.com/@kotsonmattress",
-        "linkedin": "https://linkedin.com/company/kotsonmattress"
+        "instagram": "https://www.instagram.com/kotsonmattress/",
+        "facebook": "https://www.facebook.com/kotsonmattress",
+        "youtube": "https://www.youtube.com/@kotsonmattress",
+        "linkedin": "https://in.linkedin.com/company/kotsonmattress"
     }
     copyright_text: str = "© 2026 Kotson Mattress Co. All rights reserved."
     show_trust_badges: bool = True
@@ -108,3 +112,13 @@ class BrandingConfig(BaseModel):
     accent_color: str = "#C69249"
     background_color: str = "#FAF8F5"
     history: List[Dict[str, Any]] = []
+
+
+class CustomerSupportConfig(BaseModel):
+    phone: str = "8009800936"
+    country_code: str = "+91"
+    whatsapp: str = "8009800936"
+    phone_enabled: bool = True
+    whatsapp_enabled: bool = True
+    whatsapp_default_message: str = "Hi Kotson, I need help choosing the right product."
+

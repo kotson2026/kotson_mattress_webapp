@@ -1,9 +1,16 @@
 import { useState, useRef, useEffect } from "react";
 import { ArrowRight, Check, FileCheck, ShieldCheck, ChevronRight, X } from "lucide-react";
 
+interface CertificationImage {
+  assetId?: string;
+  url?: string;
+  alt?: string;
+  background?: "default" | "white" | "warm-ivory" | string;
+}
+
 interface CertificationItem {
-  id: "gols" | "eco-institut" | "fsc" | "lga" | "oeko-tex";
-  number: string;
+  id: string;
+  number?: string;
   selectorName: string;
   selectorCategory: string;
   badge: string;
@@ -16,7 +23,15 @@ interface CertificationItem {
   verifiesHeader?: string;
   verifies?: string[];
   whyItMatters: string;
-  hasVideo: boolean;
+  hasVideo?: boolean;
+  videoUrl?: string;
+  visible?: boolean;
+  certificationImage?: CertificationImage;
+  auditHeading?: string;
+  auditSubtitle?: string;
+  auditDocumentationText?: string;
+  auditVerificationText?: string;
+  auditVerificationLink?: string;
 }
 
 const CERTIFICATIONS: CertificationItem[] = [
@@ -47,6 +62,12 @@ const CERTIFICATIONS: CertificationItem[] = [
     whyItMatters:
       "The latex core is a major component of the mattress. GOLS provides independent certification behind the organic latex claim.",
     hasVideo: true,
+    videoUrl: "https://videotourl.com/videos/1790071320217-f57e96c0-9918-440c-8c8e-a0b7ddf8178d.mp4",
+    certificationImage: {
+      url: "",
+      alt: "GOLS — Global Organic Latex Standard Certification",
+      background: "default",
+    },
   },
   {
     id: "eco-institut",
@@ -69,6 +90,11 @@ const CERTIFICATIONS: CertificationItem[] = [
     whyItMatters:
       "Mattresses spend years inside the sleeping environment. Independent emissions testing provides additional evidence about the materials used in that environment.",
     hasVideo: false,
+    certificationImage: {
+      url: "/certifications/eco-institut.png",
+      alt: "eco-INSTITUT Tested Product certification",
+      background: "white",
+    },
   },
   {
     id: "fsc",
@@ -89,6 +115,11 @@ const CERTIFICATIONS: CertificationItem[] = [
     whyItMatters:
       "Certification provides traceability behind responsibly sourced forest-based materials.",
     hasVideo: false,
+    certificationImage: {
+      url: "/certifications/fsc.png",
+      alt: "Forest Stewardship Council (FSC) Certification",
+      background: "white",
+    },
   },
   {
     id: "lga",
@@ -109,6 +140,11 @@ const CERTIFICATIONS: CertificationItem[] = [
     whyItMatters:
       "Performance testing helps demonstrate how the tested product behaves under repeated physical use.",
     hasVideo: false,
+    certificationImage: {
+      url: "/certifications/lga.png",
+      alt: "LGA Quality Certificate — Tested Quality",
+      background: "white",
+    },
   },
   {
     id: "oeko-tex",
@@ -129,15 +165,19 @@ const CERTIFICATIONS: CertificationItem[] = [
     whyItMatters:
       "STANDARD 100 testing provides independent verification against specified harmful-substance requirements for tested components.",
     hasVideo: false,
+    certificationImage: {
+      url: "/certifications/oeko-tex.png",
+      alt: "OEKO-TEX STANDARD 100 Certification",
+      background: "white",
+    },
   },
 ];
 
 const GOLS_VIDEO_URL =
   "https://videotourl.com/videos/1790071320217-f57e96c0-9918-440c-8c8e-a0b7ddf8178d.mp4";
 
-export default function CertificationExperience() {
+export default function CertificationExperience({ config }: { config?: any } = {}) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [activeCertId, setActiveCertId] = useState<CertificationItem["id"]>("gols");
   const [isSwitching, setIsSwitching] = useState(false);
   const [prefersReduced, setPrefersReduced] = useState(false);
 
@@ -145,8 +185,30 @@ export default function CertificationExperience() {
   const initialVideoRef = useRef<HTMLVideoElement | null>(null);
   const explorerVideoRef = useRef<HTMLVideoElement | null>(null);
 
-  const activeCert = CERTIFICATIONS.find((c) => c.id === activeCertId) ?? CERTIFICATIONS[0];
-  const activeIndex = CERTIFICATIONS.findIndex((c) => c.id === activeCertId);
+  // Derived CMS or fallback configuration
+  const eyebrow = config?.eyebrow ?? "CERTIFIED ORGANIC";
+  const heading = config?.heading ?? "Proof in Every Layer.";
+  const subheading = config?.subheading ?? config?.description ?? "Every Kotson mattress is built around independently tested materials and recognized certification standards.";
+  const ctaLabel = config?.cta_label ?? "Know More";
+  const overviewVideoUrl = config?.overview_video_url || GOLS_VIDEO_URL;
+  const expandedEyebrow = config?.expanded_eyebrow ?? "CERTIFIED, NOT JUST CLAIMED";
+  const expandedHeading = config?.expanded_heading ?? "Our Certifications";
+
+  const certsList: CertificationItem[] =
+    Array.isArray(config?.certifications) && config.certifications.length > 0
+      ? config.certifications.filter((c: any) => c.visible !== false)
+      : CERTIFICATIONS;
+
+  const [activeCertId, setActiveCertId] = useState<string>(() => certsList[0]?.id || "gols");
+
+  useEffect(() => {
+    if (!certsList.some((c) => c.id === activeCertId)) {
+      setActiveCertId(certsList[0]?.id || "gols");
+    }
+  }, [certsList, activeCertId]);
+
+  const activeCert = certsList.find((c) => c.id === activeCertId) ?? certsList[0] ?? CERTIFICATIONS[0];
+  const activeIndex = Math.max(0, certsList.findIndex((c) => c.id === activeCertId));
 
   // Check prefers-reduced-motion
   useEffect(() => {
@@ -191,16 +253,16 @@ export default function CertificationExperience() {
     const v = explorerVideoRef.current;
     if (!v) return;
 
-    if (activeCertId === "gols" && !prefersReduced) {
+    if (activeCert?.hasVideo && !prefersReduced) {
       v.currentTime = 0;
       v.play().catch(() => {});
     } else {
       v.pause();
     }
-  }, [isExpanded, activeCertId, prefersReduced]);
+  }, [isExpanded, activeCert, prefersReduced]);
 
   // Smooth switch animation with translateY and opacity
-  const handleSelectCert = (id: CertificationItem["id"]) => {
+  const handleSelectCert = (id: string) => {
     if (id === activeCertId) return;
     setIsSwitching(true);
     setTimeout(() => {
@@ -243,16 +305,15 @@ export default function CertificationExperience() {
             {/* LEFT COLUMN: Clean Brand Narrative */}
             <div className="lg:col-span-6 flex flex-col items-start justify-center">
               <p className="font-ui text-xs sm:text-[13px] lg:text-[14px] font-bold uppercase tracking-[0.14em] text-brand-deep">
-                CERTIFIED ORGANIC
+                {eyebrow}
               </p>
 
               <h2 className="mt-3 font-display text-[34px] sm:text-[46px] lg:text-[54px] font-normal text-brand-charcoal tracking-tight leading-[1.08]">
-                Proof in Every Layer.
+                {heading}
               </h2>
 
               <p className="mt-4 font-ui text-[15px] sm:text-[16px] lg:text-[17px] text-brand-charcoal/75 leading-relaxed font-normal max-w-xl">
-                Every Kotson mattress is built around independently tested materials and recognized
-                certification standards.
+                {subheading}
               </p>
 
               <div className="mt-8 sm:mt-10 flex items-center gap-4">
@@ -262,7 +323,7 @@ export default function CertificationExperience() {
                   className="group inline-flex items-center gap-2.5 rounded-full bg-brand-deep px-7 py-3.5 text-sm font-semibold text-white shadow-xs transition-all duration-300 hover:bg-brand-deep/90 hover:gap-3.5 focus-visible:ring-2 focus-visible:ring-brand-leaf focus-visible:outline-none cursor-pointer"
                   data-testid="know-more-certifications"
                 >
-                  <span className="font-ui">Know More</span>
+                  <span className="font-ui">{ctaLabel}</span>
                   <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
                 </button>
               </div>
@@ -273,7 +334,7 @@ export default function CertificationExperience() {
               <div className="relative w-full overflow-hidden rounded-2xl sm:rounded-3xl border border-[#E8E3D8] bg-[#0E1511] shadow-xs aspect-[16/10] sm:aspect-[16/10]">
                 <video
                   ref={initialVideoRef}
-                  src={GOLS_VIDEO_URL}
+                  src={overviewVideoUrl}
                   muted
                   playsInline
                   loop
@@ -303,10 +364,10 @@ export default function CertificationExperience() {
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-8 sm:pb-12 border-b border-[#E8E3D8]">
               <div>
                 <p className="font-ui text-xs sm:text-[13px] lg:text-[14px] font-bold uppercase tracking-[0.14em] text-brand-deep">
-                  CERTIFIED, NOT JUST CLAIMED
+                  {expandedEyebrow}
                 </p>
                 <h2 className="mt-1.5 font-display text-[32px] sm:text-[42px] lg:text-[48px] font-normal text-brand-charcoal tracking-tight leading-tight">
-                  Our Certifications
+                  {expandedHeading}
                 </h2>
               </div>
 
@@ -323,7 +384,7 @@ export default function CertificationExperience() {
 
             {/* ─── MOBILE SELECTOR TABS (Horizontal Scroll) ─── */}
             <div className="lg:hidden mt-6 overflow-x-auto no-scrollbar -mx-4 px-4 pb-2 flex items-center gap-2">
-              {CERTIFICATIONS.map((cert) => {
+              {certsList.map((cert) => {
                 const isActive = cert.id === activeCertId;
                 return (
                   <button
@@ -350,14 +411,14 @@ export default function CertificationExperience() {
                 <div
                   className="absolute right-0 w-[3px] bg-brand-deep rounded-full transition-all duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
                   style={{
-                    top: `${activeIndex * 20}%`,
-                    height: "20%",
+                    top: `${activeIndex * (100 / Math.max(1, certsList.length))}%`,
+                    height: `${100 / Math.max(1, certsList.length)}%`,
                   }}
                   aria-hidden="true"
                 />
 
                 <div className="flex flex-col divide-y divide-[#E8E3D8]/60">
-                  {CERTIFICATIONS.map((cert) => {
+                  {certsList.map((cert) => {
                     const isActive = cert.id === activeCertId;
                     return (
                       <button
@@ -402,18 +463,66 @@ export default function CertificationExperience() {
                 </div>
               </div>
 
-              {/* VISUAL AREA: On mobile order-1 (shows before details); on desktop order-3 (right side) */}
+              {/* VISUAL AREA: On mobile order-3 (shows after details); on desktop order-3 (right side) */}
               <div
-                className={`order-1 lg:order-3 lg:col-span-4 w-full transition-all duration-300 ease-out ${
+                className={`order-3 lg:order-3 lg:col-span-4 w-full transition-all duration-300 ease-out ${
                   isSwitching ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"
                 }`}
               >
-                {activeCert.id === "gols" ? (
-                  /* GOLS Video Area */
+                {activeCert.certificationImage?.url ? (
+                  /* Official Real Certification Proof Card */
+                  <div
+                    className="w-full rounded-2xl sm:rounded-[18px] border border-[#E8E3D8] bg-white p-5 sm:p-6 shadow-xs flex flex-col justify-between transition-all duration-300 relative overflow-hidden"
+                    data-testid="certification-proof-card"
+                  >
+                    {/* Header: CERTIFICATION PROOF + Dynamic Counter */}
+                    <div className="flex items-center justify-between gap-2 border-b border-[#E8E3D8]/60 pb-3">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-ui font-bold uppercase tracking-wider bg-brand-deep/5 text-brand-deep border border-[#E8E3D8]">
+                        <FileCheck className="h-3 w-3 text-brand-deep" />
+                        Certification Proof
+                      </span>
+                      <span
+                        className="font-ui text-[12px] font-mono text-brand-charcoal/70 font-semibold"
+                        data-testid="cert-counter"
+                      >
+                        {String(activeIndex + 1).padStart(2, "0")} / {String(certsList.length).padStart(2, "0")}
+                      </span>
+                    </div>
+
+                    {/* Media Container: 180-220px desktop max-height, object-fit contain, neutral background */}
+                    <div
+                      className="my-4 py-3 px-4 rounded-xl flex items-center justify-center min-h-[170px] sm:min-h-[190px] max-h-[220px] transition-colors"
+                      style={{
+                        backgroundColor:
+                          activeCert.certificationImage.background === "warm-ivory"
+                            ? "#FAF8F5"
+                            : "#FFFFFF",
+                      }}
+                    >
+                      <img
+                        src={activeCert.certificationImage.url}
+                        alt={activeCert.certificationImage.alt || `${activeCert.badge} certification`}
+                        className="max-h-[160px] sm:max-h-[180px] max-w-full w-auto h-auto object-contain object-center transition-all duration-300"
+                        loading="lazy"
+                      />
+                    </div>
+
+                    {/* Footer Info: Badge / Name + Subtitle / Category */}
+                    <div className="pt-3 border-t border-[#E8E3D8]/60 text-center">
+                      <h4 className="font-ui text-sm sm:text-base font-bold text-brand-charcoal">
+                        {activeCert.badge || activeCert.selectorName}
+                      </h4>
+                      <p className="font-ui text-[11.5px] sm:text-xs text-brand-charcoal/65 mt-0.5">
+                        {activeCert.subtitle || activeCert.category}
+                      </p>
+                    </div>
+                  </div>
+                ) : activeCert.hasVideo && activeCert.videoUrl ? (
+                  /* Authentic Video Area (e.g. for GOLS latex core assembly before owner uploads image) */
                   <div className="relative w-full rounded-2xl overflow-hidden border border-[#E8E3D8] bg-[#0E1511] shadow-xs aspect-[4/3]">
                     <video
                       ref={explorerVideoRef}
-                      src={GOLS_VIDEO_URL}
+                      src={activeCert.videoUrl || overviewVideoUrl}
                       muted
                       playsInline
                       loop
@@ -421,51 +530,52 @@ export default function CertificationExperience() {
                       controls={false}
                       preload="auto"
                       className="w-full h-full object-cover object-center pointer-events-none"
-                      aria-label="GOLS mattress assembly layer-by-layer video"
+                      aria-label={`${activeCert.title} layer-by-layer video`}
                     />
+                    <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white/90 text-[11px] font-mono border border-white/10">
+                      {String(activeIndex + 1).padStart(2, "0")} / {String(certsList.length).padStart(2, "0")}
+                    </div>
                     <div className="absolute bottom-3 left-3 right-3 p-3 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 text-white text-xs font-ui">
                       <p className="font-semibold flex items-center gap-1.5 text-[12px]">
                         <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-                        GOLS Mattress Assembly
+                        {activeCert.badge}
                       </p>
                       <p className="text-[11px] text-white/70 mt-0.5">
-                        Organic Dunlop latex core, cotton zip casing & bamboo cover.
+                        {activeCert.subtitle || activeCert.title}
                       </p>
                     </div>
                   </div>
                 ) : (
-                  /* Official Certification Asset Placeholder Card */
-                  <div className="w-full rounded-2xl border border-[#E8E3D8] bg-white p-6 sm:p-7 shadow-xs flex flex-col justify-between aspect-[4/3]">
-                    <div>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-sand text-[10.5px] font-ui font-semibold uppercase tracking-wider text-brand-charcoal/70 border border-[#E8E3D8]">
-                          <FileCheck className="h-3 w-3 text-brand-deep" />
-                          Independent Audit
-                        </span>
-                        <span className="font-ui text-[11px] text-muted-foreground font-mono">
-                          {activeCert.number} / 05
-                        </span>
-                      </div>
-
-                      <div className="mt-6 text-center py-4">
-                        <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-brand-sand/70 text-brand-deep border border-[#E8E3D8] mb-3">
-                          <ShieldCheck className="h-8 w-8 text-brand-leaf" />
-                        </div>
-                        <h4 className="font-ui text-lg sm:text-xl font-bold text-brand-charcoal">
-                          {activeCert.badge}
-                        </h4>
-                        <p className="font-ui text-xs text-brand-charcoal/60 mt-1">
-                          {activeCert.category}
-                        </p>
-                      </div>
+                  /* Restrained Fallback Card when no image is uploaded */
+                  <div
+                    className="w-full rounded-2xl sm:rounded-[18px] border border-[#E8E3D8] bg-white p-5 sm:p-6 shadow-xs flex flex-col justify-between transition-all duration-300 relative overflow-hidden"
+                    data-testid="certification-proof-card-fallback"
+                  >
+                    <div className="flex items-center justify-between gap-2 border-b border-[#E8E3D8]/60 pb-3">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-ui font-bold uppercase tracking-wider bg-brand-deep/5 text-brand-deep border border-[#E8E3D8]">
+                        <FileCheck className="h-3 w-3 text-brand-deep" />
+                        Certification Proof
+                      </span>
+                      <span className="font-ui text-[12px] font-mono text-brand-charcoal/70 font-semibold">
+                        {String(activeIndex + 1).padStart(2, "0")} / {String(certsList.length).padStart(2, "0")}
+                      </span>
                     </div>
 
-                    <div className="mt-4 pt-4 border-t border-[#E8E3D8]/60 text-center">
-                      <p className="font-ui text-[10.5px] uppercase tracking-wider text-muted-foreground">
-                        Official Certification Documentation
+                    <div className="my-6 py-6 px-4 rounded-xl bg-[#FAF8F5] text-center border border-[#E8E3D8]/40 flex flex-col items-center justify-center">
+                      <div className="w-12 h-12 rounded-xl bg-brand-deep/5 border border-[#E8E3D8] flex items-center justify-center text-brand-deep mb-2.5">
+                        <ShieldCheck className="h-6 w-6 text-brand-leaf" />
+                      </div>
+                      <h4 className="font-ui text-sm sm:text-base font-bold text-brand-charcoal">
+                        {activeCert.badge || activeCert.selectorName}
+                      </h4>
+                      <p className="font-ui text-xs text-brand-charcoal/60 mt-1 max-w-xs">
+                        Official accreditation documentation verified and on record.
                       </p>
-                      <p className="font-ui text-[11px] text-brand-deep/80 font-medium mt-0.5">
-                        Verification protocol on file
+                    </div>
+
+                    <div className="pt-3 border-t border-[#E8E3D8]/60 text-center">
+                      <p className="font-ui text-[11px] text-brand-charcoal/60">
+                        {activeCert.category}
                       </p>
                     </div>
                   </div>

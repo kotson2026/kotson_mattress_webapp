@@ -165,7 +165,7 @@ def test_returns_and_qc_inspection_lifecycle(owner_client: httpx.Client):
 
 
 def test_100_night_trials_and_carrier_master(owner_client: httpx.Client):
-    """Test 100-night trial calculation (delivery date delta) and carrier master endpoints."""
+    """Test 30-night trial calculation (delivery date delta) and carrier master endpoints."""
     # Trials
     t_res = owner_client.get("/admin/dispatch/trials?page=1&limit=10")
     assert t_res.status_code == 200
@@ -174,7 +174,7 @@ def test_100_night_trials_and_carrier_master(owner_client: httpx.Client):
     trial = t_data["rows"][0]
     assert "days_used" in trial
     assert "days_remaining" in trial
-    assert trial["days_used"] + trial["days_remaining"] == 100
+    assert trial["days_used"] + trial["days_remaining"] == 30
 
     # Carriers
     c_res = owner_client.get("/admin/dispatch/carriers")

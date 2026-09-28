@@ -304,8 +304,21 @@
 }
 
 .marquee-track {
-  animation: marquee-scroll 38s linear infinite;
+  display: flex !important;
+  width: max-content !important;
+  max-width: none !important;
+  flex-shrink: 0 !important;
+  animation: marquee-scroll 20s linear infinite;
   will-change: transform;
+}
+
+/* Ensure no child in any marquee or ribbon gets clamped by * { max-width: 100% } */
+.marquee-track *,
+.animate-kotson-ribbon,
+.animate-kotson-ribbon *,
+.benefits-marquee-slider,
+.benefits-marquee-slider * {
+  max-width: none !important;
 }
 
 /* Pause on hover or keyboard focus anywhere inside the bar. */
@@ -363,6 +376,114 @@
 @media (min-width: 1024px) {
   .kotson-cart-drawer {
     width: clamp(420px, 44vw, 500px) !important;
+  }
+}
+
+/* ── Console Sidebar Subtle Scrollbar ───────────────────────────────────── */
+.console-nav-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(166, 184, 170, 0.25) transparent;
+}
+.console-nav-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.console-nav-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.console-nav-scroll::-webkit-scrollbar-thumb {
+  background: rgba(166, 184, 170, 0.25);
+  border-radius: 9999px;
+}
+.console-nav-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(166, 184, 170, 0.45);
+}
+
+/* ── KOTSON MOBILE HOMEPAGE ARCHITECTURE (<= 767px) ─────────────────── */
+@media (max-width: 767px) {
+  .mobile-header,
+  .mobile-home-header {
+    position: relative;
+    width: 100%;
+    margin: 0;
+    box-sizing: border-box;
+    background: #F7F4EE;
+    padding:
+      max(8px, env(safe-area-inset-top))
+      12px
+      8px;
+    z-index: 20;
+  }
+
+  .mobile-navbar {
+    width: 100%;
+    min-height: 68px;
+    padding: 0 16px;
+    box-sizing: border-box;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    background: #FFFDF9;
+    border: 1px solid rgba(45, 45, 45, 0.08);
+    border-radius: 34px;
+
+    box-shadow: 0 8px 24px rgba(45, 45, 45, 0.06);
+  }
+
+  .mobile-navbar-logo {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 155px;
+    max-height: 32px;
+    object-fit: contain;
+  }
+
+  .mobile-navbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .mobile-hero,
+  .kotson-mobile-hero {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1920 / 1010;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    line-height: 0;
+    background: #F7F4EE;
+  }
+
+  .mobile-hero video,
+  .mobile-hero-video,
+  .kotson-mobile-hero__video {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 100%;
+    height: auto;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    display: block;
+    object-fit: initial;
+  }
+
+  .categories-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .category-image {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: contain;
   }
 }
 

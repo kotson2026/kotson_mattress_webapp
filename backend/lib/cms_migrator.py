@@ -200,7 +200,8 @@ HOMEPAGE_SECTIONS = [
         "order": 6,
         "is_visible": True,
         "config": {
-            "heading": "How an Organic Latex Mattress Is Made ",
+            "eyebrow": "MANUFACTURING JOURNEY",
+            "heading": "How an Organic Latex Mattress Is Made",
             "subheading": "From Kerala Rubber Tree Groves to Deep Restorative Sleep. Zero Petrochemicals.",
             "steps": [
                 {
@@ -255,56 +256,231 @@ HOMEPAGE_SECTIONS = [
         "order": 7,
         "is_visible": True,
         "config": {
-            "heading": "Certifications & Proof",
-            "subheading": "Every certificate here is independently validated with evidence on file.",
-            "cert_keys": ["gols", "eco-institut", "fsc", "lga", "oeko-tex"],
-            "show_video": True,
+            "eyebrow": "CERTIFIED ORGANIC",
+            "heading": "Proof in Every Layer.",
+            "subheading": "Every Kotson mattress is built around independently tested materials and recognized certification standards.",
+            "cta_label": "Know More",
+            "overview_video_url": "https://videotourl.com/videos/1790071320217-f57e96c0-9918-440c-8c8e-a0b7ddf8178d.mp4",
+            "expanded_eyebrow": "CERTIFIED, NOT JUST CLAIMED",
+            "expanded_heading": "Our Certifications",
+            "certifications": [
+                {
+                    "id": "gols",
+                    "number": "01",
+                    "selectorName": "GOLS",
+                    "selectorCategory": "Raw Material & Process",
+                    "badge": "GOLS CERTIFIED",
+                    "category": "Raw Material & Process",
+                    "title": "GOLS — Global Organic Latex Standard",
+                    "subtitle": "The standard for certified organic latex.",
+                    "body": "GOLS verifies organic latex content and covers requirements across sourcing, processing and manufacturing.",
+                    "checksHeader": "IT AUDITS",
+                    "checks": [
+                        "Rubber plantation",
+                        "Processing unit",
+                        "Manufacturing facility",
+                        "Final product",
+                    ],
+                    "verifiesHeader": "IT HELPS VERIFY",
+                    "verifies": [
+                        "Certified organic latex content",
+                        "Controlled processing requirements",
+                        "Traceability through the supply chain",
+                        "Requirements governing additional materials and substances",
+                    ],
+                    "whyItMatters": "The latex core is a major component of the mattress. GOLS provides independent certification behind the organic latex claim.",
+                    "hasVideo": True,
+                    "videoUrl": "https://videotourl.com/videos/1790071320217-f57e96c0-9918-440c-8c8e-a0b7ddf8178d.mp4",
+                    "visible": True,
+                    "certificationImage": {
+                        "url": "",
+                        "alt": "GOLS — Global Organic Latex Standard Certification",
+                        "background": "default",
+                    },
+                },
+                {
+                    "id": "eco-institut",
+                    "number": "02",
+                    "selectorName": "eco-INSTITUT",
+                    "selectorCategory": "Emissions & Chemical Safety",
+                    "badge": "eco-INSTITUT",
+                    "category": "Emissions & Chemical Safety",
+                    "title": "eco-INSTITUT",
+                    "subtitle": "Independent testing for emissions and harmful substances.",
+                    "checksHeader": "IT TESTS FOR",
+                    "checks": [
+                        "VOC emissions",
+                        "Formaldehyde",
+                        "Heavy metals",
+                        "Pesticides",
+                        "Phthalates",
+                        "Other specified chemical residues",
+                    ],
+                    "whyItMatters": "Mattresses spend years inside the sleeping environment. Independent emissions testing provides additional evidence about the materials used in that environment.",
+                    "hasVideo": False,
+                    "visible": True,
+                    "certificationImage": {
+                        "url": "/certifications/eco-institut.png",
+                        "alt": "eco-INSTITUT Tested Product certification",
+                        "background": "white",
+                    },
+                },
+                {
+                    "id": "fsc",
+                    "number": "03",
+                    "selectorName": "FSC",
+                    "selectorCategory": "Sustainable Sourcing",
+                    "badge": "FSC",
+                    "category": "Sustainable Sourcing",
+                    "title": "FSC — Forest Stewardship Council",
+                    "subtitle": "Responsible sourcing and forest management.",
+                    "checksHeader": "IT ADDRESSES",
+                    "checks": [
+                        "Responsible forest management",
+                        "Traceable sourcing",
+                        "Environmental considerations",
+                        "Social and worker considerations within applicable standards",
+                    ],
+                    "whyItMatters": "Certification provides traceability behind responsibly sourced forest-based materials.",
+                    "hasVideo": False,
+                    "visible": True,
+                    "certificationImage": {
+                        "url": "/certifications/fsc.png",
+                        "alt": "Forest Stewardship Council (FSC) Certification",
+                        "background": "white",
+                    },
+                },
+                {
+                    "id": "lga",
+                    "number": "04",
+                    "selectorName": "LGA",
+                    "selectorCategory": "Durability & Performance",
+                    "badge": "LGA TESTED",
+                    "category": "Durability & Performance",
+                    "title": "LGA Quality Testing",
+                    "subtitle": "Independent physical and durability testing.",
+                    "checksHeader": "IT MAY EVALUATE (SUBJECT TO CERTIFICATE)",
+                    "checks": [
+                        "Durability",
+                        "Compression resistance",
+                        "Structural stability",
+                        "Shape retention",
+                    ],
+                    "whyItMatters": "Performance testing helps demonstrate how the tested product behaves under repeated physical use.",
+                    "hasVideo": False,
+                    "visible": True,
+                    "certificationImage": {
+                        "url": "/certifications/lga.png",
+                        "alt": "LGA Quality Certificate — Tested Quality",
+                        "background": "white",
+                    },
+                },
+                {
+                    "id": "oeko-tex",
+                    "number": "05",
+                    "selectorName": "OEKO-TEX®",
+                    "selectorCategory": "Human Contact Safety",
+                    "badge": "OEKO-TEX® STANDARD 100",
+                    "category": "Human Contact Safety",
+                    "title": "OEKO-TEX® STANDARD 100",
+                    "subtitle": "Testing for harmful substances in textiles and components.",
+                    "checksHeader": "TESTING CAN COVER",
+                    "checks": [
+                        "Formaldehyde",
+                        "Heavy metals",
+                        "Restricted dyes",
+                        "Other regulated or harmful substances",
+                    ],
+                    "whyItMatters": "STANDARD 100 testing provides independent verification against specified harmful-substance requirements for tested components.",
+                    "hasVideo": False,
+                    "visible": True,
+                    "certificationImage": {
+                        "url": "/certifications/oeko-tex.png",
+                        "alt": "OEKO-TEX STANDARD 100 Certification",
+                        "background": "white",
+                    },
+                },
+            ],
+            "auditCard": {
+                "badge": "Independent Audit",
+                "icon": "shield",
+                "heading": "",
+                "subtitle": "",
+                "documentationText": "Official Certification Documentation",
+                "verificationText": "Verification protocol on file",
+                "verificationLink": "",
+                "bgType": "default",
+                "bgColor": "#FAF8F5",
+                "bgImageUrl": "",
+                "bgPosition": "center",
+                "bgOverlay": "none",
+            },
         },
     },
     {
         "id": "sec-testimonials-live",
-        "type": "testimonials_slider",
-        "title": "Real Sleeper Testimonials",
-        "subtitle": "Comfort, Naturally — Verified Buyer Experiences",
-        "content": "Real sleeper feedback from across India.",
+        "type": "customer_testimonials",
+        "title": "Customer Testimonials",
+        "subtitle": "Real Stories — Verified YouTube Video Testimonials",
+        "content": "Authentic customer video testimonials on the approved botanical mattress backdrop.",
         "order": 8,
         "is_visible": True,
         "config": {
-            "heading": "Comfort, Naturally.",
-            "subheading": "Real experiences from sleepers who switched to pure Dunlop latex.",
+            "eyebrow": "REAL STORIES",
+            "heading": "Customer Testimonials",
+            "subheading": "Hear what our customers have to say about their Kotson sleep experience.",
             "testimonials": [
                 {
-                    "name": "Verified buyer — Pune",
-                    "text": "My lower-back stiffness eased within the first two weeks. The 7-zone feel is real — firm where it should be, soft at the shoulders.",
-                    "rating": 5,
+                    "id": "testimonial-1",
+                    "type": "youtube",
+                    "videoId": "joOvNmYvnF4",
+                    "embedUrl": "https://www.youtube.com/embed/joOvNmYvnF4",
+                    "enabled": True,
+                    "sortOrder": 1,
+                    "title": "Sheetal review on kotsonmattress",
                 },
                 {
-                    "name": "Verified buyer — Bengaluru",
-                    "text": "No chemical smell at all, which was the whole point of going organic. Delivery and setup were smooth.",
-                    "rating": 5,
+                    "id": "testimonial-2",
+                    "type": "youtube",
+                    "videoId": "jc6twmIkXl4",
+                    "embedUrl": "https://www.youtube.com/embed/jc6twmIkXl4?si=URGVS-uATgytLol6",
+                    "enabled": True,
+                    "sortOrder": 2,
+                    "title": "Saritha physiotherapist review on kotsonmattress",
                 },
                 {
-                    "name": "Verified buyer — Kochi",
-                    "text": "Bought the crib mattress for my daughter; it is firm, breathable and light. Exactly what the pediatrician recommended.",
-                    "rating": 5,
+                    "id": "testimonial-3",
+                    "type": "youtube",
+                    "videoId": "ohottknzBWA",
+                    "embedUrl": "https://www.youtube.com/embed/ohottknzBWA?si=DnRScqcur8bZ8Tc8",
+                    "enabled": True,
+                    "sortOrder": 3,
+                    "title": "Mrs Ekta review on kotsonmattress",
                 },
             ],
         },
     },
     {
-        "id": "sec-final-cta-live",
-        "type": "cta_banner",
-        "title": "Where Better Sleep Begins (Final CTA)",
-        "subtitle": "Closing conversion block with 100-night trial guarantee",
-        "content": "Experience the contouring purity of 100% organic Dunlop latex with our 100-night home trial.",
+        "id": "sec-explore-stores-live",
+        "type": "explore_stores",
+        "title": "Explore Our Stores",
+        "subtitle": "Experience Kotson In Person",
+        "content": "Visit our Hyderabad & Vijayawada experience centers.",
         "order": 9,
         "is_visible": True,
+        "config": {},
+    },
+    {
+        "id": "sec-need-help-live",
+        "type": "need_help_choosing",
+        "title": "Need Help Choosing?",
+        "subtitle": "Customer Care & Product Recommendation Hotline",
+        "content": "Our team can help you find the right Kotson product for your needs.",
+        "order": 10,
+        "is_visible": True,
         "config": {
-            "heading": "Where Better Sleep Begins.",
-            "subheading": "Experience the contouring purity of 100% organic Dunlop latex with our 100-night home trial.",
-            "cta_label": "Shop the collection",
-            "cta_link": "/collections",
-            "bg_color": "#16241C",
+            "heading": "NEED HELP CHOOSING?",
+            "subheading": "Our team can help you find the right Kotson product for your needs.",
         },
     },
 ]
@@ -315,7 +491,7 @@ PAGES_MANIFEST = [
         "slug": "home",
         "title": "Homepage",
         "seo_title": "Kotson Mattress — 100% Organic Dunlop Latex Mattresses Made in India",
-        "seo_description": "GOLS-certified organic Dunlop latex mattresses with 7-zone anatomical support, 100-night trial, and 10-year warranty.",
+        "seo_description": "GOLS-certified organic Dunlop latex mattresses with 7-zone anatomical support, 30-night trial, and 10-year warranty.",
         "status": "published",
         "page_type": "system",
         "is_system_page": True,
@@ -345,7 +521,7 @@ PAGES_MANIFEST = [
         "slug": "faq",
         "title": "Frequently Asked Questions",
         "seo_title": "Frequently Asked Questions | Kotson Mattress",
-        "seo_description": "Answers to common questions about our 100-night trial, 10-year warranty, custom mattress dimensions, and organic certifications.",
+        "seo_description": "Answers to common questions about our 30-night trial, 10-year warranty, custom mattress dimensions, and organic certifications.",
         "status": "published",
         "page_type": "content",
         "is_system_page": False,
@@ -383,9 +559,9 @@ PAGES_MANIFEST = [
     },
     {
         "slug": "policies/policy_returns",
-        "title": "100-Night Trial & Returns Policy",
-        "seo_title": "100-Night Risk-Free Trial & Returns | Kotson Mattress",
-        "seo_description": "Sleep on your Kotson mattress for 100 nights in the comfort of your home. 100% refund and hassle-free doorstep pickup.",
+        "title": "30-Night Trial & Returns Policy",
+        "seo_title": "30-Night Risk-Free Trial & Returns | Kotson Mattress",
+        "seo_description": "Sleep on your Kotson mattress for 30 nights in the comfort of your home. 100% refund and hassle-free doorstep pickup.",
         "status": "published",
         "page_type": "content",
         "is_system_page": False,
@@ -455,7 +631,7 @@ PAGES_MANIFEST = [
         "slug": "account",
         "title": "Customer Account Portal",
         "seo_title": "Customer Account | Kotson Mattress",
-        "seo_description": "Manage your orders, addresses, 100-night trial status, and warranty certificates.",
+        "seo_description": "Manage your orders, addresses, 30-night trial status, and warranty certificates.",
         "status": "published",
         "page_type": "commerce",
         "is_system_page": True,
@@ -480,7 +656,19 @@ async def ensure_cms_migrated() -> Dict[str, Any]:
     Only runs if cms_pages doesn't already have the populated home page.
     """
     home_page = await db.cms_pages.find_one({"slug": "home"})
-    if home_page and len(home_page.get("sections", [])) >= 8:
+    has_cert_items = (
+        home_page
+        and any(
+            s.get("type") == "certifications_badges"
+            and bool(s.get("config", {}).get("certifications"))
+            for s in home_page.get("sections", [])
+        )
+    )
+    has_updated_order = (
+        home_page
+        and any(s.get("type") == "need_help_choosing" for s in home_page.get("sections", []))
+    )
+    if home_page and len(home_page.get("sections", [])) >= 11 and has_updated_order and has_cert_items:
         logger.info("CMS already migrated with %d sections on home. Skipping.", len(home_page.get("sections", [])))
         return {"status": "skipped", "message": "CMS already migrated"}
 
@@ -520,6 +708,8 @@ async def ensure_cms_migrated() -> Dict[str, Any]:
             "page_type": pdata.get("page_type", "content"),
             "is_system_page": pdata.get("is_system_page", False),
             "sections": pdata.get("sections", []),
+            "published_sections": pdata.get("sections", []),
+            "has_draft_changes": False,
             "is_master_content": True,
             "updated_at": now,
         }
@@ -528,9 +718,19 @@ async def ensure_cms_migrated() -> Dict[str, Any]:
             await db.cms_pages.insert_one(doc)
             pages_created += 1
         else:
-            # If existing page has fewer sections than manifest (e.g. empty home), update it safely
-            if slug == "home" and len(existing.get("sections", [])) < 8:
-                await db.cms_pages.update_one({"id": existing["id"]}, {"$set": doc})
+            # If existing page needs updated sections, update it safely
+            if slug == "home":
+                await db.cms_pages.update_one(
+                    {"id": existing["id"]},
+                    {
+                        "$set": {
+                            "sections": doc["sections"],
+                            "published_sections": doc["sections"],
+                            "has_draft_changes": False,
+                            "updated_at": now,
+                        }
+                    },
+                )
                 pages_updated += 1
 
     # 3. Populate Header & Navigation Matching Live Floating Sleep Dock
@@ -666,10 +866,10 @@ async def ensure_cms_migrated() -> Dict[str, Any]:
             },
         ],
         "social_links": {
-            "instagram": "https://instagram.com/kotsonmattress",
-            "facebook": "https://facebook.com/kotsonmattress",
-            "youtube": "https://youtube.com/@kotsonmattress",
-            "linkedin": "https://linkedin.com/company/kotsonmattress",
+            "instagram": "https://www.instagram.com/kotsonmattress/",
+            "facebook": "https://www.facebook.com/kotsonmattress",
+            "youtube": "https://www.youtube.com/@kotsonmattress",
+            "linkedin": "https://in.linkedin.com/company/kotsonmattress",
         },
     }
     await db.cms_footer_config.update_one({"id": "main_footer"}, {"$set": footer_doc}, upsert=True)
@@ -690,7 +890,20 @@ async def ensure_cms_migrated() -> Dict[str, Any]:
     }
     await db.cms_branding.update_one({"id": "main_branding"}, {"$set": branding_doc}, upsert=True)
 
-    # 6. Create Initial Publication Checkpoint
+    # 6. Populate Customer Support Configuration
+    support_doc = {
+        "id": "main_support",
+        "phone": "8009800936",
+        "country_code": "+91",
+        "whatsapp": "8009800936",
+        "phone_enabled": True,
+        "whatsapp_enabled": True,
+        "whatsapp_default_message": "Hi Kotson, I need help choosing the right product.",
+        "updated_at": now_utc(),
+    }
+    await db.cms_support_config.update_one({"id": "main_support"}, {"$set": support_doc}, upsert=True)
+
+    # 7. Create Initial Publication Checkpoint
     initial_version = {
         "id": str(uuid.uuid4()),
         "version_tag": "v1.0.0-Live-Restoration",

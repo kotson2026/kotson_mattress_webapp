@@ -44,7 +44,7 @@ records only · `dealer` own org only · `affiliate`/`customer` own data only. E
 No role sees payment secrets in the UI — only masked state.
 
 ## Explicit pending states (never faked)
-Razorpay keys, mail provider, GST rate, shipping charges, all six trust claims (GOLS / 1-of-5 / Shark Tank / 100-night /
+Razorpay keys, mail provider, GST rate, shipping charges, all six trust claims (GOLS / 1-of-5 / Shark Tank / 30-night /
 10-year / free shipping), every asset slot incl. logos, dealer terms, referral economics, policy page terms.
 
 ## Seed data

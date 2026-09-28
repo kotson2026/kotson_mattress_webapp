@@ -14,12 +14,10 @@ export default function CompactNav({ isShopOpen, onToggleShop, onOpenCategory }:
 
   const isWhyKotsonActive = pathname === "/about" || pathname === "/why-kotson";
   const isSleepScienceActive = pathname === "/sleep-science";
-  const isStoresActive = pathname === "/contact";
   const isShopActive =
     isShopOpen ||
     (!isWhyKotsonActive &&
       !isSleepScienceActive &&
-      !isStoresActive &&
       (pathname.startsWith("/collections") || pathname.startsWith("/products")));
 
   return (
@@ -79,14 +77,9 @@ export default function CompactNav({ isShopOpen, onToggleShop, onOpenCategory }:
 
       {/* Stores */}
       <Link
-        to="/contact"
+        to="/#stores"
         data-testid="compact-stores"
-        aria-current={isStoresActive ? "page" : undefined}
-        className={`px-3.5 py-1.5 rounded-full text-[13.5px] font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-leaf cursor-pointer ${
-          isStoresActive
-            ? "bg-brand-deep text-white shadow-sm"
-            : "text-brand-charcoal/80 hover:text-brand-deep hover:bg-black/[0.04]"
-        }`}
+        className="px-3.5 py-1.5 rounded-full text-[13.5px] font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand-leaf cursor-pointer text-brand-charcoal/80 hover:text-brand-deep hover:bg-black/[0.04]"
       >
         Stores
       </Link>

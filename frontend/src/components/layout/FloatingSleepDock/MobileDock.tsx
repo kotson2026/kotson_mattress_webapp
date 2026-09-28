@@ -18,7 +18,7 @@ export default function MobileDock({
 
   return (
     <div
-      className="flex lg:hidden h-[62px] sm:h-[66px] w-full max-w-[460px] items-center justify-between rounded-full border border-black/[0.06] bg-[#FAF8F5]/96 px-4 sm:px-5 shadow-[0_8px_30px_rgba(0,0,0,0.08)] backdrop-blur-md transition-all duration-300"
+      className="mobile-navbar flex h-[62px] sm:h-[66px] w-full items-center justify-between rounded-full border border-black/[0.06] bg-[#FFFDF9] px-4 sm:px-5 shadow-[0_8px_24px_rgba(45,45,45,0.06)] backdrop-blur-md transition-all duration-300"
       data-testid="mobile-dock"
     >
       {/* LEFT: KOTSON LOGO */}
@@ -27,7 +27,7 @@ export default function MobileDock({
       </div>
 
       {/* RIGHT: CART + HAMBURGER MENU ONLY */}
-      <div className="flex items-center gap-1.5 sm:gap-2">
+      <div className="mobile-navbar-actions flex items-center gap-2">
         <button
           type="button"
           onClick={openDrawer}

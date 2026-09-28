@@ -75,7 +75,7 @@ const TABS: { key: TabKey; label: string; icon: any }[] = [
   { key: "in_transit", label: "Shipped / In Transit", icon: Truck },
   { key: "delivered", label: "Delivered", icon: CheckCircle2 },
   { key: "returns", label: "Returns & QC", icon: RotateCcw },
-  { key: "trials", label: "100-Night Trial", icon: ShieldCheck },
+  { key: "trials", label: "30-Night Trial", icon: ShieldCheck },
   { key: "carriers", label: "Carriers", icon: Building2 },
 ];
 
@@ -136,7 +136,7 @@ export default function DispatchReturnsHub() {
   });
 
   const [returnInitForm, setReturnInitForm] = useState({
-    reason: "100-Night Trial comfort adjustment",
+    reason: "30-Night Trial comfort adjustment",
     is_trial_return: true,
   });
 
@@ -648,7 +648,7 @@ export default function DispatchReturnsHub() {
               data-testid="kpi-active-trials"
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-teal-800">100-Night Trials</span>
+                <span className="text-xs font-semibold text-teal-800">30-Night Trials</span>
                 <ShieldCheck className="h-4 w-4 text-teal-600" />
               </div>
               <div className="mt-2 flex items-baseline gap-2">
@@ -1178,7 +1178,7 @@ export default function DispatchReturnsHub() {
             <div>
               <h3 className="font-heading text-base font-bold text-foreground">Delivered Shipments</h3>
               <p className="text-xs text-muted-foreground">
-                Delivered mattresses. The 100-Night Sleep Trial begins automatically from the delivery date.
+                Delivered mattresses. The 30-Night Sleep Trial begins automatically from the delivery date.
               </p>
             </div>
             <span className="text-xs font-semibold text-muted-foreground">
@@ -1327,7 +1327,7 @@ export default function DispatchReturnsHub() {
                       <TableCell className="font-mono text-xs text-brand-forest font-semibold">
                         {ret.order_number}
                         {ret.kind === "trial" && (
-                          <span className="block text-[10px] text-teal-700 font-bold">100-Night Trial</span>
+                          <span className="block text-[10px] text-teal-700 font-bold">30-Night Trial</span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -1408,13 +1408,13 @@ export default function DispatchReturnsHub() {
         </div>
       )}
 
-      {/* TAB 8: 100-NIGHT TRIAL */}
+      {/* TAB 8: 30-NIGHT TRIAL */}
       {activeTab === "trials" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-heading text-base font-bold text-foreground">
-                100-Night Sleep Trial Tracker
+                30-Night Sleep Trial Tracker
               </h3>
               <p className="text-xs text-muted-foreground">
                 Calculated strictly from doorstep delivery date. Tracks usage days, remaining eligibility, and claims.
@@ -1433,7 +1433,7 @@ export default function DispatchReturnsHub() {
                   <TableHead>Customer</TableHead>
                   <TableHead>Mattress Model</TableHead>
                   <TableHead>Delivered Date</TableHead>
-                  <TableHead className="w-56">100-Night Progress</TableHead>
+                  <TableHead className="w-56">30-Night Progress</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>

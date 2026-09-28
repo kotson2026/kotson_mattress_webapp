@@ -6,6 +6,7 @@ import { apiGet, apiPost } from "@/lib/api";
 import type { ManagerDashboard, Order, Product } from "@/lib/types";
 import { fmtDateTime, inr } from "@/lib/format";
 import ConsoleLayout from "@/components/layout/ConsoleLayout";
+import CustomRequestsHub from "@/components/admin/custom_requests/CustomRequestsHub";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 const NAV = [
   { to: "/manager", label: "Fulfilment queue" },
+  { to: "/manager/custom-requests", label: "Custom Requests" },
   { to: "/admin/dispatch", label: "Dispatch & Returns" },
   { to: "/manager/stock", label: "Stock & recount" },
   { to: "/manager/catalog", label: "Catalog (read-only)" },
@@ -22,7 +24,8 @@ const NAV = [
 function QueueView() {
   const qc = useQueryClient();
   const { data: dash } = useQuery({ queryKey: ["manager-dashboard"], queryFn: () => apiGet<ManagerDashboard>("/manager/dashboard") });
-  const { data: orders } = useQuery({ queryKey: ["manager-orders"], queryFn: () => apiGet<Order[]>("/admin/orders?payment=paid") });
+  const { data: ordersData } = useQuery({ queryKey: ["manager-orders"], queryFn: () => apiGet<Order[] | { items: Order[] }>("/admin/orders?payment=paid&raw_list=true") });
+  const orders: Order[] = Array.isArray(ordersData) ? ordersData : (ordersData as { items?: Order[] })?.items ?? [];
 
   const transition = useMutation({
     mutationFn: (p: { id: string; to: string }) => apiPost(`/admin/orders/${p.id}/transition`, { to: p.to }),
@@ -160,6 +163,7 @@ export default function ManagerConsole() {
     <ConsoleLayout area="Manager" title="Operations & fulfilment" allowedRoles={["owner", "admin", "manager"]} nav={NAV}>
       <Routes>
         <Route index element={<QueueView />} />
+        <Route path="custom-requests" element={<CustomRequestsHub />} />
         <Route path="stock" element={<StockView />} />
         <Route path="catalog" element={<CatalogReadOnly />} />
       </Routes>

@@ -90,8 +90,8 @@ const FAMILIES: ProductFamily[] = [
     slug: "customizable-products",
     name: "Customizable Products",
     countLabel: "CUSTOMIZE YOURS",
-    ctaLabel: "Customize",
-    route: "",
+    ctaLabel: "Customize Products",
+    route: "/customizable-products",
     type: "customizable",
     action: null,
     image: "https://cdn.phototourl.com/member/2026-09-25-fdcc5d89-9660-48c9-8356-3c13ea2156c8.png",
@@ -156,6 +156,7 @@ function FamilyZone({
       : "translate3d(0, 0, 0)";
 
   const hasComposition = (family.images?.length ?? 0) > 1;
+  const isCustomizable = family.id === "customizable-products";
 
   /* Zone opacity — inactive siblings dim */
   const zoneOpacity = prefersReduced ? 1 : isAnyActive && !isActive ? 0.62 : 1;
@@ -169,7 +170,7 @@ function FamilyZone({
         ? "scale-[0.97] opacity-60"
         : isVisibleMobile
           ? "scale-100 opacity-100 translate-y-0"
-          : "scale-100 opacity-100 sm:scale-100 sm:opacity-100 max-sm:scale-[0.96] max-sm:opacity-75 max-sm:translate-y-3";
+          : "scale-100 opacity-100 sm:scale-100 sm:opacity-100 max-sm:scale-[0.96] max-sm:opacity-75 max-sm:translate-y-2";
 
   const isInteractiveLink = Boolean(family.route && family.route !== "#");
 
@@ -177,19 +178,23 @@ function FamilyZone({
     "aria-label": `${family.ctaLabel} — ${family.name}`,
     onFocus: onHoverStart,
     onBlur: onHoverEnd,
-    className:
-      "group/item relative flex flex-col items-center text-center w-full outline-none focus-visible:ring-2 focus-visible:ring-brand-leaf/50 focus-visible:ring-offset-8 rounded-3xl py-4 sm:py-5 px-2 sm:px-3 select-none cursor-pointer",
+    className: `group/item relative flex flex-col items-center text-center w-full outline-none focus-visible:ring-2 focus-visible:ring-brand-leaf/50 focus-visible:ring-offset-8 rounded-2xl sm:rounded-3xl ${
+      isCustomizable
+        ? "py-0 md:py-5 px-0 md:px-3"
+        : "py-3 sm:py-5 px-1.5 sm:px-3 bg-white/40 sm:bg-transparent border border-black/[0.035] sm:border-transparent"
+    } select-none cursor-pointer transition-all`,
     "data-testid": `category-zone-${family.slug}`,
   };
 
-  const cardContent = (
+  /* Standard Card Content (used for 4 standard cards & desktop customizable) */
+  const standardCardContent = (
     <>
       {/* ── Product image stage ── */}
-      <div className="relative w-full h-[180px] sm:h-[195px] lg:h-[205px] xl:h-[220px] flex items-center justify-center">
+      <div className="relative w-full h-[135px] sm:h-[195px] lg:h-[205px] xl:h-[220px] flex items-center justify-center">
 
         {/* Soft circular backdrop */}
         <div
-          className={`absolute inset-0 m-auto w-36 h-36 sm:w-40 sm:h-40 lg:w-42 lg:h-42 xl:w-46 xl:h-46 rounded-full bg-brand-sand/70 pointer-events-none transition-all duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${prefersReduced
+          className={`absolute inset-0 m-auto w-28 h-28 sm:w-40 sm:h-40 lg:w-42 lg:h-42 xl:w-46 xl:h-46 rounded-full bg-brand-sand/70 pointer-events-none transition-all duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${prefersReduced
               ? ""
               : isActive
                 ? "scale-110 opacity-80 bg-brand-leaf/10 ring-1 ring-brand-leaf/20"
@@ -264,18 +269,18 @@ function FamilyZone({
               onError={() => {
                 if (imgSrc !== family.fallbackImage) setImgSrc(family.fallbackImage);
               }}
-              className="max-h-[82%] max-w-[85%] w-auto h-auto object-contain transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+              className="category-image max-h-[82%] max-w-[85%] w-auto h-auto object-contain transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
             />
           )}
         </div>
       </div>
 
       {/* ── Category info ── */}
-      <div className="mt-3 sm:mt-3.5 lg:mt-4 flex flex-col items-center w-full">
+      <div className="mt-2.5 sm:mt-3.5 lg:mt-4 flex flex-col items-center w-full">
 
         {/* Product count / eyebrow — understated & aligned */}
         <p
-          className={`font-ui text-[10px] sm:text-[10.5px] font-bold uppercase tracking-[0.20em] mb-1 transition-colors duration-300 min-h-[16px] flex items-center justify-center ${isActive ? "text-brand-leaf" : "text-brand-charcoal/40"
+          className={`font-ui text-[10px] sm:text-[10.5px] font-bold uppercase tracking-[0.16em] sm:tracking-[0.20em] mb-0.5 sm:mb-1 transition-colors duration-300 min-h-[14px] sm:min-h-[16px] flex items-center justify-center ${isActive ? "text-brand-leaf" : "text-brand-charcoal/45"
             }`}
         >
           {family.countLabel}
@@ -283,14 +288,14 @@ function FamilyZone({
 
         {/* Category name — exact height containment for horizontal CTA alignment */}
         <h3
-          className={`font-ui text-lg sm:text-[19px] xl:text-[21px] font-semibold tracking-tight transition-colors duration-300 min-h-[46px] sm:min-h-[50px] flex items-center justify-center text-center leading-snug px-1 ${isActive ? "text-brand-deep" : "text-brand-charcoal"
+          className={`font-ui text-[17px] sm:text-[19px] xl:text-[21px] font-semibold tracking-tight transition-colors duration-300 min-h-[38px] sm:min-h-[50px] flex items-center justify-center text-center leading-tight sm:leading-snug px-0.5 ${isActive ? "text-brand-deep" : "text-brand-charcoal"
             }`}
         >
           {family.name}
         </h3>
 
         {/* Morphing CTA */}
-        <div className="mt-2.5 sm:mt-3 h-[42px] flex items-center justify-center">
+        <div className="mt-2 sm:mt-3 h-[36px] sm:h-[42px] flex items-center justify-center">
 
           {/* Desktop: morphing pill */}
           <div
@@ -311,14 +316,58 @@ function FamilyZone({
             />
           </div>
 
-          {/* Mobile: persistent pill */}
-          <div className="inline-flex sm:hidden items-center gap-1.5 font-ui text-xs font-semibold text-brand-deep px-3.5 py-1.5 rounded-full bg-brand-deep/8 hover:bg-brand-deep/12 transition-colors">
-            <span>{family.ctaLabel}</span>
+          {/* Mobile: compact pill */}
+          <div className="inline-flex sm:hidden items-center gap-1 font-ui text-[11px] font-semibold text-brand-deep px-3 py-1 rounded-full bg-brand-deep/8 hover:bg-brand-deep/12 transition-colors">
+            <span>{family.type === "customizable" ? "Customize" : "Explore"}</span>
             <ArrowRight className="h-3 w-3" aria-hidden="true" />
           </div>
         </div>
       </div>
     </>
+  );
+
+  /* Card content with mobile horizontal treatment for Customizable Products */
+  const cardContent = isCustomizable ? (
+    <>
+      {/* Mobile horizontal compact layout: spans both columns on mobile */}
+      <div className="flex md:hidden flex-row items-center justify-between w-full py-3.5 px-4 rounded-2xl bg-white/70 border border-brand-leaf/20 shadow-xs text-left">
+        <div className="flex-1 pr-3">
+          <p className="font-ui text-[10px] font-bold uppercase tracking-[0.16em] text-brand-leaf mb-0.5">
+            {family.countLabel}
+          </p>
+          <h3 className="font-ui text-[18px] font-semibold text-brand-charcoal tracking-tight leading-snug">
+            {family.name}
+          </h3>
+          <p className="mt-0.5 font-ui text-[12px] text-brand-charcoal/65 leading-normal">
+            Your size. Your comfort.
+          </p>
+          <div className="mt-2.5 inline-flex items-center gap-1 font-ui text-[11.5px] font-semibold text-white px-3.5 py-1 rounded-full bg-brand-deep shadow-xs">
+            <span>Customize</span>
+            <ArrowRight className="h-3 w-3" aria-hidden="true" />
+          </div>
+        </div>
+        <div className="relative w-28 h-28 shrink-0 flex items-center justify-center">
+          <div
+            className="absolute inset-0 m-auto w-24 h-24 rounded-full bg-brand-sand/70 pointer-events-none"
+            aria-hidden="true"
+          />
+          <img
+            src={imgSrc}
+            alt={family.alt}
+            loading="lazy"
+            decoding="async"
+            className="category-image relative z-10 max-h-[82%] max-w-[85%] w-auto h-auto object-contain"
+          />
+        </div>
+      </div>
+
+      {/* Desktop/Tablet vertical layout: exact identical structure to other cards */}
+      <div className="hidden md:flex flex-col items-center w-full">
+        {standardCardContent}
+      </div>
+    </>
+  ) : (
+    standardCardContent
   );
 
   return (
@@ -330,7 +379,9 @@ function FamilyZone({
         opacity: zoneOpacity,
         transition: prefersReduced ? "none" : "opacity 380ms cubic-bezier(0.22,1,0.36,1)",
       }}
-      className="relative flex flex-col items-center text-center w-full focus-within:z-20"
+      className={`relative flex flex-col items-center text-center w-full focus-within:z-20 ${
+        isCustomizable ? "col-span-2 md:col-span-1" : ""
+      }`}
     >
       {isInteractiveLink ? (
         <Link to={family.route} {...commonProps}>
@@ -398,7 +449,7 @@ function ExploreCategories() {
       data-testid="explore-categories-section"
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className="relative w-full bg-[#FAF8F5] pt-[72px] sm:pt-[80px] lg:pt-[88px] pb-[80px] sm:pb-[90px] lg:pb-[100px] px-4 sm:px-6 lg:px-8 overflow-hidden select-none"
+      className="relative w-full bg-[#FAF8F5] pt-12 sm:pt-[80px] lg:pt-[88px] pb-14 sm:pb-[90px] lg:pb-[100px] px-4 sm:px-6 lg:px-8 overflow-hidden select-none"
     >
       {/* Ambient botanical gradients */}
       <div
@@ -413,7 +464,7 @@ function ExploreCategories() {
       <div className="relative mx-auto max-w-[1400px]">
 
         {/* ── Section heading ── */}
-        <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12 lg:mb-14">
+        <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-12 lg:mb-14">
           <p
             id="explore-categories-eyebrow"
             className="font-ui text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.20em] text-brand-deep"
@@ -422,18 +473,18 @@ function ExploreCategories() {
           </p>
           <h2
             id="explore-categories-heading"
-            className="mt-1.5 font-display text-[42px] sm:text-[50px] lg:text-[58px] font-normal text-brand-charcoal tracking-tight leading-[1.04]"
+            className="mt-1 font-display text-[32px] sm:text-[50px] lg:text-[58px] font-normal text-brand-charcoal tracking-tight leading-[1.06]"
           >
             Categories
           </h2>
-          <p className="mt-2.5 font-ui text-sm sm:text-[15px] lg:text-[16px] text-brand-charcoal/65 leading-relaxed">
+          <p className="mt-1.5 sm:mt-2.5 font-ui text-xs sm:text-[15px] lg:text-[16px] text-brand-charcoal/65 leading-relaxed">
             Four families. Eighteen products. All natural latex.
           </p>
         </div>
 
-        {/* ── 5 family zones: 1-col on mobile, 2/3-col on tablet, 5-col on desktop ── */}
+        {/* ── 5 family zones: 2-col on mobile, 2/3-col on tablet, 5-col on desktop ── */}
         <div
-          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-8 sm:gap-6 lg:gap-5 xl:gap-4 items-start"
+          className="categories-grid grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-[14px] sm:gap-x-4 md:gap-x-5 xl:gap-4 gap-y-[14px] sm:gap-y-5 md:gap-y-6 items-stretch"
           data-testid="categories-showroom-grid"
         >
           {FAMILIES.map((family) => (

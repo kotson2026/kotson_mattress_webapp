@@ -49,12 +49,12 @@ interface TrackProps {
 const BenefitsTrack = memo(function BenefitsTrack({ isDuplicate = false }: TrackProps) {
   return (
     <div
-      className={`benefits-track-segment flex items-center shrink-0 ${isDuplicate ? "benefits-track-duplicate" : ""}`}
+      className={`benefits-track-segment flex items-center shrink-0 max-w-none w-max ${isDuplicate ? "benefits-track-duplicate" : ""}`}
       aria-hidden={isDuplicate ? "true" : undefined}
     >
       {KOTSON_BENEFITS.map((item, idx) => (
-        <div key={`${item.name}-${idx}`} className="flex items-center shrink-0">
-          <div className="group/item flex items-center shrink-0 cursor-default select-none px-5 sm:px-7 lg:px-9 py-2">
+        <div key={`${item.name}-${idx}`} className="flex items-center shrink-0 max-w-none">
+          <div className="group/item flex items-center shrink-0 cursor-default select-none px-5 sm:px-7 lg:px-9 py-2 max-w-none">
             {/* SVG Icon Container */}
             <div className="flex items-center justify-center shrink-0 h-6 w-6 sm:h-7 sm:w-7 lg:h-[30px] lg:w-[30px] mr-3 sm:mr-3.5">
               <img
@@ -106,7 +106,7 @@ export default function BenefitsStrip() {
       />
 
       {/* Marquee Track Container (Track A + Track B) */}
-      <div className="benefits-marquee-slider flex items-center shrink-0 w-max">
+      <div className="benefits-marquee-slider flex items-center shrink-0 w-max max-w-none">
         {/* Track A (Primary semantic track) */}
         <BenefitsTrack isDuplicate={false} />
 
@@ -117,8 +117,16 @@ export default function BenefitsStrip() {
       {/* Hardware-accelerated Marquee Styles & Reduced Motion Support */}
       <style>{`
         .benefits-marquee-slider {
-          animation: kotson-benefits-marquee 32s linear infinite;
+          display: flex !important;
+          width: max-content !important;
+          max-width: none !important;
+          flex-shrink: 0 !important;
+          animation: kotson-benefits-marquee 18s linear infinite;
           will-change: transform;
+        }
+
+        .benefits-marquee-slider * {
+          max-width: none !important;
         }
 
         @keyframes kotson-benefits-marquee {

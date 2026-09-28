@@ -19,21 +19,77 @@ import FAQ from "@/pages/FAQ";
 import Contact from "@/pages/Contact";
 import Policy from "@/pages/Policy";
 import RefLanding from "@/pages/RefLanding";
+import BlogList from "@/pages/BlogList";
+import BlogDetail from "@/pages/BlogDetail";
 import NotFound from "@/pages/NotFound";
+import CustomizableProductsLanding from "@/pages/CustomizableProductsLanding";
+import CustomizerWorkspace from "@/pages/CustomizerWorkspace";
 import AdminConsole from "@/pages/admin/AdminConsole";
 import ManagerConsole from "@/pages/manager/ManagerConsole";
 import CRMConsole from "@/pages/crm/CRMConsole";
-import OpsConsole from "@/pages/ops/OpsConsole";
 import DealerConsole from "@/pages/dealer/DealerConsole";
+import StockPointManagerConsole from "@/pages/stock_point/StockPointManagerConsole";
 import RoleGuard from "@/components/auth/RoleGuard";
 import KotsonChatbot from "@/components/chat/KotsonChatbot";
+import StoresRedesignGallery from "@/pages/preview/StoresRedesignGallery";
+import CustomerTestimonials from "@/components/home/CustomerTestimonials";
+import { apiPost } from "@/lib/api";
 
-function ScrollToTop() {
-  const { pathname } = useLocation();
+function ReferralTracker() {
+  const location = useLocation();
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
+    const searchParams = new URLSearchParams(location.search);
+    const refParam = searchParams.get("ref") || searchParams.get("referral");
+    if (refParam) {
+      const cleanRef = refParam.trim().toUpperCase();
+      try {
+        localStorage.setItem("kotson_ref", cleanRef);
+        sessionStorage.setItem("kotson_ref", cleanRef);
+        localStorage.setItem("kotson_referral_code", cleanRef);
+        sessionStorage.setItem("kotson_referral_code", cleanRef);
+      } catch (e) {
+        // Storage access may be restricted
+      }
+      // Record referral attribution touch and link to cart session
+      apiPost("/referrals/click", { code: cleanRef, path: location.pathname }).catch(() => {});
+      apiPost("/cart/referral", { code: cleanRef }).catch(() => {});
+    }
+  }, [location.search, location.pathname]);
+
+  return null;
+}
+
+function ScrollToTop() {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.hash) {
+      const targetId = location.hash.replace("#", "");
+      const scrollToElement = () => {
+        const el = document.getElementById(targetId);
+        if (el) {
+          const isHeadless = typeof navigator !== "undefined" && navigator.userAgent.includes("Headless");
+          el.scrollIntoView({ behavior: isHeadless ? "auto" : "smooth" });
+          return true;
+        }
+        return false;
+      };
+
+      if (!scrollToElement()) {
+        const t1 = setTimeout(scrollToElement, 100);
+        const t2 = setTimeout(scrollToElement, 300);
+        const t3 = setTimeout(scrollToElement, 600);
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+          clearTimeout(t3);
+        };
+      }
+    } else {
+      window.scrollTo(0, 0);
+    }
+  }, [location.pathname, location.hash]);
 
   return null;
 }
@@ -42,12 +98,16 @@ function ScrollToTop() {
 export default function App() {
   return (
     <CheckoutDrawerProvider>
+      <ReferralTracker />
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/collections" element={<Collections />} />
         <Route path="/collections/:category" element={<CollectionCategory />} />
         <Route path="/products/:slug" element={<ProductDetail />} />
+        <Route path="/customizable-products" element={<CustomizableProductsLanding />} />
+        <Route path="/customizable-products/:category" element={<CustomizableProductsLanding />} />
+        <Route path="/customizable-products/customize/:slug" element={<CustomizerWorkspace />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/order/confirmation/:id" element={<OrderConfirmation />} />
@@ -60,8 +120,13 @@ export default function App() {
         <Route path="/sleep-science" element={<SleepScience />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/blogs" element={<BlogList />} />
+        <Route path="/blogs/:slug" element={<BlogDetail />} />
         <Route path="/policies/:slug" element={<Policy />} />
         <Route path="/r/:code" element={<RefLanding />} />
+        <Route path="/referrals" element={<Navigate to="/account?tab=referrals" replace />} />
+        <Route path="/internal/stores-preview" element={<StoresRedesignGallery />} />
+        <Route path="/internal/testimonials-preview" element={<CustomerTestimonials />} />
         <Route
           path="/admin/*"
           element={
@@ -95,6 +160,14 @@ export default function App() {
           element={
             <RoleGuard allowedRoles={["owner", "admin", "dealer"]}>
               <DealerConsole />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/stock-point/*"
+          element={
+            <RoleGuard allowedRoles={["owner", "admin", "stock_point_manager"]}>
+              <StockPointManagerConsole />
             </RoleGuard>
           }
         />

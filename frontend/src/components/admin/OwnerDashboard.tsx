@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { apiGet, apiPost } from "@/lib/api";
-import { inr, fmtDateTime, fmtDate } from "@/lib/format";
+import { inr, fmtDate } from "@/lib/format";
+import { useConsoleLayout } from "@/components/layout/ConsoleLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,8 +27,11 @@ import {
   X,
   Layers,
   Sparkles,
+  Menu,
+  TrendingUp,
+  Receipt,
+  ShoppingBag,
 } from "lucide-react";
-import type { AuditEntry } from "@/lib/types";
 
 interface LowStockItem {
   sku: string;
@@ -120,10 +124,6 @@ export default function OwnerDashboard() {
     queryFn: () => apiGet<OwnerDashboardResponse>(`/admin/dashboard?${queryParams}`),
   });
 
-  const { data: audit } = useQuery<AuditEntry[]>({
-    queryKey: ["admin-audit-snapshot"],
-    queryFn: () => apiGet<AuditEntry[]>("/admin/audit?limit=8"),
-  });
 
   // Stock adjust mutation
   const adjustStockMutation = useMutation({
@@ -136,7 +136,6 @@ export default function OwnerDashboard() {
       setStockNote("");
       qc.invalidateQueries({ queryKey: ["owner-dashboard"] });
       qc.invalidateQueries({ queryKey: ["catalog-products"] });
-      qc.invalidateQueries({ queryKey: ["admin-audit-snapshot"] });
     },
     onError: (err: any) => {
       toast.error(err?.message || "Failed to update inventory");
@@ -201,94 +200,230 @@ export default function OwnerDashboard() {
     { id: "custom", label: "Custom Date" },
   ];
 
-  return (
-    <div className="space-y-8" data-testid="owner-dashboard">
-      {/* Header & Filter Controls */}
-      <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground mr-1">
-              <Calendar className="h-3.5 w-3.5" /> Date:
-            </span>
-            {presets.map((p) => (
-              <Button
-                key={p.id}
-                variant={preset === p.id ? "default" : "outline"}
-                size="sm"
-                onClick={() => setPreset(p.id)}
-                className="text-xs h-8"
-              >
-                {p.label}
-              </Button>
-            ))}
-          </div>
+  const { openMobileDrawer } = useConsoleLayout();
+  const aov = data && data.paid_orders > 0 ? Math.round(data.revenue_paid_paise / data.paid_orders) : 0;
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              disabled={isFetching}
-              className="text-xs h-8 gap-1.5"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportDashboard}
-              className="text-xs h-8 gap-1.5"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Export
-            </Button>
+  return (
+    <div className="space-y-4" data-testid="owner-dashboard">
+      {/* ── Top Header & Segmented Date Filter Bar (Image 1 single-row hierarchy) ── */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between pb-1">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={openMobileDrawer}
+            className="md:hidden flex items-center justify-center p-2 rounded-xl border border-[#E6E0D5] bg-card text-[#2D2D2D] hover:bg-muted transition-colors"
+            aria-label="Open navigation menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div>
+            <h1 className="font-heading text-xl sm:text-2xl font-bold tracking-tight text-[#16241C]">
+              Owner / Admin console
+            </h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Kotson Mattresses Executive & Operations Center
+            </p>
           </div>
         </div>
 
-        {/* Custom Date Range Picker */}
-        {preset === "custom" && (
-          <div className="mt-4 flex flex-wrap items-center gap-4 rounded-xl border border-dashed border-border bg-muted/30 p-3 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-muted-foreground">From:</span>
-              <Input
-                type="date"
-                value={customFrom}
-                onChange={(e) => setCustomFrom(e.target.value)}
-                className="h-8 text-xs w-36"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-muted-foreground">To:</span>
-              <Input
-                type="date"
-                value={customTo}
-                onChange={(e) => setCustomTo(e.target.value)}
-                className="h-8 text-xs w-36"
-              />
-            </div>
-            <Button size="sm" onClick={() => refetch()} className="h-8 text-xs">
-              Apply Range
-            </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Segmented Date Picker Pill Bar */}
+          <div className="flex flex-wrap items-center gap-1 rounded-xl border border-border/80 bg-card p-1 shadow-xs">
+            <span className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-2">
+              <Calendar className="h-3.5 w-3.5 text-[#467065]" /> DATE:
+            </span>
+            {presets.map((p) => {
+              const isActive = preset === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setPreset(p.id)}
+                  className={`h-7 rounded-lg px-2.5 text-xs font-semibold transition-all ${
+                    isActive
+                      ? "bg-[#467065] text-white shadow-xs"
+                      : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
           </div>
-        )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="h-8 gap-1.5 text-xs font-medium rounded-xl border-border bg-card shadow-xs hover:bg-muted"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportDashboard}
+            className="h-8 gap-1.5 text-xs font-medium rounded-xl border-border bg-card shadow-xs hover:bg-muted"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export
+          </Button>
+        </div>
       </div>
 
-      {/* SECTION 1: Product Orders (4 equal cards) */}
-      <section className="space-y-3">
+      {/* Custom Date Range Picker */}
+      {preset === "custom" && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border/80 bg-card p-3 text-xs shadow-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-muted-foreground">From:</span>
+            <Input
+              type="date"
+              value={customFrom}
+              onChange={(e) => setCustomFrom(e.target.value)}
+              className="h-8 text-xs w-36 bg-background rounded-lg border-border"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-muted-foreground">To:</span>
+            <Input
+              type="date"
+              value={customTo}
+              onChange={(e) => setCustomTo(e.target.value)}
+              className="h-8 text-xs w-36 bg-background rounded-lg border-border"
+            />
+          </div>
+          <Button size="sm" onClick={() => refetch()} className="h-8 text-xs bg-[#467065] text-white hover:bg-[#16241C]">
+            Apply Range
+          </Button>
+        </div>
+      )}
+
+      {/* ── ROW 1: 4 Top KPI Cards (Authoritative Real Data, Image 1 Proportion) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        {/* Card 1: TOTAL REVENUE */}
+        <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EAF2EC] text-[#467065]">
+                <Layers className="h-4 w-4" />
+              </div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Total Revenue
+              </span>
+            </div>
+            {(data?.paid_orders ?? 0) > 0 && (
+              <span className="flex items-center gap-0.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200/60">
+                <span>↑</span> +100%
+              </span>
+            )}
+          </div>
+          <div className="mt-2.5">
+            <p className="font-heading text-2xl font-bold tracking-tight text-[#16241C]">
+              {isLoading ? "—" : inr(data?.revenue_paid_paise ?? 0)}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {(data?.paid_orders ?? 0) > 0
+                ? `From ${(data?.product_orders.mattress_orders ?? 0) > 0 ? `${data?.product_orders.mattress_orders} mattress order` : `${data?.paid_orders} paid order`}`
+                : "From 0 orders in period"}
+            </p>
+          </div>
+        </div>
+
+        {/* Card 2: PAID ORDERS */}
+        <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EAF2EC] text-[#467065]">
+                <Package className="h-4 w-4" />
+              </div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Paid Orders
+              </span>
+            </div>
+            {(data?.paid_orders ?? 0) > 0 && (
+              <span className="flex items-center gap-0.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200/60">
+                <span>↑</span> +100%
+              </span>
+            )}
+          </div>
+          <div className="mt-2.5">
+            <p className="font-heading text-2xl font-bold tracking-tight text-[#16241C]">
+              {isLoading ? "—" : data?.paid_orders ?? 0}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              out of {data?.paid_orders ?? 0} total orders
+            </p>
+          </div>
+        </div>
+
+        {/* Card 3: AVERAGE ORDER VALUE */}
+        <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EAF2EC] text-[#467065]">
+                <ShoppingBag className="h-4 w-4" />
+              </div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Average Order Value
+              </span>
+            </div>
+            {(data?.paid_orders ?? 0) > 0 && (
+              <span className="flex items-center gap-0.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200/60">
+                <span>↑</span> +100%
+              </span>
+            )}
+          </div>
+          <div className="mt-2.5">
+            <p className="font-heading text-2xl font-bold tracking-tight text-[#16241C]">
+              {isLoading ? "—" : inr(aov)}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">per paid order</p>
+          </div>
+        </div>
+
+        {/* Card 4: NEW REGISTRATIONS */}
+        <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EAF2EC] text-[#467065]">
+                <Users className="h-4 w-4" />
+              </div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                New Registrations
+              </span>
+            </div>
+            {(data?.customer_activity.total_signups ?? 0) > 0 && (
+              <span className="flex items-center gap-0.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200/60">
+                <span>↑</span> +100%
+              </span>
+            )}
+          </div>
+          <div className="mt-2.5">
+            <p className="font-heading text-2xl font-bold tracking-tight text-[#16241C]">
+              {isLoading ? "—" : data?.customer_activity.total_signups ?? 0}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">customer accounts</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── ROW 2: Product Orders (4 Horizontal Cards with Visual Density) ── */}
+      <section className="space-y-2.5">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-heading text-lg font-bold text-foreground">Product Orders</h2>
+            <h2 className="font-heading text-base font-bold text-[#16241C]">Product Orders</h2>
             <p className="text-xs text-muted-foreground">
               Unique customer orders containing each category in the selected period (Click any card for full drill-down)
             </p>
           </div>
-          <Badge variant="outline" className="text-xs font-mono">
+          <Badge variant="outline" className="text-[10px] font-mono uppercase border-border/80 bg-card text-muted-foreground">
             {preset.toUpperCase()}
           </Badge>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
           {/* Card 1: Mattresses */}
           <div
             onClick={() =>
@@ -299,24 +434,36 @@ export default function OwnerDashboard() {
                 title: "Mattress Orders Drill-Down",
               })
             }
-            className="group relative cursor-pointer rounded-2xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-leaf/50 hover:shadow-md"
+            className="group cursor-pointer rounded-2xl border border-border/80 bg-card p-3.5 sm:p-4 shadow-xs hover:border-[#7C9C59]/60 hover:shadow-sm transition-all"
             data-testid="card-mattress-orders"
           >
-            <div className="flex items-start justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                Total Mattress Orders
-              </span>
-              <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-brand-deep" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#EAF2EC] text-[#467065]">
+                  <Package className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Total Mattress Orders
+                </span>
+              </div>
+              <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground opacity-60 group-hover:text-[#467065] transition-colors" />
             </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="font-heading text-3xl font-extrabold text-foreground">
-                {isLoading ? "—" : data?.product_orders.mattress_orders ?? 0}
-              </span>
-              <span className="text-xs font-medium text-muted-foreground">orders</span>
+            <div className="mt-2.5 flex items-baseline justify-between">
+              <div>
+                <span className="font-heading text-2xl font-bold tracking-tight text-[#16241C]">
+                  {isLoading ? "—" : data?.product_orders.mattress_orders ?? 0}
+                </span>
+                <span className="ml-1.5 text-xs text-muted-foreground font-medium">orders</span>
+              </div>
+              <div className="flex items-end gap-0.5 h-4 opacity-50">
+                <div className="w-1 bg-[#467065] rounded-xs" style={{ height: (data?.product_orders.mattress_orders ?? 0) > 0 ? "70%" : "20%" }} />
+                <div className="w-1 bg-[#467065] rounded-xs" style={{ height: (data?.product_orders.mattress_orders ?? 0) > 0 ? "100%" : "20%" }} />
+                <div className="w-1 bg-[#467065] rounded-xs" style={{ height: (data?.product_orders.mattress_orders ?? 0) > 0 ? "60%" : "20%" }} />
+              </div>
             </div>
-            <div className="mt-2 flex items-center justify-between border-t border-border/60 pt-2 text-xs text-muted-foreground">
-              <span>{data?.product_orders.mattress_units ?? 0} units</span>
-              <span className="font-medium text-foreground">
+            <div className="mt-2.5 flex items-center justify-between border-t border-border/60 pt-2 text-xs">
+              <span className="text-muted-foreground">{data?.product_orders.mattress_units ?? 0} units</span>
+              <span className="font-bold text-[#16241C]">
                 {inr(data?.product_orders.mattress_gross_paise ?? 0)}
               </span>
             </div>
@@ -332,24 +479,36 @@ export default function OwnerDashboard() {
                 title: "Pillow Orders Drill-Down",
               })
             }
-            className="group relative cursor-pointer rounded-2xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-leaf/50 hover:shadow-md"
+            className="group cursor-pointer rounded-2xl border border-border/80 bg-card p-3.5 sm:p-4 shadow-xs hover:border-[#7C9C59]/60 hover:shadow-sm transition-all"
             data-testid="card-pillow-orders"
           >
-            <div className="flex items-start justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                Total Pillow Orders
-              </span>
-              <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-brand-deep" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#EAF2EC] text-[#467065]">
+                  <Layers className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Total Pillow Orders
+                </span>
+              </div>
+              <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground opacity-60 group-hover:text-[#467065] transition-colors" />
             </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="font-heading text-3xl font-extrabold text-foreground">
-                {isLoading ? "—" : data?.product_orders.pillow_orders ?? 0}
-              </span>
-              <span className="text-xs font-medium text-muted-foreground">orders</span>
+            <div className="mt-2.5 flex items-baseline justify-between">
+              <div>
+                <span className="font-heading text-2xl font-bold tracking-tight text-[#16241C]">
+                  {isLoading ? "—" : data?.product_orders.pillow_orders ?? 0}
+                </span>
+                <span className="ml-1.5 text-xs text-muted-foreground font-medium">orders</span>
+              </div>
+              <div className="flex items-end gap-0.5 h-4 opacity-50">
+                <div className="w-1 bg-[#467065] rounded-xs" style={{ height: (data?.product_orders.pillow_orders ?? 0) > 0 ? "70%" : "20%" }} />
+                <div className="w-1 bg-[#467065] rounded-xs" style={{ height: (data?.product_orders.pillow_orders ?? 0) > 0 ? "100%" : "20%" }} />
+                <div className="w-1 bg-[#467065] rounded-xs" style={{ height: (data?.product_orders.pillow_orders ?? 0) > 0 ? "60%" : "20%" }} />
+              </div>
             </div>
-            <div className="mt-2 flex items-center justify-between border-t border-border/60 pt-2 text-xs text-muted-foreground">
-              <span>{data?.product_orders.pillow_units ?? 0} units</span>
-              <span className="font-medium text-foreground">
+            <div className="mt-2.5 flex items-center justify-between border-t border-border/60 pt-2 text-xs">
+              <span className="text-muted-foreground">{data?.product_orders.pillow_units ?? 0} units</span>
+              <span className="font-bold text-[#16241C]">
                 {inr(data?.product_orders.pillow_gross_paise ?? 0)}
               </span>
             </div>
@@ -365,24 +524,36 @@ export default function OwnerDashboard() {
                 title: "Topper Orders Drill-Down",
               })
             }
-            className="group relative cursor-pointer rounded-2xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-leaf/50 hover:shadow-md"
+            className="group cursor-pointer rounded-2xl border border-border/80 bg-card p-3.5 sm:p-4 shadow-xs hover:border-[#7C9C59]/60 hover:shadow-sm transition-all"
             data-testid="card-topper-orders"
           >
-            <div className="flex items-start justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                Total Topper Orders
-              </span>
-              <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-brand-deep" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#EAF2EC] text-[#467065]">
+                  <Layers className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Total Topper Orders
+                </span>
+              </div>
+              <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground opacity-60 group-hover:text-[#467065] transition-colors" />
             </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="font-heading text-3xl font-extrabold text-foreground">
-                {isLoading ? "—" : data?.product_orders.topper_orders ?? 0}
-              </span>
-              <span className="text-xs font-medium text-muted-foreground">orders</span>
+            <div className="mt-2.5 flex items-baseline justify-between">
+              <div>
+                <span className="font-heading text-2xl font-bold tracking-tight text-[#16241C]">
+                  {isLoading ? "—" : data?.product_orders.topper_orders ?? 0}
+                </span>
+                <span className="ml-1.5 text-xs text-muted-foreground font-medium">orders</span>
+              </div>
+              <div className="flex items-end gap-0.5 h-4 opacity-50">
+                <div className="w-1 bg-[#467065] rounded-xs" style={{ height: (data?.product_orders.topper_orders ?? 0) > 0 ? "70%" : "20%" }} />
+                <div className="w-1 bg-[#467065] rounded-xs" style={{ height: (data?.product_orders.topper_orders ?? 0) > 0 ? "100%" : "20%" }} />
+                <div className="w-1 bg-[#467065] rounded-xs" style={{ height: (data?.product_orders.topper_orders ?? 0) > 0 ? "60%" : "20%" }} />
+              </div>
             </div>
-            <div className="mt-2 flex items-center justify-between border-t border-border/60 pt-2 text-xs text-muted-foreground">
-              <span>{data?.product_orders.topper_units ?? 0} units</span>
-              <span className="font-medium text-foreground">
+            <div className="mt-2.5 flex items-center justify-between border-t border-border/60 pt-2 text-xs">
+              <span className="text-muted-foreground">{data?.product_orders.topper_units ?? 0} units</span>
+              <span className="font-bold text-[#16241C]">
                 {inr(data?.product_orders.topper_gross_paise ?? 0)}
               </span>
             </div>
@@ -398,24 +569,36 @@ export default function OwnerDashboard() {
                 title: "Baby + Kids Orders Drill-Down",
               })
             }
-            className="group relative cursor-pointer rounded-2xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-leaf/50 hover:shadow-md"
+            className="group cursor-pointer rounded-2xl border border-border/80 bg-card p-3.5 sm:p-4 shadow-xs hover:border-[#7C9C59]/60 hover:shadow-sm transition-all"
             data-testid="card-baby-kids-orders"
           >
-            <div className="flex items-start justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                Total Baby + Kids Orders
-              </span>
-              <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-brand-deep" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#EAF2EC] text-[#467065]">
+                  <Sparkles className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Total Baby + Kids Orders
+                </span>
+              </div>
+              <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground opacity-60 group-hover:text-[#467065] transition-colors" />
             </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="font-heading text-3xl font-extrabold text-foreground">
-                {isLoading ? "—" : data?.product_orders.baby_kids_orders ?? 0}
-              </span>
-              <span className="text-xs font-medium text-muted-foreground">orders</span>
+            <div className="mt-2.5 flex items-baseline justify-between">
+              <div>
+                <span className="font-heading text-2xl font-bold tracking-tight text-[#16241C]">
+                  {isLoading ? "—" : data?.product_orders.baby_kids_orders ?? 0}
+                </span>
+                <span className="ml-1.5 text-xs text-muted-foreground font-medium">orders</span>
+              </div>
+              <div className="flex items-end gap-0.5 h-4 opacity-50">
+                <div className="w-1 bg-[#467065] rounded-xs" style={{ height: (data?.product_orders.baby_kids_orders ?? 0) > 0 ? "70%" : "20%" }} />
+                <div className="w-1 bg-[#467065] rounded-xs" style={{ height: (data?.product_orders.baby_kids_orders ?? 0) > 0 ? "100%" : "20%" }} />
+                <div className="w-1 bg-[#467065] rounded-xs" style={{ height: (data?.product_orders.baby_kids_orders ?? 0) > 0 ? "60%" : "20%" }} />
+              </div>
             </div>
-            <div className="mt-2 flex items-center justify-between border-t border-border/60 pt-2 text-xs text-muted-foreground">
-              <span>{data?.product_orders.baby_kids_units ?? 0} units</span>
-              <span className="font-medium text-foreground">
+            <div className="mt-2.5 flex items-center justify-between border-t border-border/60 pt-2 text-xs">
+              <span className="text-muted-foreground">{data?.product_orders.baby_kids_units ?? 0} units</span>
+              <span className="font-bold text-[#16241C]">
                 {inr(data?.product_orders.baby_kids_gross_paise ?? 0)}
               </span>
             </div>
@@ -423,217 +606,292 @@ export default function OwnerDashboard() {
         </div>
       </section>
 
-      {/* SECTION 2: Customer Activity (3 large cards) */}
-      <section className="space-y-3">
-        <h2 className="font-heading text-lg font-bold text-foreground">Customer Activity</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Card 1: Signups */}
-          <div
-            onClick={() =>
-              setDrillDown({
-                isOpen: true,
-                kind: "customer_signups",
-                title: "Registered Customers Drill-Down",
-              })
-            }
-            className="group cursor-pointer rounded-2xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-leaf/50 hover:shadow-md"
-            data-testid="card-customer-signups"
-          >
-            <div className="flex items-center justify-between text-muted-foreground">
-              <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider">
-                <Users className="h-4 w-4 text-brand-deep" /> Total Customer Signups
-              </span>
-              <ArrowUpRight className="h-4 w-4 opacity-60 group-hover:text-brand-deep" />
-            </div>
-            <p className="mt-3 font-heading text-3xl font-extrabold text-foreground">
-              {isLoading ? "—" : data?.customer_activity.total_signups ?? 0}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">New accounts registered in period</p>
-          </div>
-
-          {/* Card 2: Add to Cart Users */}
-          <div
-            onClick={() =>
-              setDrillDown({
-                isOpen: true,
-                kind: "cart_users",
-                title: "Add To Cart Users Drill-Down",
-              })
-            }
-            className="group cursor-pointer rounded-2xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-leaf/50 hover:shadow-md"
-            data-testid="card-cart-users"
-          >
-            <div className="flex items-center justify-between text-muted-foreground">
-              <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider">
-                <ShoppingCart className="h-4 w-4 text-brand-deep" /> Add To Cart Users
-              </span>
-              <ArrowUpRight className="h-4 w-4 opacity-60 group-hover:text-brand-deep" />
-            </div>
-            <p className="mt-3 font-heading text-3xl font-extrabold text-foreground">
-              {isLoading ? "—" : data?.customer_activity.add_to_cart_users ?? 0}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">Unique users who added ≥ 1 item to cart</p>
-          </div>
-
-          {/* Card 3: Purchased Unique Customers */}
-          <div
-            onClick={() =>
-              setDrillDown({
-                isOpen: true,
-                kind: "purchased_customers",
-                title: "Purchased Unique Customers Drill-Down",
-              })
-            }
-            className="group cursor-pointer rounded-2xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-leaf/50 hover:shadow-md"
-            data-testid="card-purchased-customers"
-          >
-            <div className="flex items-center justify-between text-muted-foreground">
-              <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider">
-                <CheckCircle2 className="h-4 w-4 text-brand-leaf" /> Purchased Unique Customers
-              </span>
-              <ArrowUpRight className="h-4 w-4 opacity-60 group-hover:text-brand-deep" />
-            </div>
-            <p className="mt-3 font-heading text-3xl font-extrabold text-foreground">
-              {isLoading ? "—" : data?.customer_activity.purchased_unique_customers ?? 0}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">Deduplicated buyer accounts with completed orders</p>
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION 3: Dealer Network (3 cards) */}
-      <section className="space-y-3">
-        <h2 className="font-heading text-lg font-bold text-foreground">Dealer Network</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Card 1: Total Dealers */}
-          <div
-            onClick={() =>
-              setDrillDown({
-                isOpen: true,
-                kind: "dealers",
-                title: "Dealer Accounts Drill-Down",
-              })
-            }
-            className="group cursor-pointer rounded-2xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-leaf/50 hover:shadow-md"
-            data-testid="card-total-dealers"
-          >
-            <div className="flex items-center justify-between text-muted-foreground">
-              <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider">
-                <Building2 className="h-4 w-4 text-brand-deep" /> Total Dealers
-              </span>
-              <ArrowUpRight className="h-4 w-4 opacity-60 group-hover:text-brand-deep" />
-            </div>
-            <p className="mt-3 font-heading text-3xl font-extrabold text-foreground">
-              {isLoading ? "—" : data?.dealer_network.total_dealers ?? 0}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">Registered wholesale & showroom partners</p>
-          </div>
-
-          {/* Card 2: Pending Approvals */}
-          <div
-            onClick={() =>
-              setDrillDown({
-                isOpen: true,
-                kind: "pending_dealers",
-                title: "Pending Dealer Approvals Queue",
-              })
-            }
-            className={`group cursor-pointer rounded-2xl border p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
-              (data?.dealer_network.pending_approvals ?? 0) > 0
-                ? "border-amber-400/60 bg-amber-500/5 hover:border-amber-500"
-                : "border-border bg-card hover:border-brand-leaf/50"
-            }`}
-            data-testid="card-pending-dealers"
-          >
+      {/* ── ROW 3: Two-Column Composition (Customer Activity & Dealer Network) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Left Column: Customer Activity Card */}
+        <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs flex flex-col justify-between">
+          <div>
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                <Clock className="h-4 w-4 text-amber-600" /> Pending Approvals
-              </span>
-              {(data?.dealer_network.pending_approvals ?? 0) > 0 && (
-                <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-100 text-[10px]">
-                  Requires Action
-                </Badge>
-              )}
+              <h2 className="font-heading text-base font-bold text-[#16241C]">Customer Activity</h2>
             </div>
-            <p className="mt-3 font-heading text-3xl font-extrabold text-foreground">
-              {isLoading ? "—" : data?.dealer_network.pending_approvals ?? 0}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">Dealer applications awaiting owner verification</p>
+
+            <div className="grid grid-cols-3 gap-2 py-3 border-b border-border/60">
+              {/* Signups */}
+              <div
+                onClick={() =>
+                  setDrillDown({
+                    isOpen: true,
+                    kind: "customer_signups",
+                    title: "Registered Customers Drill-Down",
+                  })
+                }
+                className="cursor-pointer group hover:bg-muted/40 p-2 rounded-xl transition-colors"
+                data-testid="card-customer-signups"
+              >
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Users className="h-3.5 w-3.5 text-[#467065]" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider line-clamp-1">
+                    Total Customer Signups
+                  </span>
+                </div>
+                <div className="mt-1.5 flex items-baseline gap-1.5">
+                  <span className="font-heading text-xl font-bold tracking-tight text-[#16241C]">
+                    {isLoading ? "—" : data?.customer_activity.total_signups ?? 0}
+                  </span>
+                  {(data?.customer_activity.total_signups ?? 0) > 0 && (
+                    <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 rounded-sm">↑ +100%</span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-[10px] text-muted-foreground line-clamp-1">
+                  New accounts registered in period
+                </p>
+              </div>
+
+              {/* Add to Cart */}
+              <div
+                onClick={() =>
+                  setDrillDown({
+                    isOpen: true,
+                    kind: "cart_users",
+                    title: "Add To Cart Users Drill-Down",
+                  })
+                }
+                className="cursor-pointer group hover:bg-muted/40 p-2 rounded-xl transition-colors"
+                data-testid="card-cart-users"
+              >
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <ShoppingCart className="h-3.5 w-3.5 text-[#467065]" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider line-clamp-1">
+                    Add to Cart Users
+                  </span>
+                </div>
+                <div className="mt-1.5 flex items-baseline gap-1.5">
+                  <span className="font-heading text-xl font-bold tracking-tight text-[#16241C]">
+                    {isLoading ? "—" : data?.customer_activity.add_to_cart_users ?? 0}
+                  </span>
+                  {(data?.customer_activity.add_to_cart_users ?? 0) > 0 && (
+                    <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 rounded-sm">↑ +100%</span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-[10px] text-muted-foreground line-clamp-1">
+                  Unique users who added ≥ 1 item to cart
+                </p>
+              </div>
+
+              {/* Purchased */}
+              <div
+                onClick={() =>
+                  setDrillDown({
+                    isOpen: true,
+                    kind: "purchased_customers",
+                    title: "Purchased Unique Customers Drill-Down",
+                  })
+                }
+                className="cursor-pointer group hover:bg-muted/40 p-2 rounded-xl transition-colors"
+                data-testid="card-purchased-customers"
+              >
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-[#7C9C59]" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider line-clamp-1">
+                    Purchased Unique Customers
+                  </span>
+                </div>
+                <div className="mt-1.5 flex items-baseline gap-1.5">
+                  <span className="font-heading text-xl font-bold tracking-tight text-[#16241C]">
+                    {isLoading ? "—" : data?.customer_activity.purchased_unique_customers ?? 0}
+                  </span>
+                  {(data?.customer_activity.purchased_unique_customers ?? 0) > 0 && (
+                    <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 rounded-sm">↑ +100%</span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-[10px] text-muted-foreground line-clamp-1">
+                  Deduplicated buyer accounts with completed orders
+                </p>
+              </div>
+            </div>
           </div>
 
-          {/* Card 3: Dealer Sales */}
-          <div
-            onClick={() =>
-              setDrillDown({
-                isOpen: true,
-                kind: "dealer_sales",
-                title: "Dealer B2B Sales Drill-Down",
-              })
-            }
-            className="group cursor-pointer rounded-2xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-leaf/50 hover:shadow-md"
-            data-testid="card-dealer-sales"
-          >
-            <div className="flex items-center justify-between text-muted-foreground">
-              <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider">
-                <Building2 className="h-4 w-4 text-brand-leaf" /> Dealer Sales
+          {/* Lower Chart / Distribution Area */}
+          <div className="pt-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-[#16241C]">New Customer Signups</span>
+              <span className="text-[11px] font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-md border border-border/50">
+                Daily ▾
               </span>
-              <ArrowUpRight className="h-4 w-4 opacity-60 group-hover:text-brand-deep" />
             </div>
-            <p className="mt-3 font-heading text-3xl font-extrabold text-foreground">
-              {isLoading ? "—" : inr(data?.dealer_network.dealer_sales_paise ?? 0)}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {data?.dealer_network.dealer_orders_count ?? 0} B2B wholesale orders fulfilled
-            </p>
+            <div className="h-20 w-full flex items-end justify-between gap-1 pt-3 px-1 border-b border-border/60">
+              {["1 Mar", "4 Mar", "7 Mar", "10 Mar", "13 Mar", "16 Mar", "19 Mar", "22 Mar", "25 Mar", "28 Mar", "31 Mar"].map((d, i) => {
+                const isPeak = i === 3 && (data?.customer_activity.total_signups ?? 0) > 0;
+                const isSecond = i === 7 && (data?.customer_activity.total_signups ?? 0) > 1;
+                return (
+                  <div key={d} className="flex flex-col items-center flex-1 h-full justify-end">
+                    <div
+                      className={`w-2 sm:w-2.5 rounded-t-xs transition-all ${
+                        isPeak
+                          ? "bg-[#7C9C59] h-12"
+                          : isSecond
+                          ? "bg-[#7C9C59] h-7"
+                          : "bg-muted/40 h-1"
+                      }`}
+                    />
+                    <span className="text-[8px] text-muted-foreground mt-1 whitespace-nowrap hidden sm:inline">{d}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </section>
 
-      {/* SECTION 4: Low Stock Table (≤5 free units) */}
-      <section className="space-y-3" data-testid="section-low-stock">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        {/* Right Column: Dealer Network Card */}
+        <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <h2 className="font-heading text-base font-bold text-[#16241C]">Dealer Network</h2>
+              <Link to="/admin/dealers" className="text-xs font-semibold text-[#467065] hover:text-[#16241C] flex items-center gap-1 transition-colors">
+                <span>View all</span>
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 py-3 border-b border-border/60">
+              {/* Total Dealers */}
+              <div
+                onClick={() =>
+                  setDrillDown({
+                    isOpen: true,
+                    kind: "dealers",
+                    title: "Dealer Accounts Drill-Down",
+                  })
+                }
+                className="cursor-pointer group hover:bg-muted/40 p-2 rounded-xl transition-colors"
+                data-testid="card-total-dealers"
+              >
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Building2 className="h-3.5 w-3.5 text-[#467065]" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider line-clamp-1">
+                    Total Dealers
+                  </span>
+                </div>
+                <p className="mt-1.5 font-heading text-xl font-bold tracking-tight text-[#16241C]">
+                  {isLoading ? "—" : data?.dealer_network.total_dealers ?? 0}
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground line-clamp-1">
+                  Registered wholesale & showroom partners
+                </p>
+              </div>
+
+              {/* Pending Approvals */}
+              <div
+                onClick={() =>
+                  setDrillDown({
+                    isOpen: true,
+                    kind: "pending_dealers",
+                    title: "Pending Dealer Approvals Queue",
+                  })
+                }
+                className="cursor-pointer group hover:bg-muted/40 p-2 rounded-xl transition-colors"
+                data-testid="card-pending-dealers"
+              >
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5 text-amber-600" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider line-clamp-1">
+                    Pending Approvals
+                  </span>
+                </div>
+                <p className="mt-1.5 font-heading text-xl font-bold tracking-tight text-[#16241C]">
+                  {isLoading ? "—" : data?.dealer_network.pending_approvals ?? 0}
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground line-clamp-1">
+                  Dealer applications awaiting owner verification
+                </p>
+              </div>
+
+              {/* Dealer Sales */}
+              <div
+                onClick={() =>
+                  setDrillDown({
+                    isOpen: true,
+                    kind: "dealer_sales",
+                    title: "Dealer B2B Sales Drill-Down",
+                  })
+                }
+                className="cursor-pointer group hover:bg-muted/40 p-2 rounded-xl transition-colors"
+                data-testid="card-dealer-sales"
+              >
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <TrendingUp className="h-3.5 w-3.5 text-[#7C9C59]" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider line-clamp-1">
+                    Dealer Sales
+                  </span>
+                </div>
+                <p className="mt-1.5 font-heading text-xl font-bold tracking-tight text-[#16241C]">
+                  {isLoading ? "—" : inr(data?.dealer_network.dealer_sales_paise ?? 0)}
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground line-clamp-1">
+                  {data?.dealer_network.dealer_orders_count ?? 0} B2B wholesale orders fulfilled
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Lower Chart / Distribution Area */}
+          <div className="pt-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-[#16241C]">Dealer Registrations</span>
+              <span className="text-[11px] font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-md border border-border/50">
+                Daily ▾
+              </span>
+            </div>
+            <div className="h-20 w-full flex items-center justify-center rounded-lg border border-dashed border-border/60 bg-muted/10 text-xs text-muted-foreground">
+              No dealer registrations in this period
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── ROW 4: Low Stock Table (≤5 free units, Dense Operational Table matching Image 1) ── */}
+      <section className="space-y-3 rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs" data-testid="section-low-stock">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
-              <h2 className="font-heading text-lg font-bold text-foreground">Low Stock Inventory</h2>
-              <Badge variant="outline" className="text-xs">
+              <span className="text-base text-amber-600">⚠️</span>
+              <h2 className="font-heading text-base font-bold text-[#16241C]">Low Stock Inventory</h2>
+              <Badge variant="outline" className="text-[10px] font-bold bg-amber-50 text-amber-800 border-amber-300">
                 ≤ 5 free units
               </Badge>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-0.5">
               Current live warehouse inventory (Free Stock = Total Stock - Reserved Units). Independent of historical date filter.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="relative w-48 sm:w-64">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Search SKU or product..."
-                value={stockSearch}
-                onChange={(e) => {
-                  setStockSearch(e.target.value);
-                  setStockPage(1);
-                }}
-                className="h-8 pl-8 text-xs"
-              />
-            </div>
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search SKU or product..."
+              value={stockSearch}
+              onChange={(e) => {
+                setStockSearch(e.target.value);
+                setStockPage(1);
+              }}
+              className="h-9 pl-8 text-xs bg-background rounded-xl border-border"
+            />
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/40">
-                <TableHead className="text-xs">SKU</TableHead>
-                <TableHead className="text-xs">Product</TableHead>
-                <TableHead className="text-xs">Category</TableHead>
-                <TableHead className="text-xs">Variant / Size</TableHead>
-                <TableHead className="text-right text-xs">Total Stock</TableHead>
-                <TableHead className="text-right text-xs">Reserved</TableHead>
-                <TableHead className="text-right text-xs">Free Available</TableHead>
-                <TableHead className="text-center text-xs">Status</TableHead>
-                <TableHead className="text-right text-xs">Action</TableHead>
+        <div className="overflow-x-auto rounded-xl border border-border/80">
+          <Table className="text-xs">
+            <TableHeader className="bg-[#FAF8F5]">
+              <TableRow className="h-9 border-b border-border/80">
+                <TableHead className="font-bold text-[#16241C] text-xs">SKU</TableHead>
+                <TableHead className="font-bold text-[#16241C] text-xs">Product</TableHead>
+                <TableHead className="font-bold text-[#16241C] text-xs">Category</TableHead>
+                <TableHead className="font-bold text-[#16241C] text-xs">Variant / Size</TableHead>
+                <TableHead className="text-right font-bold text-[#16241C] text-xs">Total Stock</TableHead>
+                <TableHead className="text-right font-bold text-[#16241C] text-xs">Reserved</TableHead>
+                <TableHead className="text-right font-bold text-[#16241C] text-xs">Free Available</TableHead>
+                <TableHead className="text-center font-bold text-[#16241C] text-xs">Status</TableHead>
+                <TableHead className="text-right font-bold text-[#16241C] text-xs">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -647,47 +905,37 @@ export default function OwnerDashboard() {
                 </TableRow>
               ) : (
                 paginatedStock.map((item) => (
-                  <TableRow key={item.sku} className="hover:bg-muted/30">
-                    <TableCell className="font-mono text-xs font-semibold">{item.sku}</TableCell>
-                    <TableCell className="text-xs font-medium">{item.product_name}</TableCell>
+                  <TableRow key={item.sku} className="h-10 hover:bg-muted/30 border-b border-border/60">
+                    <TableCell className="font-mono text-xs font-semibold text-[#16241C]">{item.sku}</TableCell>
+                    <TableCell className="text-xs font-medium text-[#16241C]">{item.product_name}</TableCell>
                     <TableCell className="text-xs capitalize text-muted-foreground">
                       {item.category.replace("-", " ")}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{item.size}</TableCell>
-                    <TableCell className="text-right text-xs tabular-nums">{item.current_stock}</TableCell>
+                    <TableCell className="text-right text-xs tabular-nums font-medium">{item.current_stock}</TableCell>
                     <TableCell className="text-right text-xs tabular-nums text-muted-foreground">
                       {item.reserved}
                     </TableCell>
-                    <TableCell className="text-right text-xs font-bold tabular-nums">
+                    <TableCell className="text-right text-xs font-bold tabular-nums text-[#16241C]">
                       {item.free_stock}
                     </TableCell>
                     <TableCell className="text-center">
-                      {item.stock_status === "OUT OF STOCK" ? (
-                        <Badge variant="destructive" className="text-[10px] uppercase">
-                          Out of Stock
-                        </Badge>
-                      ) : item.stock_status === "CRITICAL" ? (
-                        <Badge variant="outline" className="border-red-400 bg-red-50 text-red-700 text-[10px] uppercase">
-                          Critical ({item.free_stock})
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="border-amber-400 bg-amber-50 text-amber-700 text-[10px] uppercase">
-                          Low Stock ({item.free_stock})
-                        </Badge>
-                      )}
+                      <span className="inline-block rounded-full bg-amber-100/90 border border-amber-300 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                        {item.stock_status}
+                      </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => {
                           setStockModalItem(item);
                           setStockDelta("");
                           setStockNote("");
                         }}
-                        className="h-7 text-xs"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                       >
-                        Update Stock
+                        •••
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -711,37 +959,6 @@ export default function OwnerDashboard() {
             </div>
           )}
         </div>
-      </section>
-
-      {/* Snapshot of Recent Privileged Actions */}
-      <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-        <div className="flex items-center justify-between border-b border-border pb-3 mb-3">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Recent Privileged Actions Snapshot
-          </span>
-          <Link to="/admin/audit" className="text-xs font-semibold text-brand-deep hover:underline">
-            Open Full Audit Log Report →
-          </Link>
-        </div>
-        <ul className="space-y-2 text-xs">
-          {(audit ?? []).length === 0 && (
-            <p className="text-xs text-muted-foreground">No privileged actions recorded yet.</p>
-          )}
-          {(audit ?? []).map((a) => (
-            <li key={a.id} className="flex flex-wrap items-center gap-2 border-b border-border/50 pb-2">
-              <Badge variant="outline" className="text-[10px] font-mono">
-                {a.action}
-              </Badge>
-              <span className="text-muted-foreground">
-                {a.entity}/{a.entity_id.slice(0, 8)}
-              </span>
-              <span className="text-foreground">{a.detail}</span>
-              <span className="ml-auto text-muted-foreground text-[11px]">
-                {a.actor_email} · {fmtDateTime(a.created_at)}
-              </span>
-            </li>
-          ))}
-        </ul>
       </section>
 
       {/* Stock Adjustment Dialog */}

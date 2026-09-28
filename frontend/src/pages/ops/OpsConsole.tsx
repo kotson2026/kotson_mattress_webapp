@@ -35,7 +35,7 @@ import type { DispatchQueue, DispatchRow, ReturnRequest, Shipment } from "@/lib/
 
 const NAV = [
   { to: "/ops", label: "Outbound Dispatch Hub" },
-  { to: "/ops/returns", label: "Returns & 100-Night Trial" },
+  { to: "/ops/returns", label: "Returns & 30-Night Trial" },
   { to: "/ops/carriers", label: "Carriers & Hub" },
 ];
 
@@ -788,7 +788,7 @@ function DispatchQueueView() {
 }
 
 // --------------------------------------------------------------------------------
-// Returns & 100-Night Sleep Trial View
+// Returns & 30-Night Sleep Trial View
 // --------------------------------------------------------------------------------
 function ReturnsView() {
   const qc = useQueryClient();
@@ -843,7 +843,7 @@ function ReturnsView() {
             <RotateCcw className="h-4 w-4 text-brand-forest" />
           </div>
           <p className="mt-2 font-heading text-3xl font-black text-brand-forest">{data?.total ?? 0}</p>
-          <p className="mt-1 text-xs text-muted-foreground">100-Night Trial & Warranty claims</p>
+          <p className="mt-1 text-xs text-muted-foreground">30-Night Trial & Warranty claims</p>
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
@@ -879,7 +879,7 @@ function ReturnsView() {
       </div>
 
       <Panel
-        title={`Returns, 100-Night Sleep Trial & Reverse Logistics (${data?.total ?? 0})`}
+        title={`Returns, 30-Night Sleep Trial & Reverse Logistics (${data?.total ?? 0})`}
         testId="ops-returns-panel"
         note="Restock occurs exclusively on inspected, approved returns with audited inventory ledger updates. Owner / Admin verified."
         action={
@@ -1138,7 +1138,7 @@ function CarriersHubView() {
       awbFormat: "SFX- prefix barcode",
       cutoffTime: "6:00 PM Daily",
       trackingUrl: "https://track.shadowfax.in",
-      notes: "Specialized in 100-Night Sleep Trial reverse doorstep pickups.",
+      notes: "Specialized in 30-Night Sleep Trial reverse doorstep pickups.",
     },
   ];
 

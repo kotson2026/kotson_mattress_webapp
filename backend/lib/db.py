@@ -86,13 +86,27 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("user_id", ASCENDING), ("created_at", DESCENDING)], name="user_created"),
     ],
     "referral_clicks": [IndexModel([("code", ASCENDING), ("created_at", DESCENDING)], name="code_created")],
-    "referral_attributions": [IndexModel([("customer_id", ASCENDING)], name="customer", unique=True)],
+    "referral_attributions": [IndexModel([("customer_id", ASCENDING)], name="customer", unique=True, sparse=True)],
     "processed_events": [IndexModel([("event_id", ASCENDING)], name="event_id", unique=True)],
     "audit_log": [IndexModel([("created_at", DESCENDING)], name="created_desc")],
     "counters": [],
     "affiliates": [IndexModel([("user_id", ASCENDING)], name="user_id", unique=True)],
-    "refunds": [IndexModel([("order_id", ASCENDING)], name="order_id")],
     "referral_rules": [IndexModel([("id", ASCENDING)], name="id", unique=True)],
+    "referral_withdrawals": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("user_id", ASCENDING), ("created_at", DESCENDING)], name="user_created"),
+        IndexModel([("status", ASCENDING)], name="status"),
+    ],
+    "referral_rewards": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("user_id", ASCENDING), ("created_at", DESCENDING)], name="user_created"),
+        IndexModel([("code", ASCENDING)], name="code"),
+        IndexModel([("status", ASCENDING)], name="status"),
+    ],
+    "wallet_ledger": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("user_id", ASCENDING), ("created_at", DESCENDING)], name="user_created"),
+    ],
     # --- CRM (Sections F/G) ---
     "source_events": [
         IndexModel([("event_key", ASCENDING)], name="event_key", unique=True),  # idempotency anchor
@@ -140,6 +154,36 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("status", ASCENDING), ("created_at", DESCENDING)], name="status_created"),
     ],
     "announcements": [IndexModel([("sort", ASCENDING)], name="sort")],
+    "blogs": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("slug", ASCENDING)], name="slug", unique=True),
+        IndexModel([("status", ASCENDING), ("published_at", DESCENDING)], name="status_published"),
+        IndexModel([("created_at", DESCENDING)], name="created_at_desc"),
+    ],
+    # --- Stock Point Module ---
+    "manual_stock_items": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("category", ASCENDING)], name="category"),
+        IndexModel([("is_active", ASCENDING)], name="is_active"),
+    ],
+    "stock_transactions": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("created_at", DESCENDING)], name="created_at_desc"),
+        IndexModel([("variant_id", ASCENDING), ("created_at", DESCENDING)], name="variant_created"),
+        IndexModel([("manual_stock_item_id", ASCENDING), ("created_at", DESCENDING)], name="manual_item_created"),
+        IndexModel([("transaction_type", ASCENDING)], name="transaction_type"),
+        IndexModel([("dispatch_type", ASCENDING)], name="dispatch_type"),
+        IndexModel([("dispatch_id", ASCENDING)], name="dispatch_id"),
+        IndexModel([("dispatch_number", ASCENDING)], name="dispatch_number"),
+    ],
+    "stock_dispatches": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("dispatch_number", ASCENDING)], name="dispatch_number", unique=True),
+        IndexModel([("created_at", DESCENDING)], name="created_at_desc"),
+        IndexModel([("dispatch_type", ASCENDING)], name="dispatch_type"),
+        IndexModel([("order_id", ASCENDING)], name="order_id"),
+        IndexModel([("reference_number", ASCENDING)], name="reference_number"),
+    ],
 }
 
 

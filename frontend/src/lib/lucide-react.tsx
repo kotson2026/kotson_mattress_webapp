@@ -18,6 +18,7 @@ import {
   SiInstagram,
   SiTrello,
   SiTwitch,
+  SiWhatsapp,
   SiX,
   SiYoutube,
   type IconType,
@@ -51,6 +52,7 @@ export const Instagram = fromSimpleIcons("Instagram", SiInstagram);
 export const Trello = fromSimpleIcons("Trello", SiTrello);
 export const Twitch = fromSimpleIcons("Twitch", SiTwitch);
 export const Twitter = fromSimpleIcons("Twitter", SiX); // the mark is X now
+export const Whatsapp = fromSimpleIcons("Whatsapp", SiWhatsapp);
 export const Youtube = fromSimpleIcons("Youtube", SiYoutube);
 
 // Simple Icons carries no mark for these (brand-owner requests): lucide 0.577 glyphs, ISC.

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Instagram, Facebook, Youtube, Linkedin } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import { parseJsonBlock } from "@/lib/format";
 
@@ -42,7 +42,7 @@ const FOOTER_GROUPS: NavGroup[] = [
       { label: "Mattresses", href: "/collections/mattresses", testId: "footer-link-mattresses" },
       { label: "Pillows", href: "/collections/pillows", testId: "footer-link-pillows" },
       { label: "Toppers", href: "/collections/toppers", testId: "footer-link-toppers" },
-      { label: "Baby + Kids", href: "/collections/baby-kids", testId: "footer-link-baby" },
+      { label: "Baby + Kids", href: "/collections/baby-kids", testId: "footer-link-baby-kids" },
     ],
   },
   {
@@ -63,8 +63,10 @@ const FOOTER_GROUPS: NavGroup[] = [
     links: [
       { label: "About Us", href: "/about", testId: "footer-link-about" },
       { label: "Certifications", href: "/#certifications", testId: "footer-link-certifications" },
-      { label: "Stores", href: "/#explore-stores", testId: "footer-link-stores" },
+      { label: "Journal / Blogs", href: "/blogs", testId: "footer-link-blogs" },
+      { label: "Stores", href: "/#stores", testId: "footer-link-stores" },
       { label: "Shark Tank India", href: "/#shark-tank", testId: "footer-link-shark-tank" },
+      { label: "Dealer & B2B", href: "/dealer", testId: "footer-link-dealer" },
     ],
   },
   {
@@ -73,10 +75,47 @@ const FOOTER_GROUPS: NavGroup[] = [
     links: [
       { label: "Privacy Policy", href: "/policies/policy_privacy", testId: "footer-link-privacy" },
       { label: "Terms & Conditions", href: "/policies/policy_terms", testId: "footer-link-terms" },
-      { label: "Refund & Cancellation Policy", href: "/policies/policy_returns", testId: "footer-link-refund" },
+      { label: "Refund & Cancellation Policy", href: "/policies/policy_refund", testId: "footer-link-refund" },
     ],
   },
 ];
+
+// Authoritative Kotson Social Channels configuration
+const DEFAULT_SOCIAL_LINKS: Record<string, string> = {
+  instagram: "https://www.instagram.com/kotsonmattress/",
+  facebook: "https://www.facebook.com/kotsonmattress",
+  youtube: "https://www.youtube.com/@kotsonmattress",
+  linkedin: "https://in.linkedin.com/company/kotsonmattress",
+};
+
+function isValidSocialUrl(url?: string | null): boolean {
+  if (!url || typeof url !== "string") return false;
+  const trimmed = url.trim();
+  if (
+    trimmed === "" ||
+    trimmed === "#" ||
+    trimmed.startsWith("javascript:") ||
+    trimmed === "https://instagram.com" ||
+    trimmed === "https://facebook.com" ||
+    trimmed === "https://youtube.com" ||
+    trimmed === "https://linkedin.com" ||
+    trimmed === "https://www.instagram.com" ||
+    trimmed === "https://www.facebook.com" ||
+    trimmed === "https://www.youtube.com" ||
+    trimmed === "https://in.linkedin.com" ||
+    trimmed === "https://instagram.com/" ||
+    trimmed === "https://facebook.com/" ||
+    trimmed === "https://youtube.com/" ||
+    trimmed === "https://linkedin.com/" ||
+    trimmed === "https://www.instagram.com/" ||
+    trimmed === "https://www.facebook.com/" ||
+    trimmed === "https://www.youtube.com/" ||
+    trimmed === "https://in.linkedin.com/"
+  ) {
+    return false;
+  }
+  return /^https?:\/\//i.test(trimmed);
+}
 
 export default function SiteFooter() {
   const [openMobileGroup, setOpenMobileGroup] = useState<string | null>(null);
@@ -85,6 +124,30 @@ export default function SiteFooter() {
     queryKey: ["blocks", "footer"],
     queryFn: () => apiGet<Record<string, string>>("/content/blocks?page=footer"),
   });
+
+  const { data: footerCms } = useQuery({
+    queryKey: ["cms-footer"],
+    queryFn: () => apiGet<any>("/cms/footer"),
+  });
+
+  const socialConfig: Record<string, string> = {
+    ...DEFAULT_SOCIAL_LINKS,
+    ...(footerCms?.social_links || {}),
+  };
+
+  const SOCIAL_CHANNELS = [
+    { key: "instagram", label: "Instagram", icon: Instagram, aria: "Follow Kotson on Instagram" },
+    { key: "facebook", label: "Facebook", icon: Facebook, aria: "Follow Kotson on Facebook" },
+    { key: "youtube", label: "YouTube", icon: Youtube, aria: "Follow Kotson on YouTube" },
+    { key: "linkedin", label: "LinkedIn", icon: Linkedin, aria: "Follow Kotson on LinkedIn" },
+  ] as const;
+
+  const activeSocialLinks = SOCIAL_CHANNELS
+    .map((channel) => ({
+      ...channel,
+      url: socialConfig[channel.key],
+    }))
+    .filter((item) => isValidSocialUrl(item.url));
 
   const contact = parseJsonBlock<FooterContact>(blocks?.footer_contact ?? "", {});
   const pending = !contact.support_email && !contact.support_phone && (!contact.contact_status || contact.contact_status === "pending_owner_validation");
@@ -157,8 +220,39 @@ export default function SiteFooter() {
               data-testid="footer-about"
             >
               {blocks?.footer_about ??
-                "KOTSON NATURALS PRIVATE LIMITED, trading as KOTSON MATTRESS. Natural latex sleep products thoughtfully made in India."}
+                "KOTSON NATURALS PRIVATE LIMITED, trading as KOTSON MATTRESS. Organic latex bedding made in India. Contact details are pending owner validation."}
             </p>
+
+            {/* ════ FOLLOW US — BRAND COLUMN SOCIAL ICONS ════ */}
+            {activeSocialLinks.length > 0 && (
+              <div className="mt-6 flex flex-col items-start" data-testid="footer-follow-us">
+                <span className="font-ui text-[12px] sm:text-[13px] font-bold uppercase tracking-[0.14em] text-brand-leaf mb-2.5">
+                  FOLLOW US
+                </span>
+                <div className="flex items-center gap-2 -ml-2">
+                  {activeSocialLinks.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <a
+                        key={item.key}
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={item.aria}
+                        title={item.aria}
+                        className="group flex items-center justify-center w-10 h-10 text-brand-sand/70 hover:text-brand-leaf focus-visible:text-brand-leaf focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-leaf focus-visible:rounded-md transition-all duration-200"
+                        data-testid={`social-link-${item.key}`}
+                      >
+                        <Icon
+                          className="w-[21px] h-[21px] transition-transform duration-200 ease-out group-hover:-translate-y-0.5 group-hover:scale-[1.06] shrink-0"
+                          aria-hidden="true"
+                        />
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ════ RIGHT: NAVIGATION COLUMNS (DESKTOP & TABLET) ════ */}

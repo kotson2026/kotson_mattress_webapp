@@ -11,8 +11,16 @@ import { useRef, useState, useEffect } from "react";
    - Bottom caption: ────── KOTSON × SHARK TANK INDIA ──────
    ───────────────────────────────────────────────────────────────────────── */
 
-const DEFAULT_POSTER = "/shark-tank/kotson-shark-tank-square.webp";
-const LOCAL_POSTER_FALLBACK = "/shark-tank/kotson-shark-tank-square.jpg";
+const POSTER_SOURCES = [
+  "/shark-tank/kotson-shark-tank-square.webp",
+  "/shark-tank/kotson-shark-tank-square.jpg",
+  "/api/uploads/blogs/kotson-shark-tank-square.webp",
+  "/api/uploads/blogs/kotson-shark-tank-square.jpg",
+  "/shark-tank/shark-tank-poster.png",
+  "/shark-tank/shark-tank-banner.png",
+];
+
+const DEFAULT_POSTER = POSTER_SOURCES[0];
 const DEFAULT_VIDEO_ID = "xF_ri6AQJMo";
 const DEFAULT_EYEBROW = "AS SEEN ON";
 const DEFAULT_CAPTION = "KOTSON × SHARK TANK INDIA";
@@ -56,13 +64,21 @@ export default function SharkTankSection({ config }: SharkTankProps) {
 
   const [entered, setEntered] = useState(false);
 
-  // Configuration with safe fallbacks
-  const posterUrl = config?.poster_url || config?.banner_url || DEFAULT_POSTER;
-  const [posterSrc, setPosterSrc] = useState(posterUrl);
+  // Fallback index
+  const [sourceIndex, setSourceIndex] = useState(0);
 
-  useEffect(() => {
-    setPosterSrc(posterUrl);
-  }, [posterUrl]);
+  const rawConfigUrl = config?.poster_url || config?.banner_url;
+  const candidateUrls = rawConfigUrl
+    ? [rawConfigUrl, ...POSTER_SOURCES.filter((s) => s !== rawConfigUrl)]
+    : POSTER_SOURCES;
+
+  const currentPoster = candidateUrls[sourceIndex] || DEFAULT_POSTER;
+
+  const handleImageError = () => {
+    if (sourceIndex < candidateUrls.length - 1) {
+      setSourceIndex((idx) => idx + 1);
+    }
+  };
 
   const rawVideo = config?.youtube_url || config?.video_url;
   const videoId = extractYouTubeId(rawVideo);
@@ -154,55 +170,27 @@ export default function SharkTankSection({ config }: SharkTankProps) {
               className="w-full aspect-square h-full rounded-xl overflow-hidden relative border border-black/[0.04] bg-[#16241C]/5 shadow-xs"
               data-testid="shark-tank-artwork-container"
             >
-              {posterSrc.includes("kotson-shark-tank-square") ? (
-                <picture className="w-full h-full block">
-                  <source srcSet="/shark-tank/kotson-shark-tank-square.webp" type="image/webp" />
-                  <img
-                    src={LOCAL_POSTER_FALLBACK}
-                    alt="Kotson Mattress featured on Shark Tank India Season 5"
-                    loading="lazy"
-                    decoding="async"
-                    width={1024}
-                    height={1024}
-                    draggable={false}
-                    className="shark-tank-poster"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      aspectRatio: "1 / 1",
-                      objectFit: "cover",
-                      objectPosition: "center",
-                      display: "block",
-                    }}
-                    data-testid="shark-tank-poster"
-                  />
-                </picture>
-              ) : (
-                <img
-                  src={posterSrc}
-                  alt="Kotson Mattress featured on Shark Tank India Season 5"
-                  loading="lazy"
-                  decoding="async"
-                  width={1024}
-                  height={1024}
-                  draggable={false}
-                  onError={() => {
-                    if (posterSrc !== LOCAL_POSTER_FALLBACK) {
-                      setPosterSrc(LOCAL_POSTER_FALLBACK);
-                    }
-                  }}
-                  className="shark-tank-poster"
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    aspectRatio: "1 / 1",
-                    objectFit: "cover",
-                    objectPosition: "center",
-                    display: "block",
-                  }}
-                  data-testid="shark-tank-poster"
-                />
-              )}
+              <img
+                key={currentPoster}
+                src={currentPoster}
+                alt="Kotson Mattress featured on Shark Tank India Season 5"
+                loading="eager"
+                decoding="async"
+                width={1024}
+                height={1024}
+                draggable={false}
+                onError={handleImageError}
+                className="shark-tank-poster"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  aspectRatio: "1 / 1",
+                  objectFit: "cover",
+                  objectPosition: "center",
+                  display: "block",
+                }}
+                data-testid="shark-tank-poster"
+              />
             </div>
 
             {/* ── RIGHT: Direct Responsive YouTube Video Embed ──────────── */}

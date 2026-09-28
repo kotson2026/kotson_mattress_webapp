@@ -28,7 +28,7 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from lib.db import db
-from lib.security import now_utc, optional_user, require_user
+from lib.security import mint_referral_code, now_utc, optional_user, require_user
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -271,9 +271,29 @@ async def otp_verify(input: OtpVerifyIn):
     is_new = False
     if existing_user:
         customer_id = existing_user["id"]
+        if not existing_user.get("referral_code"):
+            new_code = None
+            for _ in range(50):
+                c = mint_referral_code()
+                if not await db.users.find_one({"referral_code": c}):
+                    new_code = c
+                    break
+            if not new_code:
+                new_code = f"KS{uuid.uuid4().hex[:6].upper()}"
+            await db.users.update_one({"id": customer_id}, {"$set": {"referral_code": new_code}})
+            existing_user["referral_code"] = new_code
     else:
-        # Create a minimal guest customer record — enriched when address is added
+        # Create a minimal guest customer record with a unique referral code
         customer_id = str(uuid.uuid4())
+        new_code = None
+        for _ in range(50):
+            c = mint_referral_code()
+            if not await db.users.find_one({"referral_code": c}):
+                new_code = c
+                break
+        if not new_code:
+            new_code = f"KS{uuid.uuid4().hex[:6].upper()}"
+
         guest_user = {
             "id": customer_id,
             "email": None,
@@ -281,7 +301,7 @@ async def otp_verify(input: OtpVerifyIn):
             "phone": canon,
             "password_hash": None,
             "roles": ["customer"],
-            "referral_code": None,
+            "referral_code": new_code,
             "referred_by": None,
             "is_active": True,
             "is_phone_only": True,

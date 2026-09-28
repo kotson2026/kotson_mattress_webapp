@@ -130,7 +130,7 @@
   "entry_surfaces": {
     "/": "Asymmetric editorial hero: botanical badge + value proposition left with INR CTA, interactive 3D 7-zone mattress assembly stage right with live layer controls and fallback",
     "/login": "Branded split auth: botanical sourcing story panel left (#467065 background), phone/email customer sign-in form right with instant guest-cart merge notification",
-    "/register": "Branded split register: 100-night trial benefits panel left, customer profile and delivery address seed form right",
+    "/register": "Branded split register: 30-night trial benefits panel left, customer profile and delivery address seed form right",
     "/admin": "Back-office command center: dense dark slate sidebar (#2D2D2D), high-contrast stats bento grid, audit timeline and real-time Razorpay test switch",
     "/manager": "Warehouse fulfilment matrix: operational topbar, order triage kanban with stock recount badges and batch transitions",
     "/crm": "Customer experience hub: split directory on left, active ticket/conversation notes timeline and VIP mattress tags right",
@@ -311,7 +311,7 @@
       "address_step": "Customer details + India PIN auto-lookup (City/State autofill)",
       "payment_selection": "Razorpay Test / UPI / Netbanking / 0% Interest EMI / Cash on Delivery (Deposit)",
       "keys_status_gate": "If Razorpay API keys are not provided in backend .env, show an explicit 'Sandbox Test Order Creation (Keys Pending)' flow with Instant Simulated Approval button so user testing is never blocked without fake payment claims",
-      "order_confirmed": "Renders verified order breakdown, WhatsApp tracking link, 100-night trial countdown, and referral invite card"
+      "order_confirmed": "Renders verified order breakdown, WhatsApp tracking link, 30-night trial countdown, and referral invite card"
     }
   },
   "backoffice_workspaces": {

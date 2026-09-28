@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, Route, Routes, useNavigate, useParams } from "react-router-dom";
+import { Link, Route, Routes, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { apiGet, apiPatch, apiPost } from "@/lib/api";
 import { fmtDateTime, inr } from "@/lib/format";
@@ -10,6 +10,7 @@ import CallForm from "@/components/crm/CallForm";
 import TestDataBanner from "@/components/crm/TestDataBanner";
 import WorkdayGate from "@/components/crm/WorkdayGate";
 import MasterAdminDashboard from "@/components/crm/MasterAdminDashboard";
+import EmployeeDashboard from "@/components/crm/EmployeeDashboard";
 import PipelinesWorkspace from "@/components/crm/PipelinesWorkspace";
 import PipelinesPage from "@/components/crm/PipelinesPage";
 import PipelineDetail from "@/components/crm/PipelineDetail";
@@ -39,7 +40,7 @@ import type {
   TeamReportRow,
 } from "@/lib/crmTypes";
 
-const NAV = [
+const MASTER_NAV = [
   { to: "/crm", label: "Dashboard" },
   { to: "/crm/leads", label: "Leads & Contacts" },
   { to: "/crm/pipelines", label: "Pipelines" },
@@ -58,12 +59,25 @@ const NAV = [
   { to: "/crm/dispositions", label: "Call Configuration" },
 ];
 
+const EMPLOYEE_NAV = [
+  { to: "/crm", label: "Dashboard" },
+  { to: "/crm/campaigns", label: "My Campaigns" },
+  { to: "/crm/leads", label: "My Leads" },
+  { to: "/crm/follow-ups", label: "Follow-ups" },
+  { to: "/crm/calls", label: "Call Logs" },
+  { to: "/crm/reports", label: "My Reports" },
+  { to: "/crm/attendance", label: "Attendance" },
+  { to: "/crm/leave", label: "Leave Management" },
+  { to: "/crm/payroll", label: "Payroll" },
+  { to: "/crm/cases", label: "Service Cases" },
+];
+
 const CRM_ROLES = ["owner", "admin", "crm_master", "crm_manager", "crm_employee"];
 
 function Panel({ title, children, testId, note }: { title: string; children: React.ReactNode; testId?: string; note?: string }) {
   return (
-    <section className="rounded-2xl border border-border bg-card p-5" data-testid={testId}>
-      <h2 className="font-heading text-lg font-bold">{title}</h2>
+    <section className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-xs" data-testid={testId}>
+      <h2 className="font-heading text-lg font-bold text-foreground">{title}</h2>
       {note && <p className="mt-1 text-xs text-muted-foreground">{note}</p>}
       <div className="mt-4">{children}</div>
     </section>
@@ -72,9 +86,9 @@ function Panel({ title, children, testId, note }: { title: string; children: Rea
 
 function Stat({ label, value, hint, testId }: { label: string; value: string | number; hint?: string; testId: string }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
-      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
-      <p className="mt-2 font-heading text-2xl font-black" data-testid={testId}>
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-xs transition-shadow hover:shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="mt-2 font-heading text-2xl font-bold tracking-tight text-foreground" data-testid={testId}>
         {value}
       </p>
       {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
@@ -245,6 +259,8 @@ function LeadsView() {
 
 function LeadWorkspaceView() {
   const { id = "" } = useParams();
+  const [searchParams] = useSearchParams();
+  const autoStartCall = searchParams.get("start_call") === "true";
   const qc = useQueryClient();
   const { data, isLoading, error } = useQuery({
     queryKey: ["crm-lead", id],
@@ -299,9 +315,14 @@ function LeadWorkspaceView() {
           <div>
             <p className="text-xs text-muted-foreground">Contact</p>
             <p className="text-xs">{lead.email ?? "—"}</p>
-            <p className="text-xs">{lead.phone ?? ""}</p>
+            <p className="text-xs font-semibold text-[#11291F]">{lead.phone ?? "—"}</p>
           </div>
         </div>
+        {lead.product_interest && (
+          <p className="mt-3 text-xs text-[#467065] font-medium">
+            Product Interest: <strong className="text-[#11291F]">{lead.product_interest}</strong>
+          </p>
+        )}
         {lead.converted_order_id && (
           <Badge className="mt-3 bg-brand-deep text-white" data-testid="crm-lead-converted-badge">
             Converted on a verified paid order — stage locked
@@ -311,14 +332,14 @@ function LeadWorkspaceView() {
 
       <Tabs defaultValue="call">
         <TabsList data-testid="crm-lead-tabs">
-          <TabsTrigger value="call">Log a call</TabsTrigger>
+          <TabsTrigger value="call">Customer Call & Disposition</TabsTrigger>
           <TabsTrigger value="stage">Change stage</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="orders">Order context</TabsTrigger>
         </TabsList>
 
         <TabsContent value="call" className="mt-4">
-          <CallForm leadId={id} />
+          <CallForm leadId={id} leadPhone={lead.phone} autoStartCall={autoStartCall} />
         </TabsContent>
 
         <TabsContent value="stage" className="mt-4">
@@ -482,10 +503,13 @@ function LeadWorkspaceView() {
 
 function IntakeQueueView() {
   const qc = useQueryClient();
-  const { data } = useQuery({ queryKey: ["crm-intake"], queryFn: () => apiGet<{ total: number; rows: LeadPage["rows"] }>("/crm/intake-queue") });
+  const { data: me } = useMe();
+  const isPureEmployee = !!me?.roles.includes("crm_employee") && !me.roles.some((r) => ["owner", "admin", "crm_master", "crm_manager"].includes(r));
+  const { data } = useQuery({ queryKey: ["crm-intake"], queryFn: () => apiGet<{ total: number; rows: LeadPage["rows"] }>("/crm/intake-queue"), enabled: !isPureEmployee });
   const { data: staff } = useQuery({
     queryKey: ["crm-staff-options"],
     queryFn: () => apiGet<TeamReportRow[]>("/crm/reports/team").then((r) => r).catch(() => [] as TeamReportRow[]),
+    enabled: !isPureEmployee,
   });
   const [selected, setSelected] = useState<string[]>([]);
   const [employeeId, setEmployeeId] = useState("");
@@ -503,6 +527,14 @@ function IntakeQueueView() {
   });
 
   const employees = ((staff as unknown as { rows?: TeamReportRow[] })?.rows ?? []).filter((s) => s.roles.includes("crm_employee"));
+
+  if (isPureEmployee) {
+    return (
+      <Panel title="Access Restricted" note="Intake Queue is restricted to CRM Master Admin and Managers.">
+        <p className="text-sm text-muted-foreground">You do not have permission to view or allocate unassigned intake leads.</p>
+      </Panel>
+    );
+  }
 
   return (
     <Panel
@@ -1000,6 +1032,8 @@ export default function CRMConsole() {
   const { data: me } = useMe();
   const [showWorkforceGate, setShowWorkforceGate] = useState(true);
 
+  const isPureEmployee = !!me?.roles.includes("crm_employee") && !me.roles.some((r) => ["owner", "admin", "crm_master", "crm_manager"].includes(r));
+
   // Attendance gating applies ONLY to crm_manager and crm_employee.
   // CRM Master Admin and Owner access CRM immediately — no clock-in required.
   const needsWorkdayGate = !!me?.roles.some((r) =>
@@ -1008,7 +1042,12 @@ export default function CRMConsole() {
   );
 
   return (
-    <ConsoleLayout area="The CRM workspace" title="Kotson CRM" allowedRoles={CRM_ROLES} nav={NAV}>
+    <ConsoleLayout
+      area={isPureEmployee ? "CRM Employee Portal" : "The CRM workspace"}
+      title={isPureEmployee ? "CRM Employee" : "Kotson CRM"}
+      allowedRoles={CRM_ROLES}
+      nav={isPureEmployee ? EMPLOYEE_NAV : MASTER_NAV}
+    >
       <div className="space-y-6">
         <TestDataBanner />
         {needsWorkdayGate && showWorkforceGate && (
@@ -1019,7 +1058,7 @@ export default function CRMConsole() {
         )}
 
         <Routes>
-          <Route index element={<MasterAdminDashboard />} />
+          <Route index element={isPureEmployee ? <EmployeeDashboard /> : <MasterAdminDashboard />} />
           <Route path="leads" element={<LeadsContactsHub />} />
           <Route path="leads/:id" element={<LeadWorkspaceView />} />
           {/* ── Pipeline & Campaign — separate pages ── */}

@@ -9,6 +9,8 @@ import SevenZonesSection from "@/components/home/SevenZonesSection";
 import OrganicProcessSection from "@/components/home/OrganicProcessSection";
 import CertificationExperience from "@/components/home/CertificationExperience";
 import ExploreStores from "@/components/home/ExploreStores";
+import CustomerTestimonials, { DEFAULT_TESTIMONIALS } from "@/components/home/CustomerTestimonials";
+import CustomerSupportCta from "@/components/home/CustomerSupportCta";
 import { buttonVariants } from "@/components/ui/button";
 
 export interface WebsiteSectionDefinition<T = any> {
@@ -126,7 +128,7 @@ registerWebsiteSection({
   category: "Trust & Information",
   description: "Verified seals and audit details for GOLS, eco-INSTITUT, FSC, LGA Durability, and OEKO-TEX.",
   defaultData: {},
-  rendererComponent: () => <CertificationExperience />,
+  rendererComponent: ({ config }: { config?: any }) => <CertificationExperience config={config} />,
 });
 
 // 9. Explore Our Stores
@@ -139,7 +141,22 @@ registerWebsiteSection({
   rendererComponent: () => <ExploreStores />,
 });
 
-// 10. Real Sleeper Testimonials
+// 10. Customer Testimonials (YouTube Video Stories)
+registerWebsiteSection({
+  type: "customer_testimonials",
+  name: "Customer Testimonials",
+  category: "Social Proof",
+  description: "Authentic customer video testimonials on the approved botanical mattress backdrop with responsive carousel controls.",
+  defaultData: {
+    eyebrow: "REAL STORIES",
+    heading: "Customer Testimonials",
+    subheading: "Hear what our customers have to say about their Kotson sleep experience.",
+    testimonials: DEFAULT_TESTIMONIALS,
+  },
+  rendererComponent: ({ config }: { config?: any }) => <CustomerTestimonials config={config} />,
+});
+
+// 11. Real Sleeper Testimonials (Legacy)
 registerWebsiteSection({
   type: "testimonials_slider",
   name: "Real Sleeper Testimonials",
@@ -198,13 +215,13 @@ registerWebsiteSection({
   description: "High-impact closing banner before footer with phone order hotline and Buy button.",
   defaultData: {
     heading: "Where Better Sleep Begins.",
-    subheading: "Experience the contouring purity of 100% organic Dunlop latex with our 100-night home trial.",
+    subheading: "Experience the contouring purity of 100% organic Dunlop latex with our 30-night home trial.",
     cta_label: "Shop the collection",
     cta_link: "/collections",
   },
   rendererComponent: ({ config }) => {
     const heading = config?.heading || "Where Better Sleep Begins.";
-    const sub = config?.subheading || "Experience the contouring purity of 100% organic Dunlop latex with our 100-night home trial.";
+    const sub = config?.subheading || "Experience the contouring purity of 100% organic Dunlop latex with our 30-night home trial.";
     const label = config?.cta_label || "Shop the collection";
     const link = config?.cta_link || "/collections";
 
@@ -228,4 +245,17 @@ registerWebsiteSection({
       </section>
     );
   },
+});
+
+// 12. Need Help Choosing? (Customer Support)
+registerWebsiteSection({
+  type: "need_help_choosing",
+  name: "Need Help Choosing? (Customer Support)",
+  category: "Support & Assistance",
+  description: "Compact assistance section with Call Us and WhatsApp Us direct action links.",
+  defaultData: {
+    heading: "NEED HELP CHOOSING?",
+    subheading: "Our team can help you find the right Kotson product for your needs.",
+  },
+  rendererComponent: ({ config }: { config?: any }) => <CustomerSupportCta config={config} />,
 });

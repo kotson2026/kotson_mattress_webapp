@@ -478,7 +478,7 @@ function DrawerRow({
 // ── Main section ───────────────────────────────────────────────────────────
 export default function ExploreStores() {
   const sectionRef  = useRef<HTMLElement>(null);
-  const [entered, setEntered] = useState(false);
+  const [entered, setEntered] = useState(true);
   const [activeStore, setActiveStore] = useState<Store | null>(null);
   const triggerRefs = useRef<Map<string, React.RefObject<HTMLButtonElement | null>>>(new Map());
 
@@ -518,9 +518,12 @@ export default function ExploreStores() {
     <>
       <section
         ref={sectionRef}
-        id="explore-stores"
+        id="stores"
+        data-section-id="explore-stores"
         aria-label="Explore Our Stores"
+        className="scroll-mt-24 sm:scroll-mt-28 lg:scroll-mt-32"
         style={{
+          scrollMarginTop: "100px",
           width: "100%",
           background: CREAM,
           borderTop: "1px solid rgba(0,0,0,0.06)",
@@ -530,6 +533,8 @@ export default function ExploreStores() {
           position: "relative",
         }}
       >
+        {/* Alias anchor for backward compatibility */}
+        <span id="explore-stores" className="sr-only" aria-hidden="true" style={{ position: "absolute", top: 0 }} />
         {/* Wrapper */}
         <div style={{
           position: "relative",
@@ -554,67 +559,72 @@ export default function ExploreStores() {
                   : `opacity 800ms ${ease}, transform 800ms ${ease}`,
               }}
             >
-              {/* Eyebrow */}
-              <p aria-hidden="true" style={{
-                margin: "0 0 10px",
-                fontFamily: "var(--font-ui,'Manrope',sans-serif)",
-                fontSize: "clamp(9px, 0.9vw, 11px)",
-                fontWeight: 700,
-                letterSpacing: "0.22em",
-                textTransform: "uppercase",
-                color: DEEP,
-                lineHeight: 1,
-              }}>
-                EXPLORE OUR STORES
-              </p>
+              {/* Header copy block: Eyebrow + Heading + Short copy */}
+              <div className="es-header-block">
+                {/* Eyebrow */}
+                <p aria-hidden="true" style={{
+                  margin: "0 0 10px",
+                  fontFamily: "var(--font-ui,'Manrope',sans-serif)",
+                  fontSize: "clamp(9px, 0.9vw, 11px)",
+                  fontWeight: 700,
+                  letterSpacing: "0.22em",
+                  textTransform: "uppercase",
+                  color: DEEP,
+                  lineHeight: 1,
+                }}>
+                  EXPLORE OUR STORES
+                </p>
 
-              {/* Heading */}
-              <h2 style={{
-                margin: "0 0 20px",
-                fontFamily: "var(--font-display,'DM Serif Display',serif)",
-                fontSize: "clamp(34px, 3.6vw, 54px)",
-                fontWeight: 400,
-                lineHeight: 1.05,
-                color: CHARCOAL,
-                letterSpacing: "-0.01em",
-                wordBreak: "normal",
-                overflowWrap: "normal",
-                hyphens: "none",
-              }}>
-                Experience<br />Kotson In Person
-              </h2>
+                {/* Heading */}
+                <h2 style={{
+                  margin: "0 0 20px",
+                  fontFamily: "var(--font-display,'DM Serif Display',serif)",
+                  fontSize: "clamp(34px, 3.6vw, 54px)",
+                  fontWeight: 400,
+                  lineHeight: 1.05,
+                  color: CHARCOAL,
+                  letterSpacing: "-0.01em",
+                  wordBreak: "normal",
+                  overflowWrap: "normal",
+                  hyphens: "none",
+                }}>
+                  Experience<br />Kotson In Person
+                </h2>
 
-              {/* Short copy */}
-              <p style={{
-                margin: "0 0 36px",
-                fontFamily: "var(--font-ui,'Manrope',sans-serif)",
-                fontSize: "clamp(13px, 1.15vw, 16px)",
-                fontWeight: 400,
-                lineHeight: 1.65,
-                color: `${CHARCOAL}80`,
-                maxWidth: "340px",
-              }}>
-                Experience our mattresses, pillows and natural latex products in person.
-                Visit a Kotson store and find the comfort that feels right for you.
-              </p>
+                {/* Short copy */}
+                <p style={{
+                  margin: "0 0 36px",
+                  fontFamily: "var(--font-ui,'Manrope',sans-serif)",
+                  fontSize: "clamp(13px, 1.15vw, 16px)",
+                  fontWeight: 400,
+                  lineHeight: 1.65,
+                  color: `${CHARCOAL}80`,
+                  maxWidth: "340px",
+                }}>
+                  Experience our mattresses, pillows and natural latex products in person.
+                  Visit a Kotson store and find the comfort that feels right for you.
+                </p>
+              </div>
 
-              {/* OUR STORES label */}
-              <p style={{
-                margin: "0 0 12px",
-                fontFamily: "var(--font-ui,'Manrope',sans-serif)",
-                fontSize: "10px",
-                fontWeight: 700,
-                letterSpacing: "0.20em",
-                textTransform: "uppercase",
-                color: `${DEEP}80`,
-              }}>
-                OUR STORES
-              </p>
+              {/* Location cards block */}
+              <div className="es-cards-block">
+                {/* OUR STORES label */}
+                <p style={{
+                  margin: "0 0 12px",
+                  fontFamily: "var(--font-ui,'Manrope',sans-serif)",
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  letterSpacing: "0.20em",
+                  textTransform: "uppercase",
+                  color: `${DEEP}80`,
+                }}>
+                  OUR STORES
+                </p>
 
-              {/* Location cards */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px", maxWidth: "380px" }}
-                className="es-cards-col"
-              >
+                {/* Location cards */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px", maxWidth: "380px" }}
+                  className="es-cards-col"
+                >
                 {STORES.map(store => {
                   const ref = triggerRefs.current.get(store.id)!;
                   return (
@@ -706,6 +716,7 @@ export default function ExploreStores() {
                     </button>
                   );
                 })}
+                </div>
               </div>
             </div>
 
@@ -720,14 +731,17 @@ export default function ExploreStores() {
               }}
             >
               {/* Main image container */}
-              <div style={{
-                width: "100%",
-                aspectRatio: "16/10",
-                borderRadius: "clamp(20px, 2.2vw, 32px)",
-                overflow: "hidden",
-                position: "relative",
-                boxShadow: "0 16px 56px rgba(45,45,45,0.13)",
-              }}>
+              <div
+                className="es-image-wrap"
+                style={{
+                  width: "100%",
+                  aspectRatio: "16/10",
+                  borderRadius: "clamp(20px, 2.2vw, 32px)",
+                  overflow: "hidden",
+                  position: "relative",
+                  boxShadow: "0 16px 56px rgba(45,45,45,0.13)",
+                }}
+              >
                 <img
                   src="https://cdn.phototourl.com/free/2026-09-22-5f3360d1-de72-4db6-b87b-fd03e0286836.png"
                   alt="Kotson store interior featuring natural latex mattresses, pillows and product displays"
@@ -744,14 +758,17 @@ export default function ExploreStores() {
               </div>
 
               {/* Tagline bar below image */}
-              <div style={{
-                marginTop: "20px",
-                display: "flex",
-                alignItems: "center",
-                flexWrap: "wrap",
-                gap: "8px 0",
-                justifyContent: "space-between",
-              }}>
+              <div
+                className="es-tagline-bar"
+                style={{
+                  marginTop: "20px",
+                  display: "flex",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: "8px 0",
+                  justifyContent: "space-between",
+                }}
+              >
                 {/* Primary tagline */}
                 <p style={{
                   margin: 0,
@@ -815,12 +832,55 @@ export default function ExploreStores() {
           .es-left  { order: 1; }
           .es-right { order: 2; }
 
-          /* Tablet: keep stacked but image first then cards */
+          /* ── Mobile ONLY (≤ 767px): Content First, Image Second, Location Cards Third ── */
           @media (max-width: 767px) {
-            .es-left  { order: 2; }
-            .es-right { order: 1; }
+            .es-left, .es-right {
+              display: contents !important;
+            }
+            .es-grid {
+              display: flex !important;
+              flex-direction: column !important;
+              gap: 0 !important;
+            }
+            .es-header-block {
+              order: 1 !important;
+              width: 100% !important;
+              margin-bottom: 0 !important;
+            }
+            .es-header-block p:last-child {
+              margin-bottom: 16px !important;
+            }
+            .es-tagline-bar {
+              order: 2 !important;
+              width: 100% !important;
+              margin-top: 0 !important;
+              margin-bottom: 26px !important;
+              flex-direction: column !important;
+              align-items: flex-start !important;
+              gap: 10px !important;
+            }
+            .es-image-wrap {
+              order: 3 !important;
+              width: 100% !important;
+              aspect-ratio: auto !important;
+              margin-bottom: 28px !important;
+              box-shadow: 0 10px 36px rgba(45,45,45,0.10) !important;
+            }
+            .es-image-wrap img {
+              width: 100% !important;
+              height: auto !important;
+              object-fit: contain !important;
+              display: block !important;
+            }
+            .es-cards-block {
+              order: 4 !important;
+              width: 100% !important;
+            }
+            .es-cards-col {
+              max-width: 100% !important;
+            }
 
-            #explore-stores {
+            #stores, #explore-stores {
               padding-top: 56px !important;
               padding-bottom: 56px !important;
             }
@@ -866,9 +926,11 @@ export default function ExploreStores() {
 
           /* Mobile store image: natural AR */
           @media (max-width: 480px) {
+            #stores .es-right > div:first-child,
             #explore-stores .es-right > div:first-child {
               aspect-ratio: auto !important;
             }
+            #stores .es-right > div:first-child img,
             #explore-stores .es-right > div:first-child img {
               aspect-ratio: 4/3;
               width: 100%;
@@ -877,6 +939,7 @@ export default function ExploreStores() {
           }
 
           /* Global word-break guard */
+          #stores *,
           #explore-stores * {
             word-break:    normal !important;
             overflow-wrap: normal !important;

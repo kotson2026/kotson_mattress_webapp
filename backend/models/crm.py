@@ -23,7 +23,7 @@ def _id() -> str:
 
 # ---------------------------------------------------------------- source events
 
-SourceKind = Literal["registration", "cart_intent", "checkout_started", "contact", "dealer_inquiry", "manual", "import"]
+SourceKind = Literal["registration", "cart_intent", "checkout_started", "contact", "dealer_inquiry", "manual", "import", "walk_in"]
 
 
 class SourceEvent(BaseModel):
@@ -110,6 +110,12 @@ class Campaign(BaseModel):
     status: str = "active"  # active | paused | completed | archived
     # Ad metrics stay explicitly disconnected until a real data source is integrated.
     ad_metrics_source: Literal["not_connected"] = "not_connected"
+    total_leads: int = 0
+    assigned_leads: int = 0
+    uncontacted_leads: int = 0
+    in_progress_leads: int = 0
+    closed_leads: int = 0
+    unassigned_leads: int = 0
     created_at: datetime = Field(default_factory=utcnow)
 
 

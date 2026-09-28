@@ -13,7 +13,7 @@ interface Props {
 const SECONDARY_NAV = [
   { label: "Why Kotson", href: "/about" },
   { label: "Sleep Science", href: "/sleep-science" },
-  { label: "Stores", href: "/contact" },
+  { label: "Stores", href: "/#stores" },
   { label: "Track Order", href: "/track-order" },
   { label: "FAQ", href: "/faq" },
 ];

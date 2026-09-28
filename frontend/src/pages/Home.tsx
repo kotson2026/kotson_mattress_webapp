@@ -11,6 +11,8 @@ import CertificationExperience from "@/components/home/CertificationExperience";
 import ExploreStores from "@/components/home/ExploreStores";
 import SharkTankSection from "@/components/home/SharkTankSection";
 import OrganicProcessSection from "@/components/home/OrganicProcessSection";
+import CustomerTestimonials from "@/components/home/CustomerTestimonials";
+import CustomerSupportCta from "@/components/home/CustomerSupportCta";
 import { getWebsiteSection } from "@/lib/cms/SectionRegistry";
 
 export default function Home() {
@@ -28,6 +30,10 @@ export default function Home() {
     .filter((sec: any) => sec.is_visible !== false && !REMOVED_TYPES.has(sec.type))
     .sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
 
+  // Guard against missing end-of-page sections if CMS list is partial
+  const hasExploreStoresInCms = visibleCmsSections.some((s: any) => s.type === "explore_stores");
+  const hasNeedHelpInCms = visibleCmsSections.some((s: any) => s.type === "need_help_choosing");
+
   return (
     <div className="min-h-svh">
       <StorefrontHeader />
@@ -35,14 +41,22 @@ export default function Home() {
       <main>
         {visibleCmsSections.length > 0 ? (
           // Dynamic CMS Rendering through Section Registry
-          visibleCmsSections.map((sec: any) => {
-            const registered = getWebsiteSection(sec.type);
-            if (registered) {
-              const Component = registered.rendererComponent;
-              return <Component key={sec.id} config={sec.config} />;
-            }
-            return null;
-          })
+          <>
+            {visibleCmsSections.map((sec: any) => {
+              const registered = getWebsiteSection(sec.type);
+              if (registered) {
+                const Component = registered.rendererComponent;
+                return <Component key={sec.id} config={sec.config} />;
+              }
+              return null;
+            })}
+
+            {/* Exactly ONE Explore Stores section guaranteed */}
+            {!hasExploreStoresInCms && <ExploreStores />}
+
+            {/* Exactly ONE Need Help Choosing support CTA guaranteed */}
+            {!hasNeedHelpInCms && <CustomerSupportCta />}
+          </>
         ) : (
           // Safe Fallback Sequence
           <>
@@ -54,11 +68,11 @@ export default function Home() {
             <SevenZonesSection />
             <OrganicProcessSection />
             <CertificationExperience />
+            <CustomerTestimonials />
+            <ExploreStores />
+            <CustomerSupportCta />
           </>
         )}
-
-        {/* Always rendered after CMS or fallback — not gated */}
-        <ExploreStores />
       </main>
 
       <SiteFooter />

@@ -51,8 +51,24 @@ async def lifespan(app: FastAPI):
         # Ensure 40% sitewide discount promotion and non-destructive MRP synchronization
         from lib.pricing import ensure_promotions_and_mrps
         await ensure_promotions_and_mrps()
+
+        # Ensure customizable products rules and options
+        from lib.custom_seed import ensure_custom_products_configured
+        await ensure_custom_products_configured()
+
+        # Seed initial authentic blogs (idempotent)
+        import seed_blogs
+        await seed_blogs.main()
+
+        # Ensure demo Stock Point Manager and sample warehouse records
+        from routers.stock_point import ensure_stock_point_demo
+        await ensure_stock_point_demo()
+
+        # Ensure Refer & Earn authoritative seed data and statutory TDS settings
+        from lib.referral_seed import ensure_referral_system_seed
+        await ensure_referral_system_seed()
     except Exception as exc:
-        logger.warning("Startup auto-seed / CMS migration / promotion sync skipped or failed: %s", exc)
+        logger.warning("Startup auto-seed / CMS migration / promotion sync / customization sync / stock point sync skipped or failed: %s", exc)
     yield
     app.state.sweeper_task.cancel()
     client.close()
@@ -119,6 +135,9 @@ from routers import (  # noqa: E402
     crm_payroll,
     crm_analytics,
     crm_test_data,
+    blogs,
+    stock_point,
+    custom_requests,
 )
 
 api_router.include_router(auth.router)
@@ -147,6 +166,15 @@ api_router.include_router(dev_data.router)
 api_router.include_router(dispatch.router)
 api_router.include_router(assets.router)
 api_router.include_router(claims_trust.router)
+api_router.include_router(blogs.router)
+api_router.include_router(stock_point.router)
+api_router.include_router(custom_requests.router)
+
+from fastapi.staticfiles import StaticFiles
+UPLOAD_DIR = ROOT_DIR / "uploads"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+(UPLOAD_DIR / "blogs").mkdir(parents=True, exist_ok=True)
+app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 # Include the router in the main app
 app.include_router(api_router)

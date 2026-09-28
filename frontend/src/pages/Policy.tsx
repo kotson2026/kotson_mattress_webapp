@@ -6,7 +6,7 @@ import SiteFooter from "@/components/layout/SiteFooter";
 
 const TITLES: Record<string, string> = {
   policy_shipping: "Shipping Policy",
-  policy_returns: "Returns & 100-Night Trial",
+  policy_returns: "Returns & 30-Night Trial",
   policy_privacy: "Privacy Policy",
   policy_terms: "Terms of Service",
   policy_warranty: "Warranty & Care",

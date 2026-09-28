@@ -77,32 +77,52 @@ def calc_session_durations(session: dict) -> dict:
 # ---------------------------------------------------------------- ATTENDANCE / SHIFTS
 
 @router.get("/crm/workforce/my-status")
+@router.get("/crm/workforce/workday-status")
 async def get_my_workforce_status(user=Depends(require_role(*CRM_ALL))):
     """Returns the employee's current day attendance, shift, and clock state."""
     cur_date = today_ist()
     session = await db.attendance_sessions.find_one({"employee_id": user["id"], "date": cur_date})
+    now = now_utc()
     
-    if not session:
-        return {
-            "date": cur_date,
-            "shift_name": "Standard Day Shift (09:30 AM - 06:30 PM)",
-            "is_clocked_in": False,
-            "is_on_break": False,
-            "session": None,
-        }
-        
-    session = calc_session_durations(clean_doc(session))
-    
-    # Check if currently on an open break
-    is_on_break = any(b.get("end_at") is None for b in session.get("breaks", []))
-    is_clocked_in = session.get("clock_in_at") is not None and session.get("clock_out_at") is None
-    
+    if not session or not session.get("clock_in_at"):
+        status_str = "not_clocked_in"
+        session_doc = None
+    elif session.get("clock_out_at"):
+        status_str = "clocked_out"
+        session_doc = calc_session_durations(clean_doc(session))
+    elif any(b.get("end_at") is None for b in session.get("breaks", [])):
+        status_str = "on_break"
+        session_doc = calc_session_durations(clean_doc(session))
+    else:
+        status_str = "clocked_in"
+        session_doc = calc_session_durations(clean_doc(session))
+
+    is_clocked_in = status_str in ("clocked_in", "on_break")
+    is_on_break = status_str == "on_break"
+    clock_in_str = session_doc["clock_in_at"].isoformat() if session_doc and session_doc.get("clock_in_at") else None
+    clock_out_str = session_doc["clock_out_at"].isoformat() if session_doc and session_doc.get("clock_out_at") else None
+
     return {
+        "status": status_str,
         "date": cur_date,
-        "shift_name": session.get("shift_name", "Standard Day Shift (09:30 AM - 06:30 PM)"),
+        "shift_name": session.get("shift_name", "Standard Day Shift (09:30 AM - 06:30 PM)") if session else "Standard Day Shift (09:30 AM - 06:30 PM)",
+        "shift": {
+            "name": session.get("shift_name", "Standard Day Shift") if session else "Standard Day Shift",
+            "start": "09:30 AM",
+            "end": "06:30 PM",
+        },
         "is_clocked_in": is_clocked_in,
         "is_on_break": is_on_break,
-        "session": session,
+        "clock_in_at": clock_in_str,
+        "clock_out_at": clock_out_str,
+        "current_break_start": None,
+        "gross_minutes": session_doc.get("gross_minutes", 0.0) if session_doc else 0.0,
+        "break_minutes": session_doc.get("break_minutes", 0.0) if session_doc else 0.0,
+        "net_minutes": session_doc.get("net_minutes", 0.0) if session_doc else 0.0,
+        "server_time": now.isoformat(),
+        "employee_name": user.get("name"),
+        "is_late": session_doc.get("is_late", False) if session_doc else False,
+        "session": session_doc,
     }
 
 
@@ -219,6 +239,7 @@ async def clock_out(user=Depends(require_role(*CRM_ALL))):
 
 
 @router.get("/crm/workforce/my-calendar")
+@router.get("/crm/workforce/calendar")
 async def get_my_calendar(month: Optional[str] = None, user=Depends(require_role(*CRM_ALL))):
     """Returns monthly attendance days for the employee."""
     cur_month = month or datetime.now(timezone.utc).astimezone(IST).strftime("%Y-%m")
@@ -234,6 +255,7 @@ async def get_my_calendar(month: Optional[str] = None, user=Depends(require_role
 
 
 @router.get("/crm/workforce/attendance-list")
+@router.get("/crm/workforce/admin/today")
 async def list_attendance(
     date: Optional[str] = None,
     employee_id: Optional[str] = None,
@@ -320,6 +342,7 @@ async def get_workforce_stats(date: Optional[str] = None, user=Depends(require_r
 # ---------------------------------------------------------------- CORRECTIONS
 
 @router.post("/crm/workforce/corrections")
+@router.post("/crm/workforce/correction-request")
 async def request_correction(input: AttendanceCorrectionIn, user=Depends(require_role(*CRM_ALL))):
     """Submit attendance correction request with reason and proposed times."""
     corr = AttendanceCorrection(
@@ -337,6 +360,7 @@ async def request_correction(input: AttendanceCorrectionIn, user=Depends(require
 
 
 @router.get("/crm/workforce/corrections")
+@router.get("/crm/workforce/correction-requests")
 async def list_corrections(status: Optional[str] = None, user=Depends(require_role(*CRM_ALL))):
     """Role-scoped list of correction requests."""
     query: dict = {}
@@ -355,6 +379,7 @@ async def list_corrections(status: Optional[str] = None, user=Depends(require_ro
 
 
 @router.post("/crm/workforce/corrections/{cid}/review")
+@router.post("/crm/workforce/correction-requests/{cid}/action")
 async def review_correction(cid: str, input: CorrectionReviewIn, user=Depends(require_role(*CRM_MANAGERS))):
     """Manager or Admin approves/rejects correction, modifying actual attendance session upon approval."""
     corr = await db.attendance_corrections.find_one({"id": cid})

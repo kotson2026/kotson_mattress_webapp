@@ -99,10 +99,17 @@ export default function Checkout() {
           },
           modal: {
             ondismiss: () => {
-              toast.info("Payment window closed — your order is saved as awaiting payment");
+              apiPost("/checkout/cancel-payment", {
+                order_id: out.order_id,
+                order_number: out.order_number,
+                reason: "payment_dismissed_by_user",
+              }).catch(() => {});
+
+              toast.info("Payment window closed — referral lead & cart preserved");
               navigate(`/order/confirmation/${out.order_id}${t}`);
             },
           },
+
         });
         rzp.open();
       } else if (out.gateway.state === "pending_keys") {
@@ -271,32 +278,62 @@ export default function Checkout() {
                 ))}
               </ul>
 
-              {cart.total_mrp && cart.total_mrp > cart.subtotal && (
-                <div className="mt-4 flex justify-between text-sm text-muted-foreground">
-                  <span>Total MRP</span>
-                  <span className="line-through tabular-nums">{inr(cart.total_mrp)}</span>
-                </div>
-              )}
-              {cart.total_discount && cart.total_discount > 0 && (
-                <div className="mt-1 flex justify-between text-sm text-[#2F5233] font-medium">
-                  <span>Sitewide Sale (40% OFF)</span>
-                  <span className="tabular-nums">−{inr(cart.total_discount)}</span>
-                </div>
-              )}
-
-              <div className="mt-2 flex justify-between border-t border-border pt-3 text-sm">
-                <span className="text-foreground font-semibold">Payable Subtotal</span>
-                <span className="font-heading text-xl font-bold tabular-nums text-foreground" data-testid="checkout-subtotal">{inr(cart.subtotal)}</span>
-              </div>
-              {cart.referral_discount > 0 && (
-                <div className="mt-1 flex justify-between text-sm text-brand-leaf">
-                  <span>Referral discount ({cart.referred_code})</span>
-                  <span className="tabular-nums">−{inr(cart.referral_discount)}</span>
-                </div>
-              )}
+              {(() => {
+                const totalMrp = cart.total_mrp && cart.total_mrp > cart.subtotal ? cart.total_mrp : Math.round(cart.subtotal * 1.4);
+                const kotsonDiscount = Math.max(0, totalMrp - cart.subtotal);
+                const sellingPrice = cart.subtotal;
+                const refDiscount = cart.referral_discount || 0;
+                const finalPayable = Math.max(0, sellingPrice - refDiscount);
+                const totalSavings = kotsonDiscount + refDiscount;
+                return (
+                  <div className="mt-4 space-y-2 text-sm border-t border-border pt-4">
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>MRP</span>
+                      <span className="tabular-nums font-semibold">{inr(totalMrp)}</span>
+                    </div>
+                    {kotsonDiscount > 0 && (
+                      <div className="flex justify-between text-[#2F5233] font-medium">
+                        <span>Kotson Product Discount</span>
+                        <span className="tabular-nums">−{inr(kotsonDiscount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-semibold border-t border-dashed border-border/70 pt-2 text-foreground">
+                      <span>Selling Price</span>
+                      <span className="tabular-nums">{inr(sellingPrice)}</span>
+                    </div>
+                    {cart.referred_code && (
+                      <div className="flex justify-between items-center text-xs font-semibold">
+                        <span className="text-muted-foreground">Referral Code</span>
+                        <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded font-mono">
+                          {cart.referred_code} ✓
+                        </span>
+                      </div>
+                    )}
+                    {refDiscount > 0 && (
+                      <div className="flex justify-between text-[#2F5233] font-semibold">
+                        <span>Referral Discount</span>
+                        <span className="tabular-nums">−{inr(refDiscount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between border-t border-border pt-3 text-base font-bold text-foreground">
+                      <span>FINAL AMOUNT TO PAY</span>
+                      <span className="font-heading text-2xl text-foreground tabular-nums" data-testid="checkout-subtotal">
+                        {inr(finalPayable)}
+                      </span>
+                    </div>
+                    {totalSavings > 0 && (
+                      <div className="flex justify-between text-xs font-bold text-[#2F5233] bg-[#2F5233]/10 px-3 py-1.5 rounded-lg">
+                        <span>You Save</span>
+                        <span className="tabular-nums">{inr(totalSavings)}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
               <p className="mt-3 text-xs text-muted-foreground">
-                GST {cart.referral_note ? "" : "and shipping lines"} are finalized server-side when the order is created — the amounts you see here are re-verified before payment.
+                GST and shipping lines are finalized server-side when the order is created — the amounts you see here are re-verified before payment.
               </p>
+
 
               <div className="mt-4">
                 <Label htmlFor="co-ref">Referral code (optional)</Label>

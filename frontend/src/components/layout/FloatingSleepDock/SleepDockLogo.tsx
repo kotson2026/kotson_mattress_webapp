@@ -24,7 +24,7 @@ export default function SleepDockLogo({ state }: Props) {
         width={1601}
         height={184}
         decoding="async"
-        className={`block w-auto shrink-0 object-contain transition-all duration-300 ease-out ${
+        className={`mobile-navbar-logo block w-auto shrink-0 object-contain transition-all duration-300 ease-out ${
           isCompact
             ? "h-3.5 sm:h-[15px] lg:h-[15.5px]"
             : "h-3.5 sm:h-4 lg:h-[17px]"

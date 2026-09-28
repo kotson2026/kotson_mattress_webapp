@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, Route, Routes } from "react-router-dom";
+import { Link, Route, Routes, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { toast } from "sonner";
 import { apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
@@ -22,6 +22,9 @@ import AssetLibraryHub from "@/components/admin/assets/AssetLibraryHub";
 import ReferEarnHub from "@/components/admin/referrals/ReferEarnHub";
 import DealerManagementHub from "@/components/admin/dealers/DealerManagementHub";
 import StaffAccessHub from "@/components/admin/staff/StaffAccessHub";
+import BlogHub from "@/components/admin/blogs/BlogHub";
+import StockPointHub from "@/components/admin/stock_point/StockPointHub";
+import CustomRequestsHub from "@/components/admin/custom_requests/CustomRequestsHub";
 import DataTablePagination from "@/components/ui/DataTablePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,8 +37,11 @@ const NAV = [
   { to: "/admin", label: "Dashboard" },
   { to: "/admin/sales", label: "Sales & Revenue" },
   { to: "/admin/orders", label: "Orders" },
+  { to: "/admin/custom-requests", label: "Custom Requests" },
+  { to: "/admin/stock-point", label: "Stock Point" },
   { to: "/admin/dispatch", label: "Dispatch & Returns" },
   { to: "/admin/catalog", label: "Catalog" },
+  { to: "/admin/blogs", label: "Blogs" },
   { to: "/admin/website-edit", label: "Website Edit" },
   { to: "/admin/claims", label: "Claims & Trust" },
   { to: "/admin/assets", label: "Assets" },
@@ -48,8 +54,8 @@ const NAV = [
 
 function Panel({ title, children, testId }: { title: string; children: React.ReactNode; testId?: string }) {
   return (
-    <section className="rounded-2xl border border-border bg-card p-6" data-testid={testId}>
-      <h2 className="font-heading text-lg font-bold">{title}</h2>
+    <section className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-xs" data-testid={testId}>
+      <h2 className="font-heading text-lg font-bold text-foreground">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>
   );
@@ -744,7 +750,7 @@ function SettingsView() {
         <p className="mt-3 text-xs text-muted-foreground">
           Central server-side discount: Original product MRPs remain preserved. Calculated selling prices automatically propagate across Catalogue, PDP, Cart, Checkout, and Razorpay.
         </p>
-        <Button className="mt-4 min-h-11" onClick={() => save.mutate()} data-testid="promotion-save-button">
+        <Button className="mt-4 min-h-11 bg-[#11291F] text-white hover:bg-[#1E3A2C] font-semibold text-xs shadow-xs" onClick={() => save.mutate()} data-testid="promotion-save-button">
           Save Promotion
         </Button>
       </Panel>
@@ -777,7 +783,7 @@ function SettingsView() {
             <p className="mt-1 text-xs text-muted-foreground">Current: {settings?.shipping_status?.replace(/_/g, " ")}</p>
           </div>
         </div>
-        <Button className="mt-4 min-h-11" onClick={() => save.mutate()} data-testid="settings-save-button">Save settings</Button>
+        <Button className="mt-4 min-h-11 bg-[#11291F] text-white hover:bg-[#1E3A2C] font-semibold text-xs shadow-xs" onClick={() => save.mutate()} data-testid="settings-save-button">Save settings</Button>
       </Panel>
     </div>
   );
@@ -810,17 +816,28 @@ export default function AdminConsole() {
     : baseNav;
 
   const title = isCrmMasterOnly ? "CRM Master Admin console" : "Owner / Admin console";
+  const location = useLocation();
+  const isDashboardRoute = location.pathname === "/admin" || location.pathname === "/admin/";
 
   return (
-    <ConsoleLayout area="Admin" title={title} allowedRoles={["owner", "admin", "crm_master"]} nav={effectiveNav}>
+    <ConsoleLayout
+      area="Admin"
+      title={title}
+      allowedRoles={["owner", "admin", "crm_master"]}
+      nav={effectiveNav}
+      hideHeader={isDashboardRoute && !isCrmMasterOnly}
+    >
       <Routes>
         <Route index element={isCrmMasterOnly ? <SalesRevenueDashboard /> : <OwnerDashboard />} />
         <Route path="sales" element={<SalesRevenueDashboard />} />
         <Route path="orders" element={<OrdersCentralHub />} />
+        <Route path="custom-requests" element={<CustomRequestsHub />} />
+        <Route path="stock-point/*" element={<StockPointHub isOwnerAdmin={true} />} />
         <Route path="dispatch/*" element={<DispatchReturnsHub />} />
         {!isCrmMasterOnly && (
           <>
             <Route path="catalog" element={<CatalogCentralHub />} />
+            <Route path="blogs/*" element={<BlogHub />} />
             <Route path="website-edit" element={<WebsiteEditStudio />} />
             <Route path="cms" element={<WebsiteEditStudio />} />
             <Route path="claims" element={<ClaimsTrustHub />} />

@@ -12,11 +12,13 @@ from models.users import AddressIn, utcnow
 class CartItemIn(BaseModel):
     variant_id: str
     qty: int = Field(ge=1, le=10)
+    custom_configuration_id: Optional[str] = None
 
 
 class CartItemPatch(BaseModel):
     variant_id: str
     qty: int = Field(ge=0, le=10)  # 0 removes the line
+    custom_configuration_id: Optional[str] = None
 
 
 class ReferralApplyIn(BaseModel):
@@ -44,6 +46,16 @@ class CartLine(BaseModel):
     free_stock: int
     is_active: bool
     image: Optional[str] = None
+    is_custom: bool = False
+    custom_configuration_id: Optional[str] = None
+    custom_dimensions: Optional[dict] = None
+    custom_options: Optional[list] = None
+    custom_pricing_status: Optional[str] = None
+    custom_quote_label: Optional[str] = None
+    referral_eligible: bool = False
+    referral_discount: int = 0  # paise
+    referral_rule_id: Optional[str] = None
+    referral_rule_name: Optional[str] = None
 
 
 class MoneyLine(BaseModel):
@@ -62,6 +74,7 @@ class CartView(BaseModel):
     referral_status: str = "none"  # none | valid | invalid | self | no_published_rule
     referral_discount: int = 0
     referral_note: str = ""
+    referral_breakdown: Optional[List[dict]] = None
 
 
 class OrderItemSnapshot(BaseModel):
@@ -81,6 +94,23 @@ class OrderItemSnapshot(BaseModel):
     mrp: Optional[int] = None
     discount_amount: Optional[int] = 0
     discount_percent: Optional[float] = 0.0
+    is_custom: bool = False
+    custom_configuration_id: Optional[str] = None
+    custom_dimensions: Optional[dict] = None
+    custom_options: Optional[list] = None
+    custom_pricing_status: Optional[str] = None
+    custom_quote_label: Optional[str] = None
+    referral_eligible: bool = False
+    referral_discount: int = 0
+    referral_rule_id: Optional[str] = None
+    referral_rule_name: Optional[str] = None
+    customer_discount_type: Optional[str] = None
+    customer_discount_value: Optional[float] = None
+    customer_discount_amount: Optional[int] = 0
+    commission_type: Optional[str] = None
+    commission_value: Optional[float] = None
+    commission_basis: Optional[int] = None
+    commission_amount: Optional[int] = 0
 
 
 class OrderEvent(BaseModel):

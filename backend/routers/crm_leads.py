@@ -102,8 +102,54 @@ async def create_pipeline(input: PipelineIn, user=Depends(require_role(*CRM_CONF
 
 @router.get("/crm/campaigns", response_model=List[Campaign])
 async def list_campaigns(user=Depends(require_role(*CRM_ALL))):
-    docs = await db.campaigns.find({}).sort("created_at", -1).to_list(200)
-    return [Campaign(**clean_doc(d)) for d in docs]
+    query: dict = {}
+    if not has_role(user, OWNER, CRM_MASTER):
+        if has_role(user, CRM_MANAGER):
+            emp_ids = await team_employee_ids(user["id"])
+            query["$or"] = [{"manager_ids": user["id"]}, {"employee_ids": {"$in": emp_ids}}]
+        else:
+            query["employee_ids"] = {"$in": [user["id"]]}
+
+    docs = await db.campaigns.find(query).sort("created_at", -1).to_list(200)
+    result = []
+    for d in docs:
+        c = clean_doc(d)
+        cid = d["id"]
+        total = await db.leads.count_documents({"campaign_code": cid})
+        if has_role(user, CRM_EMPLOYEE) and not has_role(user, OWNER, CRM_MASTER, CRM_MANAGER):
+            assigned = await db.leads.count_documents({"campaign_code": cid, "employee_id": user["id"]})
+            uncontacted = await db.leads.count_documents({
+                "campaign_code": cid,
+                "employee_id": user["id"],
+                "$or": [{"calls_logged": {"$in": [None, 0]}}, {"stage_code": {"$in": ["new", "uncontacted", "lead"]}}]
+            })
+            closed = await db.leads.count_documents({
+                "campaign_code": cid,
+                "employee_id": user["id"],
+                "$or": [{"qualification": "converted"}, {"stage_code": {"$in": ["converted", "won", "lost"]}}, {"is_open": False}]
+            })
+            in_prog = max(0, assigned - uncontacted - closed)
+            unassigned = await db.leads.count_documents({"campaign_code": cid, "employee_id": None})
+        else:
+            assigned = await db.leads.count_documents({"campaign_code": cid, "employee_id": {"$ne": None}})
+            unassigned = await db.leads.count_documents({"campaign_code": cid, "employee_id": None})
+            uncontacted = await db.leads.count_documents({
+                "campaign_code": cid,
+                "$or": [{"calls_logged": {"$in": [None, 0]}}, {"stage_code": {"$in": ["new", "uncontacted", "lead"]}}]
+            })
+            closed = await db.leads.count_documents({
+                "campaign_code": cid,
+                "$or": [{"qualification": "converted"}, {"stage_code": {"$in": ["converted", "won", "lost"]}}, {"is_open": False}]
+            })
+            in_prog = max(0, total - uncontacted - closed)
+        c["total_leads"] = total
+        c["assigned_leads"] = assigned
+        c["unassigned_leads"] = unassigned
+        c["uncontacted_leads"] = uncontacted
+        c["in_progress_leads"] = in_prog
+        c["closed_leads"] = closed
+        result.append(Campaign(**c))
+    return result
 
 
 @router.post("/crm/campaigns", response_model=Campaign, status_code=201)
@@ -403,6 +449,78 @@ async def update_pipeline_stages(pipeline_id: str, body: dict, user=Depends(requ
     return {"ok": True, "stages": len(new_stages)}
 
 
+# ---------------------------------------------------------------- next callable lead (Start Calling)
+
+@router.get("/crm/leads/next-call")
+async def get_next_callable_lead(
+    campaign_code: Optional[str] = None,
+    user=Depends(require_role(*CRM_ALL)),
+):
+    """Start Calling queue for CRM employees: picks next prioritized callable lead in user's scope."""
+    base_query: dict = await lead_scope_query(user)
+    base_query["is_open"] = True
+
+    if campaign_code:
+        if not has_role(user, OWNER, CRM_MASTER, CRM_MANAGER):
+            camp = await db.campaigns.find_one({"id": campaign_code, "employee_ids": {"$in": [user["id"]]}})
+            if not camp:
+                raise HTTPException(status_code=403, detail="Not authorized for this campaign")
+        base_query["campaign_code"] = campaign_code
+
+    now = now_utc()
+
+    # Priority 1: Overdue or due follow-ups for this agent
+    fu_query: dict = {"status": "pending", "due_at": {"$lte": now}}
+    if not has_role(user, OWNER, CRM_MASTER):
+        fu_query["owner_id"] = user["id"]
+    fu_doc = await db.follow_ups.find_one(fu_query, sort=[("due_at", 1)])
+    if fu_doc:
+        lead = await db.leads.find_one({"id": fu_doc["lead_id"], **base_query})
+        if lead:
+            return {
+                "has_lead": True,
+                "lead_id": lead["id"],
+                "queue_reason": f"Follow-up scheduled: {fu_doc.get('reason', 'Due now')}",
+                "lead": clean_doc(lead),
+            }
+
+    # Priority 2: Uncontacted leads (calls_logged = 0 or stage in new/uncontacted)
+    uncontacted_lead = await db.leads.find_one(
+        {
+            **base_query,
+            "$or": [
+                {"calls_logged": {"$in": [None, 0]}},
+                {"stage_code": {"$in": ["new", "uncontacted", "lead"]}},
+            ],
+        },
+        sort=[("created_at", 1)],
+    )
+    if uncontacted_lead:
+        return {
+            "has_lead": True,
+            "lead_id": uncontacted_lead["id"],
+            "queue_reason": "Uncontacted lead",
+            "lead": clean_doc(uncontacted_lead),
+        }
+
+    # Priority 3: Oldest updated open lead
+    next_lead = await db.leads.find_one(base_query, sort=[("updated_at", 1)])
+    if next_lead:
+        return {
+            "has_lead": True,
+            "lead_id": next_lead["id"],
+            "queue_reason": "In-progress queue",
+            "lead": clean_doc(next_lead),
+        }
+
+    return {
+        "has_lead": False,
+        "lead_id": None,
+        "queue_reason": None,
+        "message": "Queue clear! No callable leads remaining in your scope.",
+    }
+
+
 # ---------------------------------------------------------------- leads
 
 @router.get("/crm/leads")
@@ -411,6 +529,8 @@ async def list_leads(
     kind: Optional[str] = None,
     qualification: Optional[str] = None,
     stage: Optional[str] = None,
+    stage_code: Optional[str] = None,
+    category: Optional[str] = None,
     pipeline_id: Optional[str] = None,
     campaign_code: Optional[str] = None,
     employee_id: Optional[str] = None,
@@ -429,12 +549,24 @@ async def list_leads(
 ):
     """Server-side search/filter/sort/paginate — supports 10, 25, 50, 100 rows/page."""
     query: dict = await lead_scope_query(user)
+    effective_stage = stage or stage_code
     if kind:
         query["kind"] = kind
     if qualification:
         query["qualification"] = qualification
-    if stage:
-        query["stage_code"] = stage
+    if effective_stage:
+        query["stage_code"] = effective_stage
+    if category:
+        c_lower = category.lower().replace("-", "_").strip()
+        if c_lower == "uncontacted":
+            query["$or"] = [{"calls_logged": {"$in": [None, 0]}}, {"stage_code": {"$in": ["new", "uncontacted", "lead"]}}]
+        elif c_lower == "in_progress":
+            query["is_open"] = True
+            query["stage_code"] = {"$nin": ["new", "uncontacted", "lead", "converted", "won", "lost"]}
+        elif c_lower == "follow_up":
+            query["stage_code"] = {"$in": ["follow_up", "followup", "contacted"]}
+        elif c_lower == "not_connected":
+            query["stage_code"] = {"$in": ["not_connected", "attempted"]}
     if pipeline_id:
         query["pipeline_id"] = pipeline_id
     if campaign_code:
@@ -487,24 +619,42 @@ async def list_leads(
 
 
 @router.post("/crm/leads", response_model=Lead, status_code=201)
-async def create_manual_lead(input: LeadManualIn, user=Depends(require_role(OWNER, CRM_MASTER, CRM_MANAGER))):
+@router.post("/crm/leads/walk-in", response_model=Lead, status_code=201)
+async def create_manual_lead(input: LeadManualIn, user=Depends(require_role(*CRM_ALL))):
     email, phone = norm_email(input.email), norm_phone(input.phone)
     if not email and not phone:
         raise HTTPException(status_code=422, detail="An email or phone number is required to create a callable lead")
     dupe = await find_existing_lead(None, email, phone)
     if dupe:
         raise HTTPException(status_code=409, detail=f"An open lead already exists for this contact ({dupe['lead_number']})")
+
+    pipeline_id = input.pipeline_id
+    employee_id = None
+
+    if has_role(user, CRM_EMPLOYEE) and not has_role(user, OWNER, CRM_MASTER, CRM_MANAGER):
+        if not input.campaign_code:
+            raise HTTPException(status_code=422, detail="Campaign selection is required for employee walk-in lead")
+        camp = await db.campaigns.find_one({"id": input.campaign_code})
+        if not camp or user["id"] not in camp.get("employee_ids", []):
+            raise HTTPException(status_code=403, detail="You are not authorized for this campaign")
+        if not pipeline_id:
+            pipeline_id = camp.get("pipeline_id")
+        employee_id = user["id"]
+    elif has_role(user, CRM_MANAGER) and not has_role(user, OWNER, CRM_MASTER):
+        employee_id = user["id"]
+
     lead = Lead(
         lead_number=await _next_number("lead_number", "L"),
         kind="sales",
         name=input.name.strip(),
         email=email,
         phone=phone,
-        pipeline_id=input.pipeline_id,
+        pipeline_id=pipeline_id,
         campaign_code=input.campaign_code,
+        employee_id=employee_id,
         product_interest=input.product_interest,
         qualification="sales_qualified",
-        source_kind="manual",
+        source_kind="walk_in" if has_role(user, CRM_EMPLOYEE) else "manual",
         master_id=user["id"] if has_role(user, CRM_MASTER) else None,
     )
     doc = lead.model_dump()

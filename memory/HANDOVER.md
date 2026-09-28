@@ -57,7 +57,7 @@
    `category-mattress`, `category-pillow`, `category-topper`, `category-babykids`** — publishing those four in
    `/admin/assets` swaps the navbar images with no code change.
 5. **Claim evidence** — GOLS certificate, "one of five in India" substantiation, Shark Tank episode proof, plus exact
-   **100-night trial**, **10-year warranty** and **free shipping** terms and coverage. All six claims currently render
+   **30-night trial**, **10-year warranty** and **free shipping** terms and coverage. All six claims currently render
    as "owner verification pending".
 6. **GST rate + invoicing details** and **shipping charges/coverage** — both `pending_configuration`; nothing inferred.
 7. **Policy page terms** — shipping, returns/trial, privacy, terms are unpublished drafts.

@@ -22,6 +22,9 @@ import {
   X,
   ChevronRight,
   TrendingUp,
+  Ruler,
+  Trash2,
+  Sliders,
 } from "lucide-react";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api";
 import { inr } from "@/lib/format";
@@ -75,6 +78,7 @@ interface ProductItem {
   in_stock: boolean;
   total_stock: number;
   variants: Variant[];
+  customization?: any;
 }
 
 export default function CatalogCentralHub() {
@@ -555,6 +559,17 @@ function ProductEditorModal({
     website_visibility: product?.website_visibility || "VISIBLE",
     referral_reward_percent: 5.0,
     dealer_discount_percent: 25.0,
+    customization: product?.customization || {
+      enabled: false,
+      unit: "inch",
+      dimensions: {
+        length: { min: 60, max: 84, step: 1 },
+        breadth: { min: 30, max: 78, step: 1 },
+        thickness: { min: 4, max: 12, step: 1, allowed_values: [5, 6, 8, 10, 12] },
+      },
+      options: [],
+      pricing: { pricing_mode: "base_variant_ratio", promotion_eligible: false },
+    },
     variants: product?.variants || [
       { id: "v1", sku: "KS-KING-01", size: "King (78x72)", price: 29999, mrp: 39999, stock: 10 },
       { id: "v2", sku: "KS-QUEEN-01", size: "Queen (78x60)", price: 24999, mrp: 32999, stock: 8 },
@@ -586,6 +601,7 @@ function ProductEditorModal({
     { id: 8, label: "SEO & Social", icon: FileText },
     { id: 9, label: "Refer & Earn", icon: TrendingUp },
     { id: 10, label: "Dealer Terms", icon: Tag },
+    { id: 11, label: "Customization", icon: Ruler },
   ];
 
   return (
@@ -1043,6 +1059,586 @@ function ProductEditorModal({
               </div>
             </div>
           )}
+
+          {/* Tab 11: Customization Engine */}
+          {activeTab === 11 && (
+            <div className="space-y-6">
+              <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold text-sm text-foreground flex items-center gap-2">
+                    <Ruler className="w-4 h-4 text-primary" />
+                    Customizable Product Sizing & Bespoke Configurations
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Allow customers to specify custom dimensions and bespoke material options on the storefront.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-muted-foreground">Customization Status:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const current = formData.customization || { enabled: false };
+                      setFormData({
+                        ...formData,
+                        customization: {
+                          ...current,
+                          enabled: !current.enabled,
+                          unit: current.unit || "inch",
+                          dimensions: current.dimensions || {
+                            length: { min: 60, max: 84, step: 1 },
+                            breadth: { min: 30, max: 78, step: 1 },
+                            thickness: { min: 4, max: 12, step: 1, allowed_values: [5, 6, 8, 10, 12] },
+                          },
+                          options: current.options || [],
+                          pricing: current.pricing || { pricing_mode: "base_variant_ratio", promotion_eligible: false },
+                        },
+                      });
+                    }}
+                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors ${
+                      formData.customization?.enabled
+                        ? "bg-[#467065] text-white"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    }`}
+                  >
+                    {formData.customization?.enabled ? "ENABLED" : "DISABLED"}
+                  </button>
+                </div>
+              </div>
+
+              {formData.customization?.enabled && (
+                <div className="space-y-6">
+                  {/* Unit & Pricing Settings */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-3.5 rounded-xl border border-border bg-card">
+                      <Label className="text-xs font-bold text-foreground">Measurement Unit</Label>
+                      <select
+                        value={formData.customization.unit || "inch"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            customization: { ...formData.customization, unit: e.target.value },
+                          })
+                        }
+                        className="w-full mt-1.5 px-3 py-1.5 text-xs rounded-lg border border-border bg-background"
+                      >
+                        <option value="inch">Inches (in) — Production Standard</option>
+                        <option value="cm">Centimeters (cm)</option>
+                      </select>
+                      <p className="text-[11px] text-muted-foreground mt-1">Authoritative unit across catalogue & cart.</p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl border border-border bg-card">
+                      <Label className="text-xs font-bold text-foreground">Pricing Authority Mode</Label>
+                      <select
+                        value={formData.customization.pricing?.pricing_mode || "base_variant_ratio"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            customization: {
+                              ...formData.customization,
+                              pricing: {
+                                ...(formData.customization.pricing || {}),
+                                pricing_mode: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                        className="w-full mt-1.5 px-3 py-1.5 text-xs rounded-lg border border-border bg-background"
+                      >
+                        <option value="base_variant_ratio">Dimension Formula (Proportional to Standard)</option>
+                        <option value="quote_pending">Quote on Request (Price Pending Business Review)</option>
+                      </select>
+                      <p className="text-[11px] text-muted-foreground mt-1">Controls whether checkout requires quotation.</p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl border border-border bg-card">
+                      <Label className="text-xs font-bold text-foreground">Promotion Eligibility</Label>
+                      <div className="flex items-center gap-2 mt-2">
+                        <input
+                          type="checkbox"
+                          id="promo_eligible"
+                          checked={formData.customization.pricing?.promotion_eligible || false}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              customization: {
+                                ...formData.customization,
+                                pricing: {
+                                  ...(formData.customization.pricing || {}),
+                                  promotion_eligible: e.target.checked,
+                                },
+                              },
+                            })
+                          }
+                          className="w-4 h-4 rounded text-primary focus:ring-primary"
+                        />
+                        <Label htmlFor="promo_eligible" className="text-xs cursor-pointer">
+                          Allow storewide discounts on custom cuts
+                        </Label>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-1">Default is false to protect bespoke margins.</p>
+                    </div>
+                  </div>
+
+                  {/* Manufacturing Dimension Boundaries */}
+                  <div className="p-4 rounded-xl border border-border bg-card space-y-4">
+                    <h5 className="font-bold text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                      <Sliders className="w-3.5 h-3.5" />
+                      Permitted Manufacturing Dimensions ({formData.customization.unit || "in"})
+                    </h5>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Length */}
+                      <div className="space-y-2 p-3 rounded-lg border border-border/60 bg-muted/20">
+                        <span className="text-xs font-bold text-foreground">Length Range</span>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <div>
+                            <Label className="text-[10px] text-muted-foreground">Min</Label>
+                            <Input
+                              type="number"
+                              value={formData.customization.dimensions?.length?.min ?? 60}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  customization: {
+                                    ...formData.customization,
+                                    dimensions: {
+                                      ...formData.customization.dimensions,
+                                      length: {
+                                        ...formData.customization.dimensions?.length,
+                                        min: Number(e.target.value),
+                                      },
+                                    },
+                                  },
+                                })
+                              }
+                              className="h-8 text-xs font-semibold"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-[10px] text-muted-foreground">Max</Label>
+                            <Input
+                              type="number"
+                              value={formData.customization.dimensions?.length?.max ?? 84}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  customization: {
+                                    ...formData.customization,
+                                    dimensions: {
+                                      ...formData.customization.dimensions,
+                                      length: {
+                                        ...formData.customization.dimensions?.length,
+                                        max: Number(e.target.value),
+                                      },
+                                    },
+                                  },
+                                })
+                              }
+                              className="h-8 text-xs font-semibold"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-[10px] text-muted-foreground">Step</Label>
+                            <Input
+                              type="number"
+                              value={formData.customization.dimensions?.length?.step ?? 1}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  customization: {
+                                    ...formData.customization,
+                                    dimensions: {
+                                      ...formData.customization.dimensions,
+                                      length: {
+                                        ...formData.customization.dimensions?.length,
+                                        step: Number(e.target.value),
+                                      },
+                                    },
+                                  },
+                                })
+                              }
+                              className="h-8 text-xs font-semibold"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Breadth */}
+                      <div className="space-y-2 p-3 rounded-lg border border-border/60 bg-muted/20">
+                        <span className="text-xs font-bold text-foreground">Breadth Range</span>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <div>
+                            <Label className="text-[10px] text-muted-foreground">Min</Label>
+                            <Input
+                              type="number"
+                              value={formData.customization.dimensions?.breadth?.min ?? 30}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  customization: {
+                                    ...formData.customization,
+                                    dimensions: {
+                                      ...formData.customization.dimensions,
+                                      breadth: {
+                                        ...formData.customization.dimensions?.breadth,
+                                        min: Number(e.target.value),
+                                      },
+                                    },
+                                  },
+                                })
+                              }
+                              className="h-8 text-xs font-semibold"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-[10px] text-muted-foreground">Max</Label>
+                            <Input
+                              type="number"
+                              value={formData.customization.dimensions?.breadth?.max ?? 78}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  customization: {
+                                    ...formData.customization,
+                                    dimensions: {
+                                      ...formData.customization.dimensions,
+                                      breadth: {
+                                        ...formData.customization.dimensions?.breadth,
+                                        max: Number(e.target.value),
+                                      },
+                                    },
+                                  },
+                                })
+                              }
+                              className="h-8 text-xs font-semibold"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-[10px] text-muted-foreground">Step</Label>
+                            <Input
+                              type="number"
+                              value={formData.customization.dimensions?.breadth?.step ?? 1}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  customization: {
+                                    ...formData.customization,
+                                    dimensions: {
+                                      ...formData.customization.dimensions,
+                                      breadth: {
+                                        ...formData.customization.dimensions?.breadth,
+                                        step: Number(e.target.value),
+                                      },
+                                    },
+                                  },
+                                })
+                              }
+                              className="h-8 text-xs font-semibold"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Thickness */}
+                      <div className="space-y-2 p-3 rounded-lg border border-border/60 bg-muted/20">
+                        <span className="text-xs font-bold text-foreground">Thickness Range</span>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <div>
+                            <Label className="text-[10px] text-muted-foreground">Min</Label>
+                            <Input
+                              type="number"
+                              value={formData.customization.dimensions?.thickness?.min ?? 4}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  customization: {
+                                    ...formData.customization,
+                                    dimensions: {
+                                      ...formData.customization.dimensions,
+                                      thickness: {
+                                        ...formData.customization.dimensions?.thickness,
+                                        min: Number(e.target.value),
+                                      },
+                                    },
+                                  },
+                                })
+                              }
+                              className="h-8 text-xs font-semibold"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-[10px] text-muted-foreground">Max</Label>
+                            <Input
+                              type="number"
+                              value={formData.customization.dimensions?.thickness?.max ?? 12}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  customization: {
+                                    ...formData.customization,
+                                    dimensions: {
+                                      ...formData.customization.dimensions,
+                                      thickness: {
+                                        ...formData.customization.dimensions?.thickness,
+                                        max: Number(e.target.value),
+                                      },
+                                    },
+                                  },
+                                })
+                              }
+                              className="h-8 text-xs font-semibold"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-[10px] text-muted-foreground">Step</Label>
+                            <Input
+                              type="number"
+                              value={formData.customization.dimensions?.thickness?.step ?? 1}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  customization: {
+                                    ...formData.customization,
+                                    dimensions: {
+                                      ...formData.customization.dimensions,
+                                      thickness: {
+                                        ...formData.customization.dimensions?.thickness,
+                                        step: Number(e.target.value),
+                                      },
+                                    },
+                                  },
+                                })
+                              }
+                              className="h-8 text-xs font-semibold"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Configurable Options System */}
+                  <div className="p-4 rounded-xl border border-border bg-card space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h5 className="font-bold text-xs uppercase tracking-wider text-muted-foreground">
+                          Configurable Options (Cover Material, Firmness, Core Upgrades)
+                        </h5>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Define bespoke choices with authoritative price modifiers.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const options = formData.customization.options || [];
+                          const newOptionId = `opt_${Date.now()}`;
+                          setFormData({
+                            ...formData,
+                            customization: {
+                              ...formData.customization,
+                              options: [
+                                ...options,
+                                {
+                                  id: newOptionId,
+                                  name: "Custom Option",
+                                  display_label: "Custom Option",
+                                  required: true,
+                                  enabled: true,
+                                  values: [
+                                    {
+                                      id: "val_default",
+                                      name: "Standard Selection",
+                                      display_label: "Standard Selection",
+                                      price_modifier: 0,
+                                      is_default: true,
+                                      enabled: true,
+                                    },
+                                  ],
+                                },
+                              ],
+                            },
+                          });
+                        }}
+                        className="text-xs gap-1.5"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Add Option Group
+                      </Button>
+                    </div>
+
+                    {(!formData.customization.options || formData.customization.options.length === 0) ? (
+                      <p className="text-xs text-muted-foreground italic py-3 text-center border border-dashed rounded-lg">
+                        No configurable option groups attached yet. Click "Add Option Group" to configure choices.
+                      </p>
+                    ) : (
+                      <div className="space-y-4">
+                        {formData.customization.options.map((opt: any, optIdx: number) => (
+                          <div key={opt.id || optIdx} className="p-3.5 rounded-xl border border-border/80 bg-muted/10 space-y-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2">
+                                <div>
+                                  <Label className="text-[10px] text-muted-foreground">Option Group Name</Label>
+                                  <Input
+                                    value={opt.name}
+                                    onChange={(e) => {
+                                      const next = [...formData.customization.options];
+                                      next[optIdx].name = e.target.value;
+                                      next[optIdx].display_label = e.target.value;
+                                      setFormData({
+                                        ...formData,
+                                        customization: { ...formData.customization, options: next },
+                                      });
+                                    }}
+                                    className="h-8 text-xs font-semibold"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-4 pt-4">
+                                  <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={opt.required ?? true}
+                                      onChange={(e) => {
+                                        const next = [...formData.customization.options];
+                                        next[optIdx].required = e.target.checked;
+                                        setFormData({
+                                          ...formData,
+                                          customization: { ...formData.customization, options: next },
+                                        });
+                                      }}
+                                      className="w-3.5 h-3.5 rounded text-primary"
+                                    />
+                                    Required Selection
+                                  </label>
+                                  <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={opt.enabled ?? true}
+                                      onChange={(e) => {
+                                        const next = [...formData.customization.options];
+                                        next[optIdx].enabled = e.target.checked;
+                                        setFormData({
+                                          ...formData,
+                                          customization: { ...formData.customization, options: next },
+                                        });
+                                      }}
+                                      className="w-3.5 h-3.5 rounded text-primary"
+                                    />
+                                    Active
+                                  </label>
+                                </div>
+                              </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  const next = formData.customization.options.filter((_: any, i: number) => i !== optIdx);
+                                  setFormData({
+                                    ...formData,
+                                    customization: { ...formData.customization, options: next },
+                                  });
+                                }}
+                                className="text-destructive hover:bg-destructive/10 h-8 px-2"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+
+                            {/* Option Values List */}
+                            <div className="pl-3 border-l-2 border-primary/30 space-y-2">
+                              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                                Selectable Choices
+                              </span>
+                              {opt.values?.map((val: any, valIdx: number) => (
+                                <div key={val.id || valIdx} className="flex items-center gap-2">
+                                  <Input
+                                    placeholder="Choice Name (e.g. Organic Knitted Cotton)"
+                                    value={val.name}
+                                    onChange={(e) => {
+                                      const next = [...formData.customization.options];
+                                      next[optIdx].values[valIdx].name = e.target.value;
+                                      next[optIdx].values[valIdx].display_label = e.target.value;
+                                      setFormData({
+                                        ...formData,
+                                        customization: { ...formData.customization, options: next },
+                                      });
+                                    }}
+                                    className="h-7 text-xs flex-1"
+                                  />
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[11px] text-muted-foreground">+₹</span>
+                                    <Input
+                                      type="number"
+                                      placeholder="0"
+                                      value={val.price_modifier || 0}
+                                      onChange={(e) => {
+                                        const next = [...formData.customization.options];
+                                        next[optIdx].values[valIdx].price_modifier = Number(e.target.value);
+                                        setFormData({
+                                          ...formData,
+                                          customization: { ...formData.customization, options: next },
+                                        });
+                                      }}
+                                      className="h-7 text-xs w-20 font-semibold"
+                                    />
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      const next = [...formData.customization.options];
+                                      next[optIdx].values = next[optIdx].values.filter((_: any, i: number) => i !== valIdx);
+                                      setFormData({
+                                        ...formData,
+                                        customization: { ...formData.customization, options: next },
+                                      });
+                                    }}
+                                    className="text-muted-foreground hover:text-destructive h-7 px-1.5"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const next = [...formData.customization.options];
+                                  next[optIdx].values = [
+                                    ...(next[optIdx].values || []),
+                                    {
+                                      id: `val_${Date.now()}`,
+                                      name: "New Choice",
+                                      display_label: "New Choice",
+                                      price_modifier: 0,
+                                      enabled: true,
+                                    },
+                                  ];
+                                  setFormData({
+                                    ...formData,
+                                    customization: { ...formData.customization, options: next },
+                                  });
+                                }}
+                                className="text-[11px] h-6 px-2 text-primary"
+                              >
+                                + Add Choice
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Modal Footer */}
@@ -1051,7 +1647,7 @@ function ProductEditorModal({
             Cancel
           </Button>
           <div className="flex items-center gap-3">
-            {activeTab < 10 && (
+            {activeTab < 11 && (
               <Button variant="outline" onClick={() => setActiveTab(activeTab + 1)}>
                 Next Tab <ChevronRight className="w-4 h-4 ml-1" />
               </Button>

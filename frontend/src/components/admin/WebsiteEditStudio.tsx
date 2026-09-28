@@ -31,8 +31,12 @@ import {
   Monitor,
   AlertTriangle,
   Check,
+  GripVertical,
 } from "lucide-react";
+import { Phone, Whatsapp } from "@/lib/lucide-react";
+import { sanitizeWhatsAppNumber } from "@/lib/support";
 import SectionEditorModal from "@/components/admin/cms/SectionEditorModal";
+import { getWebsiteSection } from "@/lib/cms/SectionRegistry";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +61,8 @@ export default function WebsiteEditStudio() {
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [deleteConfirmSection, setDeleteConfirmSection] = useState<any>(null);
+  const [homepageViewMode, setHomepageViewMode] = useState<"list" | "preview">("list");
+  const [isDiscardModalOpen, setIsDiscardModalOpen] = useState(false);
 
   // Queries
   const { data: overview } = useQuery({
@@ -89,6 +95,11 @@ export default function WebsiteEditStudio() {
   const { data: brandingConfig, isLoading: brandingLoading } = useQuery({
     queryKey: ["admin-cms-branding"],
     queryFn: () => apiGet<any>("/admin/cms/branding"),
+  });
+
+  const { data: supportConfig, isLoading: supportLoading } = useQuery({
+    queryKey: ["admin-cms-support"],
+    queryFn: () => apiGet<any>("/admin/cms/support"),
   });
 
   const { data: versions = [] } = useQuery({
@@ -175,6 +186,16 @@ export default function WebsiteEditStudio() {
     onError: (e: any) => toast.error(e.message || "Failed to update visibility"),
   });
 
+  const discardDraft = useMutation({
+    mutationFn: () => apiPost(`/admin/cms/pages/${homePage?.id}/discard-draft`),
+    onSuccess: (data: any) => {
+      setIsDiscardModalOpen(false);
+      qc.invalidateQueries({ queryKey: ["admin-cms-pages"] });
+      toast.success(data?.message || "Draft discarded. Reverted to published version.");
+    },
+    onError: (e: any) => toast.error(e.message || "Failed to discard draft"),
+  });
+
   const duplicateSection = useMutation({
     mutationFn: (sec: any) =>
       apiPost(`/admin/cms/pages/${homePage?.id}/sections`, {
@@ -241,6 +262,16 @@ export default function WebsiteEditStudio() {
       toast.success("Branding assets updated");
     },
     onError: (e: any) => toast.error(e.message || "Failed to update branding"),
+  });
+
+  const saveSupport = useMutation({
+    mutationFn: (updated: any) => apiPut("/admin/cms/support", updated),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-cms-support"] });
+      qc.invalidateQueries({ queryKey: ["cms-support"] });
+      toast.success("Customer support configuration updated");
+    },
+    onError: (e: any) => toast.error(e.message || "Failed to update customer support"),
   });
 
   return (
@@ -514,146 +545,351 @@ export default function WebsiteEditStudio() {
       {/* Tab 2: Homepage Visual Builder */}
       {activeTab === "home" && (
         <div className="space-y-4">
+          {/* Draft Status & Action Banner */}
+          {homePage?.has_draft_changes ? (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-bold text-amber-900">Unpublished Draft Changes</p>
+                    <Badge className="bg-amber-200/80 text-amber-900 border-amber-300 text-[10px]">
+                      Draft Mode
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-amber-700 mt-0.5">
+                    You have working changes on the homepage that are not yet published live to storefront visitors.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsDiscardModalOpen(true)}
+                  className="h-8 text-xs bg-white hover:bg-amber-100/60 border-amber-300 text-amber-900"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 mr-1" /> Discard Changes
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setHomepageViewMode(homepageViewMode === "list" ? "preview" : "list")}
+                  className="h-8 text-xs bg-white hover:bg-amber-100/60 border-amber-300 text-amber-900"
+                >
+                  <Eye className="w-3.5 h-3.5 mr-1" /> {homepageViewMode === "list" ? "Preview Draft" : "Back to List"}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => setIsPublishModalOpen(true)}
+                  className="h-8 text-xs bg-amber-900 hover:bg-amber-800 text-white font-semibold shadow-xs"
+                >
+                  <Sparkles className="w-3.5 h-3.5 mr-1" /> Publish Live
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-200 text-emerald-950">
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-emerald-900">Storefront Synced & Live</p>
+                  <p className="text-[11px] text-emerald-700">
+                    All {homePage?.sections?.length || 11} homepage sections match the live customer-facing website.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setHomepageViewMode(homepageViewMode === "list" ? "preview" : "list")}
+                  className="h-8 text-xs bg-white border-emerald-300 text-emerald-900 hover:bg-emerald-100/50"
+                >
+                  <Eye className="w-3.5 h-3.5 mr-1" /> {homepageViewMode === "list" ? "Interactive Live Preview" : "Back to List"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Section Arrangement Control Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-muted/20 border border-border">
             <div>
               <h3 className="font-heading text-sm font-bold">Homepage Section Arrangement ({homePage?.sections?.length || 0} Sections)</h3>
               <p className="text-xs text-muted-foreground">
-                Reorder, edit content, or add new sections from the 22 registered modules. Live website reads published order.
+                Reorder, edit content & presentation, or toggle visibility. Live site reads published order.
               </p>
             </div>
-            <Button
-              size="sm"
-              onClick={() => setIsAddSectionModalOpen(true)}
-              className="bg-primary text-primary-foreground text-xs"
-            >
-              <Plus className="w-3.5 h-3.5 mr-1" /> Add Section from Library
-            </Button>
-          </div>
-
-          <div className="space-y-3">
-            {(!homePage?.sections || homePage.sections.length === 0) ? (
-              <div className="p-12 text-center border border-dashed border-border rounded-xl text-muted-foreground text-xs space-y-3">
-                <p className="font-semibold text-foreground">No sections configured on homepage.</p>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center bg-muted/60 p-1 rounded-lg border border-border">
                 <Button
                   size="sm"
-                  variant="outline"
-                  onClick={() => apiPost("/admin/cms/migrate-existing-website").then(() => qc.invalidateQueries({ queryKey: ["admin-cms-pages"] }))}
-                  className="text-xs"
+                  variant={homepageViewMode === "list" ? "default" : "ghost"}
+                  onClick={() => setHomepageViewMode("list")}
+                  className="h-7 px-3 text-xs gap-1.5"
                 >
-                  <Sparkles className="w-3.5 h-3.5 mr-1.5 text-primary" />
-                  Restore Live Website Sections
+                  <Layers className="w-3.5 h-3.5" /> List
+                </Button>
+                <Button
+                  size="sm"
+                  variant={homepageViewMode === "preview" ? "default" : "ghost"}
+                  onClick={() => setHomepageViewMode("preview")}
+                  className="h-7 px-3 text-xs gap-1.5"
+                >
+                  <Eye className="w-3.5 h-3.5" /> Live Preview
                 </Button>
               </div>
-            ) : (
-              homePage.sections.map((sec: any, idx: number) => {
-                const typeMeta = sectionTypes.find((st: any) => st.type === sec.type);
-                const isLive = sec.is_visible !== false;
 
-                return (
-                  <div
-                    key={sec.id || idx}
-                    className="p-4 rounded-xl border border-border bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:shadow-xs transition-shadow"
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center font-mono text-xs font-bold text-primary shrink-0">
-                        #{idx + 1}
-                      </div>
-                      <div>
-                        <div className="font-semibold text-sm text-foreground flex items-center gap-2">
-                          <span>{sec.title || typeMeta?.name || sec.type}</span>
-                          <Badge
-                            className={`text-[10px] font-bold ${isLive
-                              ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                              : "bg-muted text-muted-foreground border-border"
-                              }`}
-                          >
-                            {isLive ? "LIVE" : "HIDDEN"}
-                          </Badge>
-                          <Badge variant="outline" className="text-[10px] font-mono">
-                            {sec.type}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                          {sec.subtitle || typeMeta?.description || "Configured homepage section"}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 self-end sm:self-center">
-                      {/* Reorder Up / Down */}
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 text-muted-foreground"
-                        title="Move Up"
-                        disabled={idx === 0}
-                        onClick={() => moveSection(idx, "up")}
-                      >
-                        <ArrowUp className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 text-muted-foreground"
-                        title="Move Down"
-                        disabled={idx === (homePage.sections.length - 1)}
-                        onClick={() => moveSection(idx, "down")}
-                      >
-                        <ArrowDown className="w-4 h-4" />
-                      </Button>
-
-                      {/* Edit Button */}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 text-xs font-semibold px-3 text-primary border-primary/30 hover:bg-primary/5"
-                        onClick={() => setSelectedSectionForEdit(sec)}
-                      >
-                        <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit
-                      </Button>
-
-                      {/* Visibility Toggle */}
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8"
-                        title={isLive ? "Hide from storefront" : "Show on storefront"}
-                        onClick={() => toggleSectionVisibility.mutate(sec)}
-                      >
-                        {isLive ? (
-                          <Eye className="w-4 h-4 text-emerald-600" />
-                        ) : (
-                          <EyeOff className="w-4 h-4 text-muted-foreground" />
-                        )}
-                      </Button>
-
-                      {/* Duplicate */}
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 text-muted-foreground"
-                        title="Duplicate Section"
-                        onClick={() => duplicateSection.mutate(sec)}
-                      >
-                        <Copy className="w-4 h-4" />
-                      </Button>
-
-                      {/* Delete Section */}
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 text-rose-600 hover:bg-rose-50"
-                        title="Delete Section"
-                        onClick={() => setDeleteConfirmSection(sec)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+              <Button
+                size="sm"
+                onClick={() => setIsAddSectionModalOpen(true)}
+                className="bg-primary text-primary-foreground text-xs h-8"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add Section
+              </Button>
+            </div>
           </div>
+
+          {/* VIEW MODE 1: Interactive Live Component Preview */}
+          {homepageViewMode === "preview" && (
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card p-3 rounded-xl border border-border">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-foreground">Interactive Component Preview:</span>
+                  <Badge variant="outline" className="text-[10px] font-mono">
+                    {previewDevice.toUpperCase()}
+                  </Badge>
+                  <span className="text-[11px] text-muted-foreground hidden sm:inline">
+                    (Renders real storefront components with your current draft configurations)
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-lg border border-border">
+                  <Button
+                    size="sm"
+                    variant={previewDevice === "desktop" ? "default" : "ghost"}
+                    onClick={() => setPreviewDevice("desktop")}
+                    className="h-7 px-2.5 text-xs gap-1"
+                  >
+                    <Monitor className="w-3 h-3" /> Desktop
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={previewDevice === "tablet" ? "default" : "ghost"}
+                    onClick={() => setPreviewDevice("tablet")}
+                    className="h-7 px-2.5 text-xs gap-1"
+                  >
+                    <Tablet className="w-3 h-3" /> Tablet (768px)
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={previewDevice === "mobile" ? "default" : "ghost"}
+                    onClick={() => setPreviewDevice("mobile")}
+                    className="h-7 px-2.5 text-xs gap-1"
+                  >
+                    <Smartphone className="w-3 h-3" /> Mobile (390px)
+                  </Button>
+                </div>
+              </div>
+
+              {/* Responsive Container rendering real registered components */}
+              <div className="flex justify-center bg-muted/30 p-3 sm:p-6 rounded-2xl border border-border min-h-[500px] overflow-x-auto">
+                <div
+                  className="bg-background shadow-2xl rounded-2xl border border-border overflow-hidden transition-all duration-300"
+                  style={{
+                    width: previewDevice === "mobile" ? "390px" : previewDevice === "tablet" ? "768px" : "100%",
+                    maxWidth: "100%",
+                  }}
+                >
+                  {homePage?.sections?.filter((s: any) => s.is_visible !== false).map((sec: any, idx: number) => {
+                    const registered = getWebsiteSection(sec.type);
+                    if (!registered) return null;
+                    const Comp = registered.rendererComponent;
+                    return (
+                      <div key={sec.id || idx} className="relative group/sec border-b border-border/30 last:border-b-0">
+                        {/* Floating quick edit overlay on hover */}
+                        <div className="absolute top-3 right-3 opacity-0 group-hover/sec:opacity-100 transition-opacity z-30 flex items-center gap-1.5 bg-white/95 backdrop-blur-xs p-1.5 rounded-lg border border-border shadow-md">
+                          <span className="text-[10px] font-semibold text-brand-charcoal px-1.5 font-mono">
+                            #{idx + 1} {sec.title || registered.name}
+                          </span>
+                          <Button
+                            size="sm"
+                            className="h-6 text-[10px] px-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+                            onClick={() => setSelectedSectionForEdit(sec)}
+                          >
+                            <Edit3 className="w-3 h-3 mr-1" /> Edit Section
+                          </Button>
+                        </div>
+                        <Comp config={sec.config} />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* VIEW MODE 2: Section Reordering List */}
+          {homepageViewMode === "list" && (
+            <div className="space-y-3">
+              {(!homePage?.sections || homePage.sections.length === 0) ? (
+                <div className="p-12 text-center border border-dashed border-border rounded-xl text-muted-foreground text-xs space-y-3">
+                  <p className="font-semibold text-foreground">No sections configured on homepage.</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => apiPost("/admin/cms/migrate-existing-website").then(() => qc.invalidateQueries({ queryKey: ["admin-cms-pages"] }))}
+                    className="text-xs"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 mr-1.5 text-primary" />
+                    Restore Live Website Sections
+                  </Button>
+                </div>
+              ) : (
+                homePage.sections.map((sec: any, idx: number) => {
+                  const typeMeta = sectionTypes.find((st: any) => st.type === sec.type);
+                  const isLive = sec.is_visible !== false;
+
+                  return (
+                    <div
+                      key={sec.id || idx}
+                      className="p-4 rounded-xl border border-border bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:shadow-xs transition-shadow"
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <GripVertical className="w-4 h-4 text-muted-foreground/60 shrink-0" />
+                        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center font-mono text-xs font-bold text-primary shrink-0">
+                          #{idx + 1}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-sm text-foreground flex items-center gap-2">
+                            <span>{sec.title || typeMeta?.name || sec.type}</span>
+                            <Badge
+                              className={`text-[10px] font-bold ${isLive
+                                ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                                : "bg-muted text-muted-foreground border-border"
+                                }`}
+                            >
+                              {isLive ? "LIVE" : "HIDDEN"}
+                            </Badge>
+                            <Badge variant="outline" className="text-[10px] font-mono">
+                              {sec.type}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                            {sec.subtitle || typeMeta?.description || "Configured homepage section"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 self-end sm:self-center">
+                        {/* Reorder Up / Down */}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-muted-foreground"
+                          title="Move Up"
+                          disabled={idx === 0}
+                          onClick={() => moveSection(idx, "up")}
+                        >
+                          <ArrowUp className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-muted-foreground"
+                          title="Move Down"
+                          disabled={idx === (homePage.sections.length - 1)}
+                          onClick={() => moveSection(idx, "down")}
+                        >
+                          <ArrowDown className="w-4 h-4" />
+                        </Button>
+
+                        {/* Edit Button */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs font-semibold px-3 text-primary border-primary/30 hover:bg-primary/5"
+                          onClick={() => setSelectedSectionForEdit(sec)}
+                        >
+                          <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit
+                        </Button>
+
+                        {/* Visibility Toggle */}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                          title={isLive ? "Hide from storefront" : "Show on storefront"}
+                          onClick={() => toggleSectionVisibility.mutate(sec)}
+                        >
+                          {isLive ? (
+                            <Eye className="w-4 h-4 text-emerald-600" />
+                          ) : (
+                            <EyeOff className="w-4 h-4 text-muted-foreground" />
+                          )}
+                        </Button>
+
+                        {/* Duplicate */}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-muted-foreground"
+                          title="Duplicate Section"
+                          onClick={() => duplicateSection.mutate(sec)}
+                        >
+                          <Copy className="w-4 h-4" />
+                        </Button>
+
+                        {/* Delete Section */}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-rose-600 hover:bg-rose-50"
+                          title="Delete Section"
+                          onClick={() => setDeleteConfirmSection(sec)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {/* Discard Draft Confirmation Modal */}
+          {isDiscardModalOpen && (
+            <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-card w-full max-w-md p-6 rounded-2xl border border-border shadow-2xl space-y-4">
+                <div className="flex items-center gap-3 text-amber-600">
+                  <AlertTriangle className="w-6 h-6" />
+                  <h3 className="font-heading text-lg font-bold text-foreground">Discard Draft Changes?</h3>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  This will discard all unpublished modifications on your homepage sections and revert to the currently published live version. This action cannot be undone.
+                </p>
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsDiscardModalOpen(false)}
+                    className="text-xs"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => discardDraft.mutate()}
+                    disabled={discardDraft.isPending}
+                    className="text-xs"
+                  >
+                    {discardDraft.isPending ? "Discarding..." : "Discard and Revert"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -687,7 +923,7 @@ export default function WebsiteEditStudio() {
             <div>
               <Label>Announcement Promo Text</Label>
               <Input
-                defaultValue={headerConfig?.announcement_text || "Sleep Better Tonight — 100 Nights Risk-Free Trial"}
+                defaultValue={headerConfig?.announcement_text || "Sleep Better Tonight — 30 Nights Risk-Free Trial"}
                 onBlur={(e) =>
                   saveHeader.mutate({
                     ...headerConfig,
@@ -780,20 +1016,79 @@ export default function WebsiteEditStudio() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Instagram Link</Label>
-                <Input
-                  defaultValue={footerConfig?.social_links?.instagram || "https://instagram.com/kotsonmattress"}
-                  className="mt-1 font-mono text-xs"
-                />
-              </div>
-              <div>
-                <Label>YouTube Channel Link</Label>
-                <Input
-                  defaultValue={footerConfig?.social_links?.youtube || "https://youtube.com/@kotsonmattress"}
-                  className="mt-1 font-mono text-xs"
-                />
+            <div className="pt-2 border-t border-border">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-3">
+                Social Media Channels (Footer Follow Us)
+              </Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label>Instagram URL</Label>
+                  <Input
+                    defaultValue={footerConfig?.social_links?.instagram || "https://www.instagram.com/kotsonmattress/"}
+                    onBlur={(e) =>
+                      saveFooter.mutate({
+                        ...footerConfig,
+                        social_links: {
+                          ...footerConfig?.social_links,
+                          instagram: e.target.value.trim(),
+                        },
+                      })
+                    }
+                    placeholder="https://www.instagram.com/kotsonmattress/"
+                    className="mt-1 font-mono text-xs"
+                  />
+                </div>
+                <div>
+                  <Label>Facebook URL</Label>
+                  <Input
+                    defaultValue={footerConfig?.social_links?.facebook || "https://www.facebook.com/kotsonmattress"}
+                    onBlur={(e) =>
+                      saveFooter.mutate({
+                        ...footerConfig,
+                        social_links: {
+                          ...footerConfig?.social_links,
+                          facebook: e.target.value.trim(),
+                        },
+                      })
+                    }
+                    placeholder="https://www.facebook.com/kotsonmattress"
+                    className="mt-1 font-mono text-xs"
+                  />
+                </div>
+                <div>
+                  <Label>YouTube URL</Label>
+                  <Input
+                    defaultValue={footerConfig?.social_links?.youtube || "https://www.youtube.com/@kotsonmattress"}
+                    onBlur={(e) =>
+                      saveFooter.mutate({
+                        ...footerConfig,
+                        social_links: {
+                          ...footerConfig?.social_links,
+                          youtube: e.target.value.trim(),
+                        },
+                      })
+                    }
+                    placeholder="https://www.youtube.com/@kotsonmattress"
+                    className="mt-1 font-mono text-xs"
+                  />
+                </div>
+                <div>
+                  <Label>LinkedIn URL</Label>
+                  <Input
+                    defaultValue={footerConfig?.social_links?.linkedin || "https://in.linkedin.com/company/kotsonmattress"}
+                    onBlur={(e) =>
+                      saveFooter.mutate({
+                        ...footerConfig,
+                        social_links: {
+                          ...footerConfig?.social_links,
+                          linkedin: e.target.value.trim(),
+                        },
+                      })
+                    }
+                    placeholder="https://in.linkedin.com/company/kotsonmattress"
+                    className="mt-1 font-mono text-xs"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -802,13 +1097,160 @@ export default function WebsiteEditStudio() {
 
       {/* Tab 5: Global Content & Promos */}
       {activeTab === "global" && (
-        <div className="p-6 rounded-xl border border-border bg-card space-y-4">
-          <h3 className="font-heading text-base font-bold">Global Site Promos & Urgent Banners</h3>
-          <p className="text-xs text-muted-foreground">
-            Activate emergency banners or seasonal flash sale overlays across all storefront pages.
-          </p>
-          <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-            <strong>Active Site Campaign:</strong> "Sleep Royal Festive Season — Flat 25% Off Across Orthopedic Models"
+        <div className="space-y-6">
+          {/* Site Promos */}
+          <div className="p-6 rounded-xl border border-border bg-card space-y-4">
+            <h3 className="font-heading text-base font-bold">Global Site Promos & Urgent Banners</h3>
+            <p className="text-xs text-muted-foreground">
+              Activate emergency banners or seasonal flash sale overlays across all storefront pages.
+            </p>
+            <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+              <strong>Active Site Campaign:</strong> "Sleep Royal Festive Season — Flat 25% Off Across Orthopedic Models"
+            </div>
+          </div>
+
+          {/* Central Customer Support Configuration (Call + WhatsApp) */}
+          <div className="p-6 rounded-xl border border-border bg-card space-y-6">
+            <div className="border-b border-border pb-4">
+              <div className="flex items-center gap-2">
+                <Phone className="w-5 h-5 text-[#557B42]" />
+                <h3 className="font-heading text-base font-bold">Customer Support Configuration (Call & WhatsApp)</h3>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Central authoritative customer-support details. Drives the Homepage CTA, Product Detail Pages, Customizable Products, and Chatbot.
+              </p>
+            </div>
+
+            <div className="space-y-4 max-w-2xl">
+              {/* Phone & Country Code */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <Label>Country Code</Label>
+                  <Input
+                    defaultValue={supportConfig?.countryCode || "+91"}
+                    disabled
+                    className="mt-1 font-mono text-xs bg-muted/50 cursor-not-allowed"
+                  />
+                  <span className="text-[10px] text-muted-foreground">India Canonical (+91)</span>
+                </div>
+                <div className="sm:col-span-2">
+                  <Label>Support Phone Number</Label>
+                  <Input
+                    defaultValue={supportConfig?.phone || "8009800936"}
+                    onBlur={(e) => {
+                      const val = e.target.value.trim();
+                      if (val && val !== supportConfig?.phone) {
+                        saveSupport.mutate({
+                          phone: val,
+                          country_code: supportConfig?.countryCode || "+91",
+                          whatsapp: supportConfig?.whatsapp || val,
+                          phone_enabled: supportConfig?.phoneEnabled ?? true,
+                          whatsapp_enabled: supportConfig?.whatsappEnabled ?? true,
+                          whatsapp_default_message: supportConfig?.whatsappDefaultMessage || "Hi Kotson, I need help choosing the right product.",
+                        });
+                      }
+                    }}
+                    placeholder="8009800936"
+                    className="mt-1 font-mono text-xs"
+                  />
+                  <span className="text-[10px] text-muted-foreground">Canonical dialer format: +918009800936</span>
+                </div>
+              </div>
+
+              {/* WhatsApp Number */}
+              <div>
+                <Label>WhatsApp Number</Label>
+                <div className="relative mt-1">
+                  <Input
+                    defaultValue={supportConfig?.whatsapp || "8009800936"}
+                    onBlur={(e) => {
+                      const val = e.target.value.trim();
+                      if (val && val !== supportConfig?.whatsapp) {
+                        saveSupport.mutate({
+                          phone: supportConfig?.phone || "8009800936",
+                          country_code: supportConfig?.countryCode || "+91",
+                          whatsapp: val,
+                          phone_enabled: supportConfig?.phoneEnabled ?? true,
+                          whatsapp_enabled: supportConfig?.whatsappEnabled ?? true,
+                          whatsapp_default_message: supportConfig?.whatsappDefaultMessage || "Hi Kotson, I need help choosing the right product.",
+                        });
+                      }
+                    }}
+                    placeholder="8009800936"
+                    className="font-mono text-xs pl-8"
+                  />
+                  <Whatsapp className="w-4 h-4 text-[#1B382B] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+                <span className="text-[10px] text-muted-foreground block mt-1">
+                  wa.me destination generated as: <code className="bg-muted px-1 py-0.5 rounded font-mono text-[11px]">https://wa.me/91{sanitizeWhatsAppNumber(supportConfig?.whatsapp || "8009800936").replace(/^91/, "")}</code>
+                </span>
+              </div>
+
+              {/* Default WhatsApp Message */}
+              <div>
+                <Label>Default WhatsApp Message</Label>
+                <Textarea
+                  defaultValue={supportConfig?.whatsappDefaultMessage || "Hi Kotson, I need help choosing the right product."}
+                  onBlur={(e) => {
+                    const val = e.target.value.trim();
+                    if (val && val !== supportConfig?.whatsappDefaultMessage) {
+                      saveSupport.mutate({
+                        phone: supportConfig?.phone || "8009800936",
+                        country_code: supportConfig?.countryCode || "+91",
+                        whatsapp: supportConfig?.whatsapp || "8009800936",
+                        phone_enabled: supportConfig?.phoneEnabled ?? true,
+                        whatsapp_enabled: supportConfig?.whatsappEnabled ?? true,
+                        whatsapp_default_message: val,
+                      });
+                    }
+                  }}
+                  rows={2}
+                  className="mt-1 text-xs"
+                />
+                <span className="text-[10px] text-muted-foreground">Pre-filled in WhatsApp. Never automatically sent.</span>
+              </div>
+
+              {/* Enabled Toggles */}
+              <div className="flex flex-col sm:flex-row gap-4 pt-2 border-t border-border">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={supportConfig?.phoneEnabled ?? true}
+                    onChange={(e) =>
+                      saveSupport.mutate({
+                        phone: supportConfig?.phone || "8009800936",
+                        country_code: supportConfig?.countryCode || "+91",
+                        whatsapp: supportConfig?.whatsapp || "8009800936",
+                        phone_enabled: e.target.checked,
+                        whatsapp_enabled: supportConfig?.whatsappEnabled ?? true,
+                        whatsapp_default_message: supportConfig?.whatsappDefaultMessage || "Hi Kotson, I need help choosing the right product.",
+                      })
+                    }
+                    className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                  />
+                  <span className="text-xs font-medium">Enable Phone Calls</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={supportConfig?.whatsappEnabled ?? true}
+                    onChange={(e) =>
+                      saveSupport.mutate({
+                        phone: supportConfig?.phone || "8009800936",
+                        country_code: supportConfig?.countryCode || "+91",
+                        whatsapp: supportConfig?.whatsapp || "8009800936",
+                        phone_enabled: supportConfig?.phoneEnabled ?? true,
+                        whatsapp_enabled: e.target.checked,
+                        whatsapp_default_message: supportConfig?.whatsappDefaultMessage || "Hi Kotson, I need help choosing the right product.",
+                      })
+                    }
+                    className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                  />
+                  <span className="text-xs font-medium">Enable WhatsApp Click-to-Chat</span>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -912,7 +1354,7 @@ export default function WebsiteEditStudio() {
           <div>
             <Label>Global Meta Description</Label>
             <Textarea
-              defaultValue="Experience pain-free ergonomic sleep with Kotson's doctor-endorsed 7-Zone orthopedic memory foam and 100% natural organic Dunlop latex mattresses. 100-night trial."
+              defaultValue="Experience pain-free ergonomic sleep with Kotson's doctor-endorsed 7-Zone orthopedic memory foam and 100% natural organic Dunlop latex mattresses. 30-night trial."
               rows={3}
               className="mt-1"
             />
@@ -1005,7 +1447,7 @@ export default function WebsiteEditStudio() {
               <Input
                 value={publishNote}
                 onChange={(e) => setPublishNote(e.target.value)}
-                placeholder="e.g. Updated festive hero banner and 100-night trial text"
+                placeholder="e.g. Updated festive hero banner and 30-night trial text"
                 className="mt-1"
               />
             </div>
