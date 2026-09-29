@@ -99,3 +99,8 @@ screenshot.png
 backend/data/
 *.tmp
 
+# Temporary audit / scratch scripts (never commit)
+scratch_*.py
+*_inventory.py
+backend/scratch_*.py
+

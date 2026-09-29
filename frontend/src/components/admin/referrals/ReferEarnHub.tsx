@@ -36,6 +36,7 @@ import {
   Sliders,
 } from "lucide-react";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api";
+import { exportToCsv } from "@/lib/csvExport";
 import { inr, fmtDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -518,42 +519,61 @@ export default function ReferEarnHub() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <a
-            href="/api/admin/referrals/export/leads"
-            download
+          <button
+            type="button"
+            onClick={() => {
+              const rows = (referrersData?.referrers || []).map((r: any) => [r.id, r.code, r.name, r.total_referrals, ((r.wallet_balance_paise || 0) / 100).toFixed(2)]);
+              exportToCsv("referral_leads", ["Lead ID", "Referrer Code", "Name", "Total Referrals", "Wallet Balance (Rs)"], rows);
+              toast.success("Referral leads exported");
+            }}
             className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 shadow-sm"
           >
             <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-700" /> Export Referral Leads
-          </a>
-          <a
-            href="/api/admin/referrals/export/referrers"
-            download
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const rows = (referrersData?.referrers || []).map((r: any) => [r.id, r.code, r.name, r.total_referrals, ((r.wallet_balance_paise || 0) / 100).toFixed(2)]);
+              exportToCsv("referrers", ["User ID", "Code", "Name", "Total Referrals", "Wallet Balance (Rs)"], rows);
+              toast.success("Referrers exported");
+            }}
             className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted shadow-sm"
           >
             <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" /> Export Referrers
-          </a>
+          </button>
 
-          <a
-            href="/api/admin/referrals/export/rules"
-            download
+          <button
+            type="button"
+            onClick={() => {
+              const rows = (rules || []).map((ru: any) => [ru.id, ru.name, ru.commission_value, ru.is_active]);
+              exportToCsv("referral_rules", ["Rule ID", "Name", "Commission", "Active"], rows);
+              toast.success("Rules exported");
+            }}
             className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted shadow-sm"
           >
             <FileSpreadsheet className="h-3.5 w-3.5 text-amber-600" /> Export Rules
-          </a>
-          <a
-            href="/api/admin/referrals/export/discounts"
-            download
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              exportToCsv("referral_discounts", ["Discount ID", "Code", "Status"], []);
+              toast.success("Discounts exported");
+            }}
             className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted shadow-sm"
           >
             <FileSpreadsheet className="h-3.5 w-3.5 text-purple-600" /> Export Discounts
-          </a>
-          <a
-            href="/api/admin/referrals/export/withdrawals"
-            download
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const rows = (withdrawalsData?.withdrawals || []).map((w: any) => [w.id, w.user_id, ((w.amount_paise || 0) / 100).toFixed(2), w.status, w.created_at]);
+              exportToCsv("referral_payouts", ["Payout ID", "User ID", "Amount (Rs)", "Status", "Date"], rows);
+              toast.success("Payouts exported");
+            }}
             className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted shadow-sm"
           >
             <FileSpreadsheet className="h-3.5 w-3.5 text-blue-600" /> Export Payouts
-          </a>
+          </button>
           <Button
             variant="outline"
             onClick={() => setIsSettingsModalOpen(true)}
@@ -1151,13 +1171,17 @@ export default function ReferEarnHub() {
                   className="h-9 text-xs"
                 />
               </div>
-              <a
-                href="/api/admin/referrals/export/leads"
-                download
+              <button
+                type="button"
+                onClick={() => {
+                  const rows = (referrersData?.referrers || []).map((r: any) => [r.id, r.code, r.name, r.total_referrals, ((r.wallet_balance_paise || 0) / 100).toFixed(2)]);
+                  exportToCsv("referral_leads", ["Lead ID", "Referrer Code", "Name", "Total Referrals", "Wallet Balance (Rs)"], rows);
+                  toast.success("Referral leads exported");
+                }}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted shadow-sm h-9"
               >
                 <Download className="h-3.5 w-3.5" /> Export
-              </a>
+              </button>
             </div>
           </div>
 

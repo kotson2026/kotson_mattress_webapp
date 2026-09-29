@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiGet } from "@/lib/api";
+import { exportToCsv } from "@/lib/csvExport";
 import { inr, fmtDate, fmtDateTime } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -97,9 +98,22 @@ export default function SalesRevenueDashboard() {
   ];
 
   const handleExportCSV = () => {
-    const exportUrl = `${window.location.origin}/api/admin/sales/export?${queryParams}`;
-    window.open(exportUrl, "_blank");
-    toast.success("Sales report CSV export triggered");
+    const list = data?.recent_transactions || [];
+    if (list.length === 0) {
+      toast.error("No transactions to export");
+      return;
+    }
+    const headers = ["Order #", "Customer", "Channel", "Amount (Rs)", "Status", "Date"];
+    const rows = list.map((tx: any) => [
+      tx.order_number || tx.id,
+      tx.customer_name || "",
+      tx.channel || "",
+      ((tx.amount_paise || 0) / 100).toFixed(2),
+      tx.status || "",
+      tx.created_at || ""
+    ]);
+    exportToCsv(`sales_report_${Date.now()}`, headers, rows);
+    toast.success("Sales report CSV exported successfully");
   };
 
   const paginatedTransactions = useMemo(() => {

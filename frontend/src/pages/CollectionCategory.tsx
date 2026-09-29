@@ -9,9 +9,10 @@ import ProductGrid from "@/components/product/ProductGrid";
 export default function CollectionCategory() {
   const { category } = useParams();
   const { data: categories } = useQuery({ queryKey: ["categories"], queryFn: () => apiGet<Category[]>("/catalog/categories") });
-  const { data: products, isLoading } = useQuery({
+  const { data: products, isLoading, isError, refetch } = useQuery({
     queryKey: ["products", category],
     queryFn: () => apiGet<Product[]>(`/catalog/products?category=${category}`),
+    retry: 2,
   });
 
   const cat = (categories ?? []).find((c) => c.slug === category);
@@ -39,6 +40,16 @@ export default function CollectionCategory() {
               {[...Array(3)].map((_, i) => (
                 <div key={i} className="h-72 animate-pulse rounded-2xl bg-brand-sand" />
               ))}
+            </div>
+          ) : isError ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <p className="text-muted-foreground text-sm mb-4">Unable to load products. Please check your connection.</p>
+              <button
+                onClick={() => refetch()}
+                className="rounded-full bg-[#2F5233] text-white px-6 py-2 text-sm font-semibold hover:bg-[#2F5233]/90 transition-colors"
+              >
+                Try again
+              </button>
             </div>
           ) : (
             <ProductGrid products={products ?? []} testId={`category-grid-${category}`} />

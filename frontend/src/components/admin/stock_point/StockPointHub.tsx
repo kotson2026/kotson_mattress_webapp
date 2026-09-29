@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { apiGet, apiPost, apiPatch } from "@/lib/api";
+import { exportToCsv } from "@/lib/csvExport";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -194,16 +195,21 @@ export default function StockPointHub({ isOwnerAdmin = true }: StockPointHubProp
       category: movCategory,
       q: movSearch,
     });
-    window.open(`/api/stock-point/export/movements?${params.toString()}`, "_blank");
-    toast.success("Generating Stock Movements Excel workbook (.xlsx)…");
+    const movements = movData?.items || [];
+    const rows = movements.map((m: any) => [
+      m.id, m.variant_id, m.transaction_type, m.quantity, m.dispatch_type, m.created_at
+    ]);
+    exportToCsv(`stock_movements_${Date.now()}`, ["ID", "Variant ID", "Type", "Qty", "Dispatch Type", "Date"], rows);
+    toast.success("Stock movements exported");
   };
 
   const handleExportCurrentStock = () => {
-    const params = new URLSearchParams({
-      category: invCategory,
-    });
-    window.open(`/api/stock-point/export/current-stock?${params.toString()}`, "_blank");
-    toast.success("Generating Current Stock Excel workbook (.xlsx)…");
+    const inventory = invData?.items || [];
+    const rows = inventory.map((i: any) => [
+      i.variant_id, i.product_name, i.variant_title, i.stock, i.reserved, i.category
+    ]);
+    exportToCsv(`current_stock_${Date.now()}`, ["Variant ID", "Product", "Variant", "Stock", "Reserved", "Category"], rows);
+    toast.success("Current stock exported");
   };
 
   // Click on a dispatch ID in movements table

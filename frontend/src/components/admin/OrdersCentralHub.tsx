@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiGet, apiPost } from "@/lib/api";
+import { exportToCsv } from "@/lib/csvExport";
 import { inr, fmtDateTime, fmtDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -134,9 +135,22 @@ export default function OrdersCentralHub() {
 
   // Export CSV
   const handleExportOrders = () => {
-    const exportUrl = `${window.location.origin}/api/admin/orders/export?format=csv&${queryParams}`;
-    window.open(exportUrl, "_blank");
-    toast.success("Export initiated");
+    if (!orders || orders.length === 0) {
+      toast.error("No orders to export");
+      return;
+    }
+    const headers = ["Order Number", "Customer Name", "Phone", "Status", "Payment Status", "Total (Rs)", "Created At"];
+    const rows = orders.map((o: any) => [
+      o.order_number || o.id,
+      o.customer_name || "",
+      o.customer_phone || "",
+      o.status || "",
+      o.payment_status || "",
+      ((o.total_paise || 0) / 100).toFixed(2),
+      o.created_at || ""
+    ]);
+    exportToCsv(`orders_export_${Date.now()}`, headers, rows);
+    toast.success("Orders exported successfully");
   };
 
   const orders = data?.orders || [];

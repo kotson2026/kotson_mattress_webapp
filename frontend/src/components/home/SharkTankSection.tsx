@@ -14,8 +14,6 @@ import { useRef, useState, useEffect } from "react";
 const POSTER_SOURCES = [
   "/shark-tank/kotson-shark-tank-square.webp",
   "/shark-tank/kotson-shark-tank-square.jpg",
-  "/api/uploads/blogs/kotson-shark-tank-square.webp",
-  "/api/uploads/blogs/kotson-shark-tank-square.jpg",
   "/shark-tank/shark-tank-poster.png",
   "/shark-tank/shark-tank-banner.png",
 ];

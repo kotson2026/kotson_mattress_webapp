@@ -26,6 +26,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { apiGet, apiPost } from "@/lib/api";
+import { exportToCsv } from "@/lib/csvExport";
 import { inr } from "@/lib/format";
 import { useMe } from "@/lib/session";
 import { Button } from "@/components/ui/button";
@@ -130,10 +131,12 @@ export default function LeadsContactsHub() {
     }
   };
 
-  // Export CSV handler
   const handleExportCsv = () => {
-    window.open("/api/crm/leads/export", "_blank");
-    toast.success("Downloading authoritative CRM Leads CSV");
+    const rows = (pageData?.rows || []).map((l: any) => [
+      l.lead_number || l.id, l.name, l.phone, l.email, l.status, l.assigned_to || "", l.created_at || ""
+    ]);
+    exportToCsv(`crm_leads_${Date.now()}`, ["Lead #", "Name", "Phone", "Email", "Status", "Assigned To", "Date"], rows);
+    toast.success("CRM Leads CSV exported");
   };
 
   // Bulk Import mutation

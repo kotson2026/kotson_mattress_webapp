@@ -27,6 +27,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { apiUpload } from "@/lib/api";
 import { DEFAULT_TESTIMONIALS, extractYouTubeId } from "@/components/home/CustomerTestimonials";
 
 const DEFAULT_CERT_ITEMS = [
@@ -216,15 +217,7 @@ export default function SectionEditorModal({
     uploadForm.append("file", file);
     try {
       toast.loading("Uploading certification proof image...", { id: "cert-upload" });
-      const res = await fetch("/api/admin/cms/upload-image", {
-        method: "POST",
-        body: uploadForm,
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: "Upload failed" }));
-        throw new Error(err.detail || "Upload failed");
-      }
-      const data = await res.json();
+      const data = await apiUpload<{ url: string; asset_id?: string }>("/admin/cms/upload-image", uploadForm);
       const list = [...(configData.certifications || DEFAULT_CERT_ITEMS)];
       const existing = list[cIdx].certificationImage || {};
       list[cIdx] = {

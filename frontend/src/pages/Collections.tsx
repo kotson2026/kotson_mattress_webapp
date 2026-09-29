@@ -35,9 +35,10 @@ export default function Collections() {
     queryFn: () => apiGet<Category[]>("/catalog/categories"),
   });
 
-  const { data: products, isLoading } = useQuery({
+  const { data: products, isLoading, isError, refetch } = useQuery({
     queryKey: ["products", "all"],
     queryFn: () => apiGet<Product[]>("/catalog/products"),
+    retry: 2,
   });
 
   // Read active filter from URL query param
@@ -185,6 +186,16 @@ export default function Collections() {
                   <div className="mt-auto h-10 w-full rounded-xl bg-brand-sand/60" />
                 </div>
               ))}
+            </div>
+          ) : isError ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <p className="text-muted-foreground text-sm mb-4">Unable to load products. Please check your connection.</p>
+              <button
+                onClick={() => refetch()}
+                className="rounded-full bg-[#2F5233] text-white px-6 py-2 text-sm font-semibold hover:bg-[#2F5233]/90 transition-colors"
+              >
+                Try again
+              </button>
             </div>
           ) : (
             <ProductGrid

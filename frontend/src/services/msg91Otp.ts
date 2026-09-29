@@ -70,12 +70,14 @@ export async function initMsg91Sdk(captchaRenderId: string = "kotson-msg91-captc
 
   initPromise = (async () => {
     if (!MSG91_WIDGET_ID || !MSG91_WIDGET_TOKEN) {
-      console.warn(
-        "[MSG91 CONFIG] Phone verification widget cannot initialize: " +
-        (!MSG91_WIDGET_ID ? "VITE_MSG91_WIDGET_ID is missing. " : "") +
-        (!MSG91_WIDGET_TOKEN ? "VITE_MSG91_WIDGET_TOKEN is missing. " : "") +
-        "Please configure them in frontend/.env.development."
-      );
+      if (import.meta.env.DEV) {
+        console.warn(
+          "[MSG91 CONFIG] Phone verification widget cannot initialize: " +
+          (!MSG91_WIDGET_ID ? "VITE_MSG91_WIDGET_ID is missing. " : "") +
+          (!MSG91_WIDGET_TOKEN ? "VITE_MSG91_WIDGET_TOKEN is missing. " : "") +
+          "Add these as Vercel environment variables (public VITE_ prefix)."
+        );
+      }
       return false;
     }
 
@@ -161,9 +163,12 @@ export interface SendOtpResult {
  */
 export async function sendMsg91Otp(phone10Digits: string): Promise<SendOtpResult> {
   if (!MSG91_WIDGET_ID || !MSG91_WIDGET_TOKEN) {
+    if (import.meta.env.DEV) {
+      console.warn("[MSG91] VITE_MSG91_WIDGET_ID and/or VITE_MSG91_WIDGET_TOKEN are not configured.");
+    }
     return {
       success: false,
-      error: "Phone verification is not configured yet. Please configure VITE_MSG91_WIDGET_TOKEN in frontend/.env.development.",
+      error: "Phone verification is temporarily unavailable. Please try again later.",
     };
   }
 

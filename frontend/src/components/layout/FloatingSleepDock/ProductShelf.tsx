@@ -15,10 +15,11 @@ interface Props {
 }
 
 export default function ProductShelf({ activeCategory, onSelectCategory, onClose }: Props) {
-  const { data: allProducts } = useQuery({
+  const { data: allProducts, isError: catalogError, refetch } = useQuery({
     queryKey: ["products", "catalog-all"],
     queryFn: () => apiGet<Product[]>("/catalog/products"),
     staleTime: 120_000,
+    retry: 2,
   });
 
   const categoryItem = DOCK_CATEGORIES.find((c) => c.slug === activeCategory);
@@ -90,7 +91,17 @@ export default function ProductShelf({ activeCategory, onSelectCategory, onClose
           isCrossfading ? "opacity-40 scale-[0.99]" : "opacity-100 scale-100"
         }`}
       >
-        {products.length > 0 ? (
+        {catalogError ? (
+          <div className="col-span-full py-8 text-center">
+            <p className="text-sm text-brand-charcoal/60 mb-3">Unable to load products right now.</p>
+            <button
+              onClick={() => refetch()}
+              className="text-xs font-semibold text-brand-deep underline hover:no-underline"
+            >
+              Try again
+            </button>
+          </div>
+        ) : products.length > 0 ? (
           products.slice(0, 4).map((product) => (
             <Link
               key={product.id}
@@ -144,8 +155,8 @@ export default function ProductShelf({ activeCategory, onSelectCategory, onClose
             </Link>
           ))
         ) : (
-          <div className="col-span-full py-8 text-center text-sm text-brand-charcoal/60">
-            Catalog products for {categoryItem.label} loading...
+          <div className="col-span-full py-8 text-center text-sm text-brand-charcoal/50">
+            No products available in {categoryItem.label} yet.
           </div>
         )}
       </div>

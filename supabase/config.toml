@@ -1,0 +1,26 @@
+[project]
+id = "buodzslvzkungwufdkca"
+
+[functions.auth-msg91]
+verify_jwt = false
+
+[functions.auth-register]
+verify_jwt = false
+
+[functions.auth-login]
+verify_jwt = false
+
+[functions.auth-forgot-password]
+verify_jwt = false
+
+[functions.commerce-cart]
+verify_jwt = false
+
+[functions.checkout-start]
+verify_jwt = false
+
+[functions.checkout-verify]
+verify_jwt = false
+
+[functions.razorpay-webhook]
+verify_jwt = false
