@@ -145,7 +145,10 @@ async def sweep_expired_reservations() -> int:
     cursor = db.reservations.find({"status": "active", "expires_at": {"$lt": now_utc()}})
     count = 0
     async for res in cursor:
-        await db.reservations.update_one({"id": res["id"]}, {"$set": {"status": "expired"}})
+        # Atomic compare-and-swap: only proceed if this worker successfully transitions status from active to expired
+        up_res = await db.reservations.update_one({"id": res["id"], "status": "active"}, {"$set": {"status": "expired"}})
+        if up_res.modified_count == 0:
+            continue
         await db.variants.update_one({"id": res["variant_id"]}, {"$inc": {"reserved": -int(res["qty"])}})
         await db.orders.update_one(
             {"id": res["order_id"], "payment_status": "pending"},

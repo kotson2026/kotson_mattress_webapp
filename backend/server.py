@@ -15,6 +15,12 @@ from datetime import datetime
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger("kotson.server")
+
 # Database Persistence Connection
 from lib.db import client, db, ensure_indexes
 
@@ -76,6 +82,10 @@ async def lifespan(app: FastAPI):
         # Ensure authoritative PDP storytelling configuration
         from lib.pdp_storytelling_seed import seed_pilot_storytelling
         await seed_pilot_storytelling()
+
+        # Ensure authoritative Owner Admin account bootstrap
+        from lib.bootstrap_owner import bootstrap_owner_admin
+        await bootstrap_owner_admin()
     except Exception as exc:
         logger.warning("Startup auto-seed / CMS migration / promotion sync / customization sync / stock point sync skipped or failed: %s", exc)
     yield
@@ -115,6 +125,39 @@ async def create_status_check(input: StatusCheckCreate):
 async def get_status_checks():
     status_checks = await db.status_checks.find().to_list(1000)
     return [StatusCheck(**status_check) for status_check in status_checks]
+
+
+@app.get("/health")
+@api_router.get("/health")
+async def health_check():
+    """Deployable readiness probe that verifies database connectivity without leaking credentials."""
+    db_status = "connected"
+    status_code = 200
+    try:
+        from lib.supabase_client import get_pg_pool
+        pool = await asyncio.wait_for(get_pg_pool(), timeout=15.0)
+        if pool:
+            async with pool.acquire() as conn:
+                val = await asyncio.wait_for(conn.fetchval("SELECT 1;"), timeout=5.0)
+                if val != 1:
+                    db_status = "degraded"
+                    status_code = 503
+        else:
+            await asyncio.wait_for(db.products.count_documents({}), timeout=5.0)
+    except Exception as exc:
+        logger.warning("Health check database probe failed: %s", exc)
+        db_status = "unreachable"
+        status_code = 503
+
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        content={
+            "status": "ok" if db_status == "connected" else "degraded",
+            "database": db_status,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        },
+        status_code=status_code,
+    )
 
 # Resource routers (one module per resource) fold into the single /api router
 from routers import (  # noqa: E402
@@ -188,17 +231,24 @@ app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads"
 # Include the router in the main app
 app.include_router(api_router)
 
+cors_origins_raw = os.environ.get("CORS_ORIGINS", "").strip()
+if cors_origins_raw and cors_origins_raw != "*":
+    origins = [orig.strip() for orig in cors_origins_raw.split(",") if orig.strip()]
+else:
+    origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+    app_url = os.environ.get("APP_URL")
+    if app_url:
+        origins.append(app_url.strip().rstrip("/"))
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)

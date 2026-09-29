@@ -90,20 +90,49 @@ async def destroy_session(token: str) -> None:
     await db.sessions.delete_one({"token": token})
 
 
+def get_cookie_security_params():
+    """Return (secure, samesite) tuple based on deployment environment."""
+    env = os.environ.get("ENV", "development").lower()
+    app_url = os.environ.get("APP_URL", "")
+    explicit_secure = os.environ.get("COOKIE_SECURE", "").lower()
+
+    if explicit_secure in ("true", "1"):
+        secure = True
+    elif explicit_secure in ("false", "0"):
+        secure = False
+    else:
+        secure = app_url.startswith("https://") or env in ("production", "staging")
+
+    samesite_override = os.environ.get("COOKIE_SAMESITE", "").strip().lower()
+    if samesite_override in ("none", "lax", "strict"):
+        samesite = samesite_override
+    else:
+        samesite = "none" if secure else "lax"
+
+    return secure, samesite
+
+
 def set_session_cookie(response: Response, token: str) -> None:
+    secure, samesite = get_cookie_security_params()
     response.set_cookie(
         SESSION_COOKIE,
         token,
         max_age=SESSION_TTL_DAYS * 24 * 3600,
         httponly=True,
-        samesite="lax",
-        secure=os.environ.get("APP_URL", "").startswith("https://"),
+        samesite=samesite,
+        secure=secure,
         path="/",
     )
 
 
 def clear_session_cookie(response: Response) -> None:
-    response.delete_cookie(SESSION_COOKIE, path="/")
+    secure, samesite = get_cookie_security_params()
+    response.delete_cookie(
+        SESSION_COOKIE,
+        path="/",
+        samesite=samesite,
+        secure=secure,
+    )
 
 
 async def user_from_request(request: Request):
@@ -115,9 +144,20 @@ async def user_from_request(request: Request):
     if not session:
         return None
     expires = session.get("expires_at")
-    if expires is not None and expires.replace(tzinfo=timezone.utc) < now_utc():
-        await db.sessions.delete_one({"token": token})
-        return None
+    if expires is not None:
+        if isinstance(expires, str):
+            try:
+                expires_dt = datetime.fromisoformat(expires.replace("Z", "+00:00"))
+            except Exception:
+                expires_dt = None
+        elif isinstance(expires, datetime):
+            expires_dt = expires if expires.tzinfo else expires.replace(tzinfo=timezone.utc)
+        else:
+            expires_dt = None
+
+        if expires_dt and expires_dt < now_utc():
+            await db.sessions.delete_one({"token": token})
+            return None
     user = await db.users.find_one({"id": session["user_id"]})
     if not user or not user.get("is_active", True):
         return None

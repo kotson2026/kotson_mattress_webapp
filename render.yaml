@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: kotson-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    region: singapore # Closest available Render region to Supabase PostgreSQL (Mumbai ap-south-1)
+    plan: starter
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_PROVIDER
+        value: supabase
+      - key: DATABASE_URL
+        sync: false # Configure via Render Dashboard Secret Manager
+      - key: DB_POOL_MIN
+        value: "1"
+      - key: DB_POOL_MAX
+        value: "4"
+      - key: DB_TIMEOUT
+        value: "30.0"
+      - key: UVICORN_WORKERS
+        value: "1"
+      - key: ENV
+        value: staging
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAMESITE
+        value: none
+      - key: OWNER_EMAIL
+        value: hello@kotsonmattress.com
+      - key: CORS_ORIGINS
+        value: http://localhost:3000,http://localhost:5173,https://kotsonmattress.com
+      - key: APP_URL
+        value: http://localhost:3000
+      - key: MSG91_AUTH_KEY
+        sync: false # Configure via Render Dashboard Secret Manager
+      - key: RAZORPAY_KEY_ID
+        sync: false # Test mode only (rzp_test_...)
+      - key: RAZORPAY_KEY_SECRET
+        sync: false # Test mode secret only

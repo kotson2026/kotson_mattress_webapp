@@ -4,14 +4,15 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, AliasChoices
 
 from models.users import AddressIn, utcnow
 
 
 class CartItemIn(BaseModel):
+    model_config = {"extra": "allow"}
     variant_id: str
-    qty: int = Field(ge=1, le=10)
+    qty: int = Field(default=1, ge=1, le=10, validation_alias=AliasChoices("qty", "quantity"))
     custom_configuration_id: Optional[str] = None
 
 

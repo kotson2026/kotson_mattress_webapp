@@ -63,8 +63,21 @@ async def get_pg_pool():
 
     try:
         import asyncpg
-        _pg_pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=20)
-        logger.info("Connected asyncpg pool to PostgreSQL at %s", DATABASE_URL.split("@")[-1] if "@" in DATABASE_URL else "local")
+        min_size = int(os.environ.get("DB_POOL_MIN", "1"))
+        max_size = int(os.environ.get("DB_POOL_MAX", "4"))
+        command_timeout = float(os.environ.get("DB_TIMEOUT", "30.0"))
+        _pg_pool = await asyncpg.create_pool(
+            DATABASE_URL,
+            min_size=min_size,
+            max_size=max_size,
+            command_timeout=command_timeout,
+        )
+        logger.info(
+            "Connected asyncpg pool to PostgreSQL at %s (min=%d, max=%d)",
+            DATABASE_URL.split("@")[-1] if "@" in DATABASE_URL else "local",
+            min_size,
+            max_size,
+        )
         return _pg_pool
     except Exception as exc:
         logger.warning("Could not connect to PostgreSQL via asyncpg: %s", exc)

@@ -731,10 +731,10 @@ class LocalJsonDatabase:
 
 class DatabaseClient:
     """Application database client interface replacing legacy MongoClient/Motor."""
-    def __init__(self, db_instance: LocalJsonDatabase):
+    def __init__(self, db_instance: Any):
         self._db = db_instance
 
-    def __getitem__(self, name: str) -> LocalJsonDatabase:
+    def __getitem__(self, name: str) -> Any:
         return self._db
 
     def close(self) -> None:
@@ -758,10 +758,13 @@ if DATABASE_PROVIDER == "supabase":
             "Production Database Connection Failed for DATABASE_PROVIDER=supabase. "
             "Per Kotson Architecture Rules, production will never silently switch to local fallback storage."
         )
-    # When Supabase is configured, initialize client layer
-    _local_db = LocalJsonDatabase()
-    db = _local_db
-    client = DatabaseClient(_local_db)
+    # P0 FIX: In Supabase production mode, instantiate authoritative PostgresDatabase.
+    # LocalJsonDatabase is NEVER instantiated in Supabase mode.
+    from lib.postgres_adapter import PostgresDatabase
+    _local_db = None
+    db = PostgresDatabase()
+    client = DatabaseClient(db)
+    save_db_snapshot = db.save_snapshot
 else:
     logger.info(
         "[KOTSON ARCHITECTURE] Operating in LOCAL DEVELOPMENT FALLBACK mode (DATABASE_PROVIDER=local). "
@@ -770,8 +773,7 @@ else:
     _local_db = LocalJsonDatabase()
     db = _local_db
     client = DatabaseClient(_local_db)
-
-save_db_snapshot = _local_db.save_snapshot
+    save_db_snapshot = _local_db.save_snapshot
 
 
 # -----------------------------------------------------------------------------

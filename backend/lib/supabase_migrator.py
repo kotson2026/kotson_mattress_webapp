@@ -69,5 +69,6 @@ async def apply_supabase_migrations() -> List[str]:
             await conn.close()
     except Exception as exc:
         logger.error("Error executing Supabase / PostgreSQL migrations: %s", exc)
+        raise exc
 
     return applied

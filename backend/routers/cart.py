@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from lib.crm_intake import capture_cart_intent
 from lib.db import db
-from lib.security import CART_COOKIE, optional_user
+from lib.security import CART_COOKIE, optional_user, get_cookie_security_params
 from lib.services import clean_doc
 from models.orders import CartItemIn, CartItemPatch, CartLine, CartView, ReferralApplyIn
 
@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 async def get_or_create_cart(request: Request, response: Response, user):
     token = request.cookies.get(CART_COOKIE)
+    secure, samesite = get_cookie_security_params()
     if user:
         cart = await db.carts.find_one({"user_id": user["id"]})
         if not cart:
@@ -40,7 +41,7 @@ async def get_or_create_cart(request: Request, response: Response, user):
                 await db.carts.insert_one(doc)
                 cart = doc
                 response.set_cookie(CART_COOKIE, cart["token"], max_age=90 * 24 * 3600,
-                                    httponly=True, samesite="lax", path="/")
+                                    httponly=True, samesite=samesite, secure=secure, path="/")
         if user.get("referred_by") and not cart.get("referred_code"):
             await db.carts.update_one({"id": cart["id"]}, {"$set": {"referred_code": user["referred_by"]}})
             cart["referred_code"] = user["referred_by"]
@@ -67,7 +68,7 @@ async def get_or_create_cart(request: Request, response: Response, user):
     }
     await db.carts.insert_one(doc)
     response.set_cookie(CART_COOKIE, doc["token"], max_age=90 * 24 * 3600,
-                        httponly=True, samesite="lax", path="/")
+                        httponly=True, samesite=samesite, secure=secure, path="/")
     return doc
 
 
