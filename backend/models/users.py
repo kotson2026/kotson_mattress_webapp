@@ -22,6 +22,9 @@ class UserOut(BaseModel):
     reporting_to: Optional[str] = None
     referral_code: Optional[str] = None
     referred_by: Optional[str] = None
+    phone_verified: bool = False
+    phone_verified_at: Optional[datetime] = None
+    phone_verification_provider: Optional[str] = None
     is_active: bool = True
     created_at: datetime = Field(default_factory=utcnow)
 
@@ -29,9 +32,52 @@ class UserOut(BaseModel):
 class SignupIn(BaseModel):
     email: EmailStr
     name: str = Field(min_length=2, max_length=120)
-    phone: Optional[str] = None
+    phone: str = Field(min_length=10, max_length=20)
     password: str = Field(min_length=8, max_length=128)
     referral_code: Optional[str] = None
+    consent: bool = True
+    msg91_verification_token: Optional[str] = None
+    msg91_request_id: Optional[str] = None
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        trimmed = (v or "").strip()
+        if len(trimmed) < 2:
+            raise ValueError("Full name must be at least 2 characters")
+        return trimmed
+
+    @field_validator("consent")
+    @classmethod
+    def validate_consent(cls, v: bool) -> bool:
+        if not v:
+            raise ValueError("You must agree to the Terms & Conditions and Privacy Policy.")
+        return v
+
+
+
+
+class ForgotPasswordVerifyIn(BaseModel):
+    phone: str = Field(min_length=10, max_length=20)
+    msg91_verification_token: str = Field(min_length=1)
+    msg91_request_id: Optional[str] = None
+
+
+class ForgotPasswordVerifyOut(BaseModel):
+    ok: bool = True
+    reset_token: str
+    message: str = "Phone verified successfully. Please enter your new password."
+
+
+class ResetPasswordIn(BaseModel):
+    reset_token: str = Field(min_length=16, max_length=256)
+    new_password: str = Field(min_length=8, max_length=128)
+    confirm_password: str = Field(min_length=8, max_length=128)
+
+
+class ResetPasswordOut(BaseModel):
+    ok: bool = True
+    message: str = "Your password has been updated successfully."
 
 
 class LoginIn(BaseModel):

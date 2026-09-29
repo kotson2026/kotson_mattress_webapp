@@ -103,6 +103,77 @@ class ProductCustomizationConfig(BaseModel):
     pricing: CustomPricingRule = Field(default_factory=CustomPricingRule)
 
 
+class ProductStoryFeature(BaseModel):
+    icon: Optional[str] = None
+    title: str = ""
+    description: str = ""
+
+
+class ProductStorySection(BaseModel):
+    enabled: bool = True
+    eyebrow: Optional[str] = None
+    heading: Optional[str] = None
+    description: Optional[str] = None
+    features: List[ProductStoryFeature] = []
+
+
+class ProductSuitabilityItem(BaseModel):
+    label: str = ""
+    value: str = ""
+    icon: Optional[str] = None
+
+
+class ProductLifestyleSection(BaseModel):
+    enabled: bool = True
+    image_url: Optional[str] = None
+    eyebrow: Optional[str] = None
+    heading: Optional[str] = None
+    description: Optional[str] = None
+    suitability_items: List[ProductSuitabilityItem] = []
+    bullet_features: List[str] = []
+
+
+class ProductConstructionLayer(BaseModel):
+    order: int = 1
+    name: str = ""
+    description: str = ""
+    icon: Optional[str] = None
+    image_url: Optional[str] = None
+
+
+class ProductConstructionSection(BaseModel):
+    enabled: bool = True
+    eyebrow: Optional[str] = "WHAT'S INSIDE?"
+    heading: Optional[str] = "What's Inside"
+    description: Optional[str] = None
+    image_url: Optional[str] = None
+    layers: List[ProductConstructionLayer] = []
+
+
+class ProductFitGuideItem(BaseModel):
+    name: str = ""
+    subtitle: Optional[str] = None
+    dimensions: Optional[str] = None
+    specs: Optional[str] = None
+    link_slug: Optional[str] = None
+
+
+class ProductFitGuideSection(BaseModel):
+    enabled: bool = False
+    eyebrow: Optional[str] = "FIND THE RIGHT FIT"
+    heading: Optional[str] = "Find the Right Fit"
+    description: Optional[str] = None
+    items: List[ProductFitGuideItem] = []
+
+
+class ProductStorytellingConfig(BaseModel):
+    story: Optional[ProductStorySection] = None
+    lifestyle: Optional[ProductLifestyleSection] = None
+    construction: Optional[ProductConstructionSection] = None
+    fit_guide: Optional[ProductFitGuideSection] = None
+    certification_ids: List[str] = []
+
+
 class Product(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     slug: str
@@ -145,6 +216,7 @@ class Product(BaseModel):
     is_active: bool = True
     sort: int = 0
     customization: Optional[ProductCustomizationConfig] = None
+    storytelling: Optional[ProductStorytellingConfig] = None
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: Optional[datetime] = None
 
@@ -211,6 +283,7 @@ class ProductUpsertIn(BaseModel):
     dealer_pricing: Optional[Dict[str, Any]] = None
     is_active: bool = True
     customization: Optional[ProductCustomizationConfig] = None
+    storytelling: Optional[ProductStorytellingConfig] = None
     variants: Optional[List[VariantIn]] = None
 
 

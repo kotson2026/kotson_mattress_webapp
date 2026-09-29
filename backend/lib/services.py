@@ -10,8 +10,6 @@ Money is integer paise. Stock safety model (standalone mongod — no multi-doc t
 import logging
 from datetime import datetime, timedelta, timezone
 
-from bson import ObjectId
-
 from lib.db import db
 
 logger = logging.getLogger(__name__)
@@ -24,13 +22,13 @@ def now_utc() -> datetime:
 
 
 def clean_doc(doc: any) -> any:
-    """Strip Mongo internals and normalize datetimes to aware UTC recursively."""
+    """Strip database internals and normalize datetimes to aware UTC recursively."""
     if isinstance(doc, dict):
         out = {}
         for k, v in doc.items():
             if k == "_id":
                 continue
-            if isinstance(v, ObjectId):
+            if type(v).__name__ == "ObjectId":
                 out[k] = str(v)
             elif isinstance(v, datetime):
                 out[k] = v.replace(tzinfo=timezone.utc) if v.tzinfo is None else v
@@ -41,7 +39,7 @@ def clean_doc(doc: any) -> any:
         return out
     elif isinstance(doc, list):
         return [clean_doc(x) for x in doc]
-    elif isinstance(doc, ObjectId):
+    elif type(doc).__name__ == "ObjectId":
         return str(doc)
     elif isinstance(doc, datetime):
         return doc.replace(tzinfo=timezone.utc) if doc.tzinfo is None else doc

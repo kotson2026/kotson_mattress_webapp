@@ -409,6 +409,19 @@ async def get_public_homepage():
     }
 
 
+@router.get("/cms/certifications")
+async def get_cms_certifications():
+    """Fetch authoritative certifications from the central Website Edit CMS."""
+    page = await db.cms_pages.find_one({"slug": "home"})
+    if page:
+        doc = clean_doc(page)
+        sections = doc.get("published_sections") or doc.get("sections", [])
+        for s in sections:
+            if s.get("type") == "certifications_badges":
+                return s.get("config", {}).get("certifications", [])
+    return []
+
+
 @router.get("/cms/pages/{slug}")
 async def get_cms_page_by_slug(slug: str, preview: bool = False, user=Depends(optional_user)):
     """Fetch page by slug. Returns published_sections for live site, or draft sections if staff preview."""

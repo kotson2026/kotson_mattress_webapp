@@ -14,9 +14,7 @@ import logging
 import re
 from typing import Optional
 
-from pymongo.errors import DuplicateKeyError
-
-from lib.db import db
+from lib.db import db, DuplicateKeyError
 from lib.security import now_utc
 from models.crm import Lead, SourceEvent
 

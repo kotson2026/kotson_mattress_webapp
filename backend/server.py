@@ -15,7 +15,7 @@ from datetime import datetime
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
+# Database Persistence Connection
 from lib.db import client, db, ensure_indexes
 
 
@@ -36,7 +36,12 @@ async def lifespan(app: FastAPI):
     app.state.index_task = asyncio.create_task(ensure_indexes())  # background: a big index build must not block boot
     app.state.sweeper_task = asyncio.create_task(sweeper_loop())  # reconciliation: releases expired stock reservations
     try:
+        # Run Supabase / PostgreSQL schema migrations if DATABASE_URL is configured
+        from lib.supabase_migrator import apply_supabase_migrations
+        await apply_supabase_migrations()
+
         if await db.products.count_documents({}) == 0:
+
             import seed
             import seed_crm
             import seed_site_media
@@ -67,6 +72,10 @@ async def lifespan(app: FastAPI):
         # Ensure Refer & Earn authoritative seed data and statutory TDS settings
         from lib.referral_seed import ensure_referral_system_seed
         await ensure_referral_system_seed()
+
+        # Ensure authoritative PDP storytelling configuration
+        from lib.pdp_storytelling_seed import seed_pilot_storytelling
+        await seed_pilot_storytelling()
     except Exception as exc:
         logger.warning("Startup auto-seed / CMS migration / promotion sync / customization sync / stock point sync skipped or failed: %s", exc)
     yield

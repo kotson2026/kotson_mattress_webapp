@@ -50,6 +50,20 @@ def login_rate_limited(key: str, limit: int = 1000, window_s: int = 300) -> bool
     return False
 
 
+_forgot_attempts: dict[str, list[float]] = {}
+
+
+def forgot_password_rate_limited(key: str, limit: int = 5, window_s: int = 300) -> bool:
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return False
+    now = time.time()
+    hits = [t for t in _forgot_attempts.get(key, []) if now - t < window_s]
+    _forgot_attempts[key] = hits
+    if len(hits) >= limit:
+        return True
+    hits.append(now)
+    return False
+
 
 def normalize_email(email: str) -> str:
     return email.strip().lower()

@@ -260,6 +260,14 @@ async def get_product(slug: str):
     return await product_with_variants(p)
 
 
+@router.get("/catalog/pdp-settings")
+async def get_pdp_settings():
+    s = await db.settings.find_one({"id": "site"}) or {}
+    return {
+        "pdp_design_version": s.get("pdp_design_version", "storytelling")
+    }
+
+
 # =============================================================================
 # OWNER ADMIN — CATALOG DASHBOARD & PRODUCT CRUD
 # =============================================================================

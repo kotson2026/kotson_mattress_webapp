@@ -35,6 +35,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import DataTablePagination from "@/components/ui/DataTablePagination";
+import ProductStorytellingTab from "./ProductStorytellingTab";
 
 interface ProductOverview {
   total_products: number;
@@ -79,6 +80,7 @@ interface ProductItem {
   total_stock: number;
   variants: Variant[];
   customization?: any;
+  storytelling?: any;
 }
 
 export default function CatalogCentralHub() {
@@ -574,6 +576,7 @@ function ProductEditorModal({
       { id: "v1", sku: "KS-KING-01", size: "King (78x72)", price: 29999, mrp: 39999, stock: 10 },
       { id: "v2", sku: "KS-QUEEN-01", size: "Queen (78x60)", price: 24999, mrp: 32999, stock: 8 },
     ],
+    storytelling: product?.storytelling || undefined,
   });
 
   const saveProduct = useMutation({
@@ -602,6 +605,7 @@ function ProductEditorModal({
     { id: 9, label: "Refer & Earn", icon: TrendingUp },
     { id: 10, label: "Dealer Terms", icon: Tag },
     { id: 11, label: "Customization", icon: Ruler },
+    { id: 12, label: "Product Page Story", icon: Sparkles },
   ];
 
   return (
@@ -615,9 +619,22 @@ function ProductEditorModal({
             </h2>
             <p className="text-xs text-muted-foreground">Authoritative price authority and storefront specification.</p>
           </div>
-          <Button size="icon" variant="ghost" onClick={onClose}>
-            <X className="w-5 h-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {formData.slug && (
+              <a
+                href={`/products/${formData.slug}?pdp=storytelling`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-leaf/10 text-brand-leaf text-xs font-semibold hover:bg-brand-leaf/20 border border-brand-leaf/30 transition-colors"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Preview New PDP
+              </a>
+            )}
+            <Button size="icon" variant="ghost" onClick={onClose}>
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
 
         {/* Modal Tabs Bar */}
@@ -1639,6 +1656,15 @@ function ProductEditorModal({
               )}
             </div>
           )}
+
+          {activeTab === 12 && (
+            <ProductStorytellingTab
+              storytelling={formData.storytelling}
+              onChange={(updated) => setFormData({ ...formData, storytelling: updated })}
+              productSlug={formData.slug}
+              productName={formData.name}
+            />
+          )}
         </div>
 
         {/* Modal Footer */}
@@ -1647,7 +1673,7 @@ function ProductEditorModal({
             Cancel
           </Button>
           <div className="flex items-center gap-3">
-            {activeTab < 11 && (
+            {activeTab < 12 && (
               <Button variant="outline" onClick={() => setActiveTab(activeTab + 1)}>
                 Next Tab <ChevronRight className="w-4 h-4 ml-1" />
               </Button>

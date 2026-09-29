@@ -12,6 +12,7 @@ import OrderConfirmation from "@/pages/OrderConfirmation";
 import TrackOrder from "@/pages/TrackOrder";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import ForgotPassword from "@/pages/ForgotPassword";
 import Account from "@/pages/Account";
 import About from "@/pages/About";
 import SleepScience from "@/pages/SleepScience";
@@ -115,6 +116,8 @@ export default function App() {
         <Route path="/account" element={<Account />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<Navigate to="/forgot-password" replace />} />
         <Route path="/about" element={<About />} />
         <Route path="/why-kotson" element={<Navigate to="/about" replace />} />
         <Route path="/sleep-science" element={<SleepScience />} />

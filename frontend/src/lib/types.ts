@@ -9,6 +9,9 @@ export interface User {
   roles: string[];
   referral_code: string | null;
   referred_by: string | null;
+  phone_verified?: boolean;
+  phone_verified_at?: string | null;
+  phone_verification_provider?: string | null;
   is_active: boolean;
   created_at: string;
 }
@@ -143,6 +146,77 @@ export interface ProductCustomizationConfig {
   pricing: CustomPricingRule;
 }
 
+export interface ProductStoryFeature {
+  icon?: string;
+  title: string;
+  description: string;
+}
+
+export interface ProductStorySection {
+  enabled: boolean;
+  eyebrow?: string;
+  heading?: string;
+  description?: string;
+  features?: ProductStoryFeature[];
+}
+
+export interface ProductSuitabilityItem {
+  label: string;
+  value: string;
+  icon?: string;
+}
+
+export interface ProductLifestyleSection {
+  enabled: boolean;
+  image_url?: string;
+  eyebrow?: string;
+  heading?: string;
+  description?: string;
+  suitability_items?: ProductSuitabilityItem[];
+  bullet_features?: string[];
+}
+
+export interface ProductConstructionLayer {
+  order: number;
+  name: string;
+  description: string;
+  icon?: string;
+  image_url?: string;
+}
+
+export interface ProductConstructionSection {
+  enabled: boolean;
+  eyebrow?: string;
+  heading?: string;
+  description?: string;
+  image_url?: string;
+  layers?: ProductConstructionLayer[];
+}
+
+export interface ProductFitGuideItem {
+  name: string;
+  subtitle?: string;
+  dimensions?: string;
+  specs?: string;
+  link_slug?: string;
+}
+
+export interface ProductFitGuideSection {
+  enabled: boolean;
+  eyebrow?: string;
+  heading?: string;
+  description?: string;
+  items?: ProductFitGuideItem[];
+}
+
+export interface ProductStorytellingConfig {
+  story?: ProductStorySection;
+  lifestyle?: ProductLifestyleSection;
+  construction?: ProductConstructionSection;
+  fit_guide?: ProductFitGuideSection;
+  certification_ids?: string[];
+}
+
 export interface Product {
   id: string;
   slug: string;
@@ -172,6 +246,7 @@ export interface Product {
   is_best_seller?: boolean;
   short_description?: string;
   customization?: ProductCustomizationConfig;
+  storytelling?: ProductStorytellingConfig;
 }
 
 export interface CartLine {

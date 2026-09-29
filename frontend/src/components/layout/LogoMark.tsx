@@ -3,22 +3,23 @@
 // Never recreate this mark with a font.
 // Served from frontend/public/brand/ — a plain URL keeps this out of the TS module graph.
 const TRANSPARENT_LOGO = "/brand/kotson-logo-transparent.png";
+const LIGHT_LOGO = "/brand/kotson-logo-light.png";
 
 interface Props {
-  /** Optional backward-compatible flag (no-op: white/cream backing bar removed per brand regression fix) */
+  /** When true, renders the light/white version for dark surfaces (e.g. brand-deep green) */
   light?: boolean;
   className?: string;
 }
 
-export default function LogoMark({ className = "" }: Props) {
+export default function LogoMark({ light = false, className = "" }: Props) {
   return (
     <img
-      src={TRANSPARENT_LOGO}
+      src={light ? LIGHT_LOGO : TRANSPARENT_LOGO}
       alt="Kotson"
       width={1024}
       height={342}
       decoding="async"
-      className={`block h-auto object-contain shrink-0 ${className || "w-[160px] sm:w-[180px] lg:w-[200px]"}`}
+      className={`block h-auto object-contain shrink-0 ${className || "w-[150px] sm:w-[165px] lg:w-[175px]"}`}
       data-testid="brand-wordmark"
     />
   );

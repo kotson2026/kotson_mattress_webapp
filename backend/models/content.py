@@ -82,6 +82,7 @@ class SettingsOut(BaseModel):
     promotion_title: str = "Sitewide Product Sale"
     promotion_discount_type: str = "percentage"
     promotion_scope: str = "all_products"
+    pdp_design_version: str = "storytelling"
 
 
 class SettingsUpdate(BaseModel):
@@ -96,6 +97,7 @@ class SettingsUpdate(BaseModel):
     promotion_title: Optional[str] = None
     promotion_discount_type: Optional[str] = None
     promotion_scope: Optional[str] = None
+    pdp_design_version: Optional[str] = None
 
 
 class InquiryNote(BaseModel):

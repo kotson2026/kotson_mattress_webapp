@@ -1,28 +1,43 @@
+import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Copy, LogOut } from "lucide-react";
-import { toast } from "sonner";
+import { Building2 } from "lucide-react";
 import { apiGet, apiPost } from "@/lib/api";
 import type { Dealer, Order, ReferralMe } from "@/lib/types";
-import { fmtDate, inr } from "@/lib/format";
 import { useMe } from "@/lib/session";
 import StorefrontHeader from "@/components/layout/StorefrontHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import CustomerReferralPortal from "@/components/account/CustomerReferralPortal";
+import AccountHeader from "@/components/account/AccountHeader";
+import AccountNavigation, { type AccountTabId } from "@/components/account/AccountNavigation";
+import OrdersPanel from "@/components/account/OrdersPanel";
+import AddressesPanel from "@/components/account/AddressesPanel";
 
 export default function Account() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const initialTab = searchParams.get("tab") || "orders";
-  const { data: me, isLoading } = useMe();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab") as AccountTabId | null;
+  const activeTab: AccountTabId =
+    tabParam && ["orders", "addresses", "referrals", "dealer"].includes(tabParam)
+      ? tabParam
+      : "orders";
 
-  const { data: orders } = useQuery({ queryKey: ["orders"], queryFn: () => apiGet<Order[]>("/orders"), enabled: !!me });
-  const { data: referrals } = useQuery({ queryKey: ["referrals"], queryFn: () => apiGet<ReferralMe>("/referrals/me"), enabled: !!me });
+  const { data: me, isLoading: isLoadingMe } = useMe();
+
+  const {
+    data: orders,
+    isLoading: isLoadingOrders,
+    isError: isErrorOrders,
+    refetch: refetchOrders,
+  } = useQuery({
+    queryKey: ["orders"],
+    queryFn: () => apiGet<Order[]>("/orders"),
+    enabled: !!me,
+  });
+
   const { data: dealer } = useQuery({
     queryKey: ["dealer-me"],
     queryFn: () => apiGet<Dealer>("/dealer/me").catch(() => null),
@@ -38,148 +53,168 @@ export default function Account() {
     },
   });
 
-  if (isLoading) {
+  const handleTabChange = (tab: AccountTabId) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tab === "orders") {
+        next.delete("tab");
+      } else {
+        next.set("tab", tab);
+      }
+      return next;
+    });
+  };
+
+  if (isLoadingMe) {
     return (
-      <div className="min-h-svh">
+      <div className="min-h-svh bg-[#FAFAF8]">
         <StorefrontHeader />
-        <div className="mx-auto max-w-5xl px-4 py-12"><div className="h-64 animate-pulse rounded-2xl bg-brand-sand" /></div>
+        <div className="mx-auto max-w-[1220px] px-4 sm:px-6 lg:px-8 pt-10 pb-16">
+          <div className="h-44 animate-pulse rounded-[20px] bg-[#EAEFE8]" />
+          <div className="mt-6 h-12 w-80 animate-pulse rounded-xl bg-[#EAEFE8]" />
+          <div className="mt-6 h-80 animate-pulse rounded-[20px] bg-[#EAEFE8]" />
+        </div>
+        <SiteFooter />
       </div>
     );
   }
 
   if (!me) {
     return (
-      <div className="min-h-svh">
+      <div className="min-h-svh bg-[#FAFAF8]">
         <StorefrontHeader />
         <main className="mx-auto max-w-md px-4 py-20 text-center sm:px-6">
-          <h1 className="font-heading text-3xl font-black">Sign in to your account</h1>
-          <p className="mt-2 text-muted-foreground">Your orders, addresses and referral link live here.</p>
-          <Link to="/login" className={buttonVariants({ size: "lg" }) + " mt-6"} data-testid="account-login-link">Sign in</Link>
+          <h1 className="font-heading text-3xl font-black text-[#2D2D2D]">
+            Sign in to your account
+          </h1>
+          <p className="mt-2 text-sm text-[#666666]">
+            Your orders, addresses and referral link live here.
+          </p>
+          <Link
+            to="/login"
+            className={buttonVariants({ size: "lg" }) + " mt-6 bg-[#467065] text-white hover:bg-[#3B5F56] rounded-xl"}
+            data-testid="account-login-link"
+          >
+            Sign in
+          </Link>
         </main>
         <SiteFooter />
       </div>
     );
   }
 
-  const copyLink = async () => {
-    if (!referrals?.share_url) return;
-    await navigator.clipboard.writeText(referrals.share_url);
-    toast.success("Referral link copied");
-  };
-
   return (
-    <div className="min-h-svh">
+    <div className="min-h-svh bg-[#FAFAF8] text-[#2D2D2D]">
+      {/* Existing Global Storefront Navbar */}
       <StorefrontHeader />
-      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="font-heading text-4xl font-black tracking-tight" data-testid="account-heading">Hello, {me.name}</h1>
-            <p className="mt-1 text-sm text-muted-foreground" data-testid="account-email">{me.email}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {me.roles.filter((r) => r !== "customer").map((r) => (
-              <Link key={r} to={r === "manager" ? "/manager" : r.startsWith("crm") ? "/crm" : r === "dealer" ? "/dealer" : "/admin"} className={buttonVariants({ variant: "outline", size: "sm" })}>
-                {r} console
-              </Link>
-            ))}
-            <Button variant="ghost" size="sm" onClick={() => signOut.mutate()} data-testid="account-signout-button">
-              <LogOut className="h-4 w-4" /> Sign out
-            </Button>
-          </div>
+
+      {/* Account Page Container: max-width ~1220px, responsive padding and rhythm */}
+      <main className="mx-auto max-w-[1220px] px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10 md:pt-11 pb-16 sm:pb-20">
+        {/* Premium Account Header Card */}
+        <AccountHeader
+          user={me}
+          onSignOut={() => signOut.mutate()}
+          isSigningOut={signOut.isPending}
+        />
+
+        {/* Account Tabs Navigation */}
+        <div className="mt-5 sm:mt-6">
+          <AccountNavigation
+            activeTab={activeTab}
+            onChangeTab={handleTabChange}
+            showDealerTab={Boolean(dealer || me.roles.includes("dealer"))}
+          />
         </div>
 
-        <Tabs defaultValue={initialTab} className="mt-8">
-          <TabsList variant="line">
-            <TabsTrigger value="orders" data-testid="account-tab-orders">Orders</TabsTrigger>
-            <TabsTrigger value="addresses" data-testid="account-tab-addresses">Addresses</TabsTrigger>
-            <TabsTrigger value="referrals" data-testid="account-tab-referrals">Refer &amp; Earn</TabsTrigger>
-          </TabsList>
+        {/* Tab Content Panel */}
+        <div className="mt-5 sm:mt-6">
+          {activeTab === "orders" && (
+            <div id="panel-orders" role="tabpanel" aria-labelledby="tab-orders">
+              <OrdersPanel
+                orders={orders}
+                isLoading={isLoadingOrders}
+                isError={isErrorOrders}
+                onRetry={() => refetchOrders()}
+              />
+            </div>
+          )}
 
-          <TabsContent value="orders" className="mt-6">
-            {(orders ?? []).length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border p-12 text-center" data-testid="account-orders-empty">
-                <p className="font-heading text-lg font-semibold">No orders yet</p>
-                <Link to="/collections" className="mt-3 inline-block text-brand-deep underline">Start shopping</Link>
+          {activeTab === "addresses" && (
+            <div id="panel-addresses" role="tabpanel" aria-labelledby="tab-addresses">
+              <AddressesPanel orders={orders} />
+            </div>
+          )}
+
+          {activeTab === "referrals" && (
+            <div id="panel-referrals" role="tabpanel" aria-labelledby="tab-referrals">
+              <CustomerReferralPortal />
+            </div>
+          )}
+
+          {activeTab === "dealer" && (
+            <div
+              id="panel-dealer"
+              role="tabpanel"
+              aria-labelledby="tab-dealer"
+              className="rounded-[20px] border border-[#E4E9E2] bg-white p-6 sm:p-8 md:p-10 shadow-[0_1px_4px_rgba(70,112,101,0.02)]"
+              data-testid="account-dealer"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F4F6F2] text-[#467065]">
+                  <Building2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="font-heading text-xl font-bold text-[#2D2D2D]">
+                    Dealer / B2B Portal
+                  </h2>
+                  <p className="text-xs text-[#666666]">
+                    Wholesale procurement and partner orders
+                  </p>
+                </div>
               </div>
-            ) : (
-              <Table data-testid="account-orders-table">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Order</TableHead>
-                    <TableHead>Placed</TableHead>
-                    <TableHead>Payment</TableHead>
-                    <TableHead>Fulfilment</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(orders ?? []).map((o) => (
-                    <TableRow key={o.id} data-testid={`account-order-${o.order_number}`}>
-                      <TableCell>
-                        <Link to={`/order/confirmation/${o.id}`} className="font-medium text-brand-deep underline">{o.order_number}</Link>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{fmtDate(o.created_at)}</TableCell>
-                      <TableCell><Badge variant={o.payment_status === "paid" ? "default" : "outline"}>{o.payment_status}</Badge></TableCell>
-                      <TableCell className="text-sm">{o.fulfilment_status.replace(/_/g, " ")}</TableCell>
-                      <TableCell className="text-right tabular-nums">{inr(o.amounts.total)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </TabsContent>
 
-          <TabsContent value="addresses" className="mt-6">
-            <div className="rounded-2xl border border-border bg-card p-6" data-testid="account-addresses">
-              <h2 className="font-heading text-lg font-bold">Delivery addresses</h2>
-              {(orders ?? []).length === 0 ? (
-                <p className="mt-2 text-sm text-muted-foreground">Addresses you use at checkout are saved with each order and listed here.</p>
-              ) : (
-                <ul className="mt-4 space-y-4">
-                  {[...new Map((orders ?? []).map((o) => [`${o.address.line1}-${o.address.pincode}`, o.address])).values()].map((a, i) => (
-                    <li key={i} className="rounded-xl border border-border p-4 text-sm">
-                      <p className="font-medium">{a.full_name}</p>
-                      <p className="text-muted-foreground">
-                        {a.line1}{a.line2 ? `, ${a.line2}` : ""}, {a.city}, {a.state} {a.pincode} · {a.phone}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="referrals" className="mt-6">
-            <CustomerReferralPortal />
-          </TabsContent>
-
-          <TabsContent value="dealer" className="mt-6">
-            <div className="max-w-xl rounded-2xl border border-border bg-card p-6" data-testid="account-dealer">
-              <h2 className="font-heading text-lg font-bold">Dealer / B2B Portal</h2>
-              {dealer ? (
-                <>
-                  <p className="mt-3 font-medium">{dealer.org_name}</p>
-                  <Badge variant="outline" className="mt-2">{dealer.status}</Badge>
-                  <div className="mt-4">
-                    <Link to="/dealer" className={buttonVariants({ variant: "outline", size: "sm" })} data-testid="dealer-portal-link">
-                      Open dealer portal
-                    </Link>
+              <div className="mt-6 border-t border-[#E9EFE7] pt-6">
+                {dealer ? (
+                  <div className="space-y-4">
+                    <p className="font-semibold text-lg text-[#2D2D2D]">
+                      {dealer.org_name}
+                    </p>
+                    <Badge variant="outline" className="border-[#CBD6C7] text-[#467065]">
+                      {dealer.status}
+                    </Badge>
+                    <div className="pt-2">
+                      <Link
+                        to="/dealer"
+                        className={buttonVariants({ variant: "outline", size: "sm" }) + " rounded-xl border-[#CBD6C7] text-[#467065]"}
+                        data-testid="dealer-portal-link"
+                      >
+                        Open dealer portal
+                      </Link>
+                    </div>
                   </div>
-                </>
-              ) : (
-                <>
-                  <p className="mt-2 text-sm text-muted-foreground">Sell Kotson in your store? Apply for a wholesale dealer account.</p>
-                  <div className="mt-4">
-                    <Link to="/dealer" className={buttonVariants({ size: "sm" }) + " min-h-11"} data-testid="dealer-apply-link">
-                      Apply as dealer
-                    </Link>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-[#555555]">
+                      Sell Kotson in your store? Apply for a wholesale dealer account.
+                    </p>
+                    <div className="pt-2">
+                      <Link
+                        to="/dealer"
+                        className={buttonVariants({ size: "sm" }) + " rounded-xl bg-[#467065] text-white hover:bg-[#3B5F56] min-h-11"}
+                        data-testid="dealer-apply-link"
+                      >
+                        Apply as dealer
+                      </Link>
+                    </div>
                   </div>
-                </>
-              )}
+                )}
+              </div>
             </div>
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
       </main>
+
+      {/* Existing Site Footer */}
       <SiteFooter />
     </div>
   );

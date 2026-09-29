@@ -9,13 +9,40 @@ export function useMe() {
   return useQuery({ queryKey: ["me"], queryFn: () => apiGet<User | null>("/auth/me") });
 }
 
-export const login = (email: string, password: string) =>
-  apiPost<AuthOut>("/auth/login", { email, password });
+export const login = (identifier: string, password: string) =>
+  apiPost<AuthOut>("/auth/login", { identifier, password });
 
-export const signup = (body: { email: string; name: string; password: string; phone?: string | null; referral_code?: string | null }) =>
-  apiPost<AuthOut>("/auth/signup", body);
+export const signup = (body: {
+  email: string;
+  name: string;
+  password: string;
+  phone: string;
+  referral_code?: string | null;
+  consent?: boolean;
+  msg91_verification_token?: string | null;
+  msg91_request_id?: string | null;
+}) => apiPost<AuthOut>("/auth/signup", body);
+
 
 export const logout = () => apiPost<{ ok: boolean }>("/auth/logout");
+
+export const verifyForgotPasswordOtp = (body: {
+  phone: string;
+  msg91_verification_token: string;
+  msg91_request_id?: string | null;
+}) =>
+  apiPost<{ ok: boolean; reset_token: string; message: string }>(
+    "/auth/forgot-password/verify",
+    body
+  );
+
+export const submitPasswordReset = (body: {
+  reset_token: string;
+  new_password: string;
+  confirm_password: string;
+}) =>
+  apiPost<{ ok: boolean; message: string }>("/auth/forgot-password/reset", body);
+
 
 export function useSessionInvalidator() {
   const qc = useQueryClient();
