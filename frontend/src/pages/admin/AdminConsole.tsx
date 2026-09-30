@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Route, Routes, useLocation } from "react-router-dom";
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { toast } from "sonner";
 import { apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
 import type { AssetSlot, AuditEntry, Claim, CMSBlock, Dashboard, Dealer, DealerOrder, Order, Product, ReferralRule, RewardEntry, SiteSettings, User } from "@/lib/types";
@@ -8,23 +8,25 @@ import { fmtDateTime, inr } from "@/lib/format";
 import { useMe } from "@/lib/session";
 import { AnnouncementEditor, HeroVideoEditor } from "@/components/admin/SiteMediaEditors";
 import ConsoleLayout from "@/components/layout/ConsoleLayout";
-import OwnerDashboard from "@/components/admin/OwnerDashboard";
-import OrdersCentralHub from "@/components/admin/OrdersCentralHub";
-import SalesRevenueDashboard from "@/components/admin/SalesRevenueDashboard";
-import AuditLogView from "@/components/admin/AuditLogView";
-import WebsiteEditStudio from "@/components/admin/WebsiteEditStudio";
-import ClaimsView from "@/components/admin/ClaimsView";
-import TestDataManager from "@/components/admin/TestDataManager";
-import DispatchReturnsHub from "@/components/admin/DispatchReturnsHub";
-import CatalogCentralHub from "@/components/admin/catalog/CatalogCentralHub";
-import ClaimsTrustHub from "@/components/admin/claims/ClaimsTrustHub";
-import AssetLibraryHub from "@/components/admin/assets/AssetLibraryHub";
-import ReferEarnHub from "@/components/admin/referrals/ReferEarnHub";
-import DealerManagementHub from "@/components/admin/dealers/DealerManagementHub";
-import StaffAccessHub from "@/components/admin/staff/StaffAccessHub";
-import BlogHub from "@/components/admin/blogs/BlogHub";
-import StockPointHub from "@/components/admin/stock_point/StockPointHub";
-import CustomRequestsHub from "@/components/admin/custom_requests/CustomRequestsHub";
+
+// Lazy-loaded administrative subhubs to keep primary console chunks fast and lean
+const OwnerDashboard = lazy(() => import("@/components/admin/OwnerDashboard"));
+const OrdersCentralHub = lazy(() => import("@/components/admin/OrdersCentralHub"));
+const SalesRevenueDashboard = lazy(() => import("@/components/admin/SalesRevenueDashboard"));
+const AuditLogView = lazy(() => import("@/components/admin/AuditLogView"));
+const WebsiteEditStudio = lazy(() => import("@/components/admin/WebsiteEditStudio"));
+const ClaimsView = lazy(() => import("@/components/admin/ClaimsView"));
+const TestDataManager = lazy(() => import("@/components/admin/TestDataManager"));
+const DispatchReturnsHub = lazy(() => import("@/components/admin/DispatchReturnsHub"));
+const CatalogCentralHub = lazy(() => import("@/components/admin/catalog/CatalogCentralHub"));
+const ClaimsTrustHub = lazy(() => import("@/components/admin/claims/ClaimsTrustHub"));
+const AssetLibraryHub = lazy(() => import("@/components/admin/assets/AssetLibraryHub"));
+const ReferEarnHub = lazy(() => import("@/components/admin/referrals/ReferEarnHub"));
+const DealerManagementHub = lazy(() => import("@/components/admin/dealers/DealerManagementHub"));
+const StaffAccessHub = lazy(() => import("@/components/admin/staff/StaffAccessHub"));
+const BlogHub = lazy(() => import("@/components/admin/blogs/BlogHub"));
+const StockPointHub = lazy(() => import("@/components/admin/stock_point/StockPointHub"));
+const CustomRequestsHub = lazy(() => import("@/components/admin/custom_requests/CustomRequestsHub"));
 import DataTablePagination from "@/components/ui/DataTablePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -827,30 +829,39 @@ export default function AdminConsole() {
       nav={effectiveNav}
       hideHeader={isDashboardRoute && !isCrmMasterOnly}
     >
-      <Routes>
-        <Route index element={isCrmMasterOnly ? <SalesRevenueDashboard /> : <OwnerDashboard />} />
-        <Route path="sales" element={<SalesRevenueDashboard />} />
-        <Route path="orders" element={<OrdersCentralHub />} />
-        <Route path="custom-requests" element={<CustomRequestsHub />} />
-        <Route path="stock-point/*" element={<StockPointHub isOwnerAdmin={true} />} />
-        <Route path="dispatch/*" element={<DispatchReturnsHub />} />
-        {!isCrmMasterOnly && (
-          <>
-            <Route path="catalog" element={<CatalogCentralHub />} />
-            <Route path="blogs/*" element={<BlogHub />} />
-            <Route path="website-edit" element={<WebsiteEditStudio />} />
-            <Route path="cms" element={<WebsiteEditStudio />} />
-            <Route path="claims" element={<ClaimsTrustHub />} />
-            <Route path="assets" element={<AssetLibraryHub />} />
-            <Route path="referrals" element={<ReferEarnHub />} />
-            <Route path="dealers" element={<DealerManagementHub />} />
-            <Route path="staff" element={<StaffAccessHub />} />
-            <Route path="audit" element={<AuditLogView />} />
-            <Route path="test-data" element={<TestDataManager />} />
-            <Route path="settings" element={<SettingsView />} />
-          </>
-        )}
-      </Routes>
+      <Suspense
+        fallback={
+          <div className="min-h-[40vh] flex flex-col items-center justify-center p-8 space-y-3">
+            <div className="h-7 w-7 animate-spin rounded-full border-3 border-[#1B365D] border-t-transparent" />
+            <p className="text-xs text-muted-foreground font-medium">Loading Module...</p>
+          </div>
+        }
+      >
+        <Routes>
+          <Route index element={isCrmMasterOnly ? <SalesRevenueDashboard /> : <OwnerDashboard />} />
+          <Route path="sales" element={<SalesRevenueDashboard />} />
+          <Route path="orders" element={<OrdersCentralHub />} />
+          <Route path="custom-requests" element={<CustomRequestsHub />} />
+          <Route path="stock-point/*" element={<StockPointHub isOwnerAdmin={true} />} />
+          <Route path="dispatch/*" element={<DispatchReturnsHub />} />
+          {!isCrmMasterOnly && (
+            <>
+              <Route path="catalog" element={<CatalogCentralHub />} />
+              <Route path="blogs/*" element={<BlogHub />} />
+              <Route path="website-edit" element={<WebsiteEditStudio />} />
+              <Route path="cms" element={<WebsiteEditStudio />} />
+              <Route path="claims" element={<ClaimsTrustHub />} />
+              <Route path="assets" element={<AssetLibraryHub />} />
+              <Route path="referrals" element={<ReferEarnHub />} />
+              <Route path="dealers" element={<DealerManagementHub />} />
+              <Route path="staff" element={<StaffAccessHub />} />
+              <Route path="audit" element={<AuditLogView />} />
+              <Route path="test-data" element={<TestDataManager />} />
+              <Route path="settings" element={<SettingsView />} />
+            </>
+          )}
+        </Routes>
+      </Suspense>
     </ConsoleLayout>
   );
 }

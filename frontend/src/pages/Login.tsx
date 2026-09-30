@@ -19,8 +19,8 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  // Feature-flagged test panel: secure default (OFF unless explicitly enabled with VITE_ENABLE_TEST_QUICK_FILL=true)
-  const enableQuickFill = import.meta.env.VITE_ENABLE_TEST_QUICK_FILL === "true";
+  // Feature-flagged test panel: strictly disabled in production builds; only accessible in DEV if explicitly set
+  const enableQuickFill = import.meta.env.DEV && import.meta.env.VITE_ENABLE_TEST_QUICK_FILL === "true";
 
 
   const mutation = useMutation({

@@ -24,7 +24,7 @@ export function useMe() {
         const { data: userRecord } = await supabase
           .from("users")
           .select("*")
-          .eq("id", session.user.id)
+          .or(`supabase_auth_id.eq.${session.user.id},id.eq.${session.user.id}`)
           .maybeSingle();
 
         if (userRecord) {

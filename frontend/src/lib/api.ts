@@ -37,10 +37,34 @@ type JsonBody = unknown;
 async function getAuthContext() {
   const { data } = await supabase.auth.getSession();
   const session = data?.session;
+  if (!session?.user) {
+    return {
+      user: null,
+      userId: null,
+      authId: null,
+      email: null,
+    };
+  }
+
+  let internalId = session.user.id;
+  try {
+    const { data: u } = await supabase
+      .from("users")
+      .select("id")
+      .or(`supabase_auth_id.eq.${session.user.id},id.eq.${session.user.id}`)
+      .maybeSingle();
+    if (u?.id) {
+      internalId = u.id;
+    }
+  } catch (_e) {
+    // fallback to session user id
+  }
+
   return {
-    user: session?.user || null,
-    userId: session?.user?.id || null,
-    email: session?.user?.email || null,
+    user: session.user,
+    userId: internalId,
+    authId: session.user.id,
+    email: session.user.email || null,
   };
 }
 
@@ -78,7 +102,11 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
   // ---------------------------------------------------------------------------
   if (pathname === "/auth/me") {
     if (!authCtx.userId) return null;
-    const { data } = await supabase.from("users").select("*").eq("id", authCtx.userId).maybeSingle();
+    const { data } = await supabase
+      .from("users")
+      .select("*")
+      .or(`supabase_auth_id.eq.${authCtx.authId},id.eq.${authCtx.userId}`)
+      .maybeSingle();
     if (data) {
       return {
         id: data.id,

@@ -40,6 +40,21 @@ export interface SupabaseAuthResult {
   guest_cart_merged?: number;
 }
 
+async function extractFunctionError(error: any, fallback: string): Promise<string> {
+  if (error && error.context && typeof error.context.json === "function") {
+    try {
+      const errBody = await error.context.json();
+      if (errBody && typeof errBody === "object") {
+        if (typeof errBody.error === "string") return errBody.error;
+        if (typeof errBody.message === "string") return errBody.message;
+      }
+    } catch (_e) {
+      // fallback
+    }
+  }
+  return error?.message || fallback;
+}
+
 /**
  * Perform login via Supabase Edge Function bridge (supporting dual mode: Supabase Auth & PBKDF2 migration).
  */
@@ -49,7 +64,7 @@ export async function supabaseLogin(identifier: string, password: string): Promi
   });
 
   if (error || !data || !data.ok) {
-    const errorMsg = data?.error || error?.message || "Invalid email/phone or password";
+    const errorMsg = data?.error || await extractFunctionError(error, "Invalid email/phone or password");
     throw new Error(errorMsg);
   }
 
@@ -82,7 +97,7 @@ export async function supabaseSignup(body: {
   });
 
   if (error || !data || !data.ok) {
-    const errorMsg = data?.error || error?.message || "Registration failed";
+    const errorMsg = data?.error || await extractFunctionError(error, "Registration failed");
     throw new Error(errorMsg);
   }
 
@@ -112,12 +127,12 @@ export async function supabaseVerifyForgotPasswordOtp(body: {
   msg91_verification_token: string;
   msg91_request_id?: string | null;
 }): Promise<{ ok: boolean; reset_token: string; message: string }> {
-  const { data, error } = await supabase.functions.invoke("auth-forgot-password?action=verify", {
-    body,
+  const { data, error } = await supabase.functions.invoke("auth-forgot-password", {
+    body: { ...body, action: "verify" },
   });
 
   if (error || !data || !data.ok) {
-    const errorMsg = data?.error || error?.message || "OTP verification failed";
+    const errorMsg = data?.message || data?.error || await extractFunctionError(error, "OTP verification failed");
     throw new Error(errorMsg);
   }
 
@@ -132,14 +147,15 @@ export async function supabaseSubmitPasswordReset(body: {
   new_password: string;
   confirm_password: string;
 }): Promise<{ ok: boolean; message: string }> {
-  const { data, error } = await supabase.functions.invoke("auth-forgot-password?action=reset", {
-    body,
+  const { data, error } = await supabase.functions.invoke("auth-forgot-password", {
+    body: { ...body, action: "reset" },
   });
 
   if (error || !data || !data.ok) {
-    const errorMsg = data?.error || error?.message || "Password reset failed";
+    const errorMsg = data?.message || data?.error || await extractFunctionError(error, "Password reset failed");
     throw new Error(errorMsg);
   }
 
   return data;
 }
+
