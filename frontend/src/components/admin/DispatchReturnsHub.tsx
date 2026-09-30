@@ -1543,7 +1543,7 @@ export default function DispatchReturnsHub() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {carriersData?.rows.map((carrier) => (
+            {(carriersData?.rows || []).map((carrier) => (
               <div
                 key={carrier.code}
                 className="rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:shadow-md"

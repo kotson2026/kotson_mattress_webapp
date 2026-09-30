@@ -70,15 +70,17 @@ export default function WebsiteEditStudio() {
     queryFn: () => apiGet<any>("/admin/cms/overview"),
   });
 
-  const { data: sectionTypes = [] } = useQuery({
+  const { data: rawSectionTypes = [] } = useQuery({
     queryKey: ["cms-section-types"],
     queryFn: () => apiGet<any[]>("/admin/cms/section-types"),
   });
+  const sectionTypes = Array.isArray(rawSectionTypes) ? rawSectionTypes : [];
 
-  const { data: pages = [], isLoading: pagesLoading } = useQuery({
+  const { data: rawPages = [], isLoading: pagesLoading } = useQuery({
     queryKey: ["admin-cms-pages"],
     queryFn: () => apiGet<any[]>("/cms/pages"),
   });
+  const pages = Array.isArray(rawPages) ? rawPages : [];
 
   const homePage = pages.find((p: any) => p.slug === "home") || pages[0];
 
@@ -102,11 +104,12 @@ export default function WebsiteEditStudio() {
     queryFn: () => apiGet<any>("/admin/cms/support"),
   });
 
-  const { data: versions = [] } = useQuery({
+  const { data: rawVersions = [] } = useQuery({
     queryKey: ["admin-cms-versions"],
     queryFn: () => apiGet<any[]>("/admin/cms/versions"),
     enabled: isVersionModalOpen,
   });
+  const versions = Array.isArray(rawVersions) ? rawVersions : [];
 
   // Mutations
   const publishSite = useMutation({
