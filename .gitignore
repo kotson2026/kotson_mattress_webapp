@@ -103,4 +103,5 @@ backend/data/
 scratch_*.py
 *_inventory.py
 backend/scratch_*.py
+supabase/.temp/
 
