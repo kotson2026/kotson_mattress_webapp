@@ -28,6 +28,15 @@ import {
 } from "lucide-react";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api";
 import { inr } from "@/lib/format";
+
+function fmtRupees(amount: number | null | undefined): string {
+  if (amount === null || amount === undefined) return "—";
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -97,8 +106,30 @@ export default function CatalogCentralHub() {
   const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
   const [activeTab, setActiveTab] = useState<number>(1);
   const [isCategoryDrawerOpen, setIsCategoryDrawerOpen] = useState(false);
+  const [customDiscountInput, setCustomDiscountInput] = useState<string>("");
 
   // Queries
+  const { data: globalDiscountData } = useQuery<{ discount_percent: number }>({
+    queryKey: ["admin-global-discount"],
+    queryFn: () => apiGet<{ discount_percent: number }>("/admin/catalog/global-discount"),
+  });
+  const currentGlobalDiscount = globalDiscountData?.discount_percent ?? 40;
+
+  const applyGlobalDiscount = useMutation({
+    mutationFn: (discountPct: number) =>
+      apiPost("/admin/catalog/global-discount", { discount_percent: discountPct }),
+    onSuccess: (res: any) => {
+      qc.invalidateQueries({ queryKey: ["admin-global-discount"] });
+      qc.invalidateQueries({ queryKey: ["catalog-products"] });
+      qc.invalidateQueries({ queryKey: ["catalog-overview"] });
+      toast.success(
+        `Applied ${res?.discount_percent ?? ""}% global discount to all active variants! MRP = Base Price ÷ (1 - ${res?.discount_percent ?? ""}%)`
+      );
+      setCustomDiscountInput("");
+    },
+    onError: (e: any) => toast.error(e?.message || "Failed to apply global discount"),
+  });
+
   const { data: overview } = useQuery<ProductOverview>({
     queryKey: ["catalog-overview"],
     queryFn: () => apiGet("/admin/catalog/overview"),
@@ -242,6 +273,87 @@ export default function CatalogCentralHub() {
         </div>
       </div>
 
+      {/* Global Product Discount Control (Owner Admin) */}
+      <div className="p-4 rounded-xl border border-amber-200/90 bg-gradient-to-r from-amber-50/90 via-white to-amber-50/60 shadow-xs space-y-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="font-heading text-sm font-bold text-amber-950 flex items-center gap-1.5">
+                <Sliders className="w-4 h-4 text-amber-700" /> Global Product Discount Control
+              </span>
+              <Badge className="bg-amber-600 text-white font-bold text-[11px] px-2 py-0.5">
+                ACTIVE: {currentGlobalDiscount}% OFF
+              </Badge>
+            </div>
+            <p className="text-xs text-amber-900/80">
+              One change applies to ALL active standard products/variants. Base selling price stays unchanged; displayed MRP = <code>Base Selling Price ÷ (1 − discount%)</code>.
+            </p>
+          </div>
+
+          {/* Action Buttons & Custom % Control */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant={currentGlobalDiscount === 40 ? "default" : "outline"}
+              disabled={applyGlobalDiscount.isPending}
+              onClick={() => applyGlobalDiscount.mutate(40)}
+              className={currentGlobalDiscount === 40 ? "bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold" : "border-amber-300 text-amber-900 bg-white hover:bg-amber-100 text-xs font-semibold"}
+            >
+              40% OFF
+            </Button>
+            <Button
+              size="sm"
+              variant={currentGlobalDiscount === 50 ? "default" : "outline"}
+              disabled={applyGlobalDiscount.isPending}
+              onClick={() => applyGlobalDiscount.mutate(50)}
+              className={currentGlobalDiscount === 50 ? "bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold" : "border-amber-300 text-amber-900 bg-white hover:bg-amber-100 text-xs font-semibold"}
+            >
+              50% OFF
+            </Button>
+            <div className="flex items-center gap-1.5 pl-2 border-l border-amber-200">
+              <Input
+                type="number"
+                min="0"
+                max="90"
+                placeholder="Custom %"
+                value={customDiscountInput}
+                onChange={(e) => setCustomDiscountInput(e.target.value)}
+                className="h-8 w-24 text-xs font-bold bg-white border-amber-300"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={applyGlobalDiscount.isPending || !customDiscountInput}
+                onClick={() => {
+                  const val = parseFloat(customDiscountInput);
+                  if (isNaN(val) || val < 0 || val >= 90) {
+                    toast.error("Please enter a valid discount percentage (0 to 89)");
+                    return;
+                  }
+                  applyGlobalDiscount.mutate(val);
+                }}
+                className="h-8 text-xs font-semibold bg-white border-amber-300 text-amber-900 hover:bg-amber-100"
+              >
+                Apply Custom %
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Live Formula Preview Examples */}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 pt-2 border-t border-amber-200/60 text-[11px] text-amber-800 font-medium">
+          <span>
+            <strong className="text-amber-950">Formula:</strong> MRP = Base Selling Price ÷ (1 − discount%)
+          </span>
+          <span>
+            At 40% OFF: ₹74,000 → MRP <strong>₹1,23,333</strong> (Store Selling: ₹74,000)
+          </span>
+          <span>
+            At 50% OFF: ₹74,000 → MRP <strong>₹1,48,000</strong> (Store Selling: ₹74,000)
+          </span>
+        </div>
+      </div>
+
       {/* Filter and Search Bar */}
       <div className="p-4 rounded-xl border border-border bg-card space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -364,11 +476,11 @@ export default function CatalogCentralHub() {
                     </TableCell>
                     <TableCell>
                       <div className="font-bold text-sm text-foreground">
-                        {p.price_from ? inr(p.price_from) : "—"}
+                        {p.price_from ? fmtRupees(p.price_from) : "—"}
                       </div>
                       {p.mrp_from && p.price_from && p.mrp_from > p.price_from && (
                         <div className="text-xs text-muted-foreground line-through">
-                          {inr(p.mrp_from)}
+                          {fmtRupees(p.mrp_from)}
                         </div>
                       )}
                     </TableCell>
@@ -553,10 +665,10 @@ function VariantPricingTab({
     setSavingIdx(idx);
     try {
       await apiPut(`/admin/catalog/variants/${v.id}/price`, {
-        selling_price_paise: v.price,
-        mrp_paise: v.mrp,
+        price: v.price,
+        mrp: v.mrp,
       });
-      toast.success(`${v.size || v.sku} price saved — ₹${(v.price / 100).toLocaleString("en-IN")}`);
+      toast.success(`${v.size || v.sku} price saved — ₹${Number(v.price).toLocaleString("en-IN")}`);
       qc.invalidateQueries({ queryKey: ["catalog-products"] });
     } catch (e: any) {
       toast.error(e?.message || "Failed to save variant price");
@@ -574,7 +686,7 @@ function VariantPricingTab({
     }
     const updated = formData.variants.map((v: any) => ({
       ...v,
-      mrp: Math.round((v.price / (1 - pct / 100)) / 100) * 100,
+      mrp: Math.round(v.price / (1 - pct / 100)),
     }));
     setFormData({ ...formData, variants: updated });
     toast.success(`MRP recalculated for ${pct}% discount on all ${updated.length} variants`);
@@ -632,8 +744,8 @@ function VariantPricingTab({
                     size: "Custom Size",
                     thickness: null,
                     firmness: null,
-                    price: 14999,
-                    mrp: Math.round((14999 / 0.60) / 100) * 100,
+                    price: 74000,
+                    mrp: Math.round(74000 / 0.60),
                     stock: 5,
                     is_active: true,
                   },
@@ -671,8 +783,8 @@ function VariantPricingTab({
           </TableHeader>
           <TableBody>
             {(formData.variants || []).map((v: any, idx: number) => {
-              // Auto-derived MRP from selling price using 40% rule
-              const autoMrp = v.price > 0 ? Math.round((v.price / 0.60) / 100) * 100 : 0;
+              // Auto-derived MRP from selling price using 40% rule (or override)
+              const autoMrp = v.price > 0 ? Math.round(v.price / 0.60) : 0;
               const effectiveMrp = v.mrp || autoMrp;
               const discountPct = effectiveMrp > 0 && effectiveMrp > v.price
                 ? Math.round(((effectiveMrp - v.price) / effectiveMrp) * 100)
@@ -746,14 +858,14 @@ function VariantPricingTab({
                           n[idx] = {
                             ...n[idx],
                             price,
-                            mrp: price > 0 ? Math.round((price / 0.60) / 100) * 100 : n[idx].mrp,
+                            mrp: price > 0 ? Math.round(price / 0.60) : n[idx].mrp,
                           };
                           setFormData({ ...formData, variants: n });
                         }}
                         className="h-8 text-xs font-bold text-[#16241C]"
                       />
                       <div className="text-[10px] text-muted-foreground pl-1">
-                        {v.price ? `₹${(v.price / 100).toLocaleString("en-IN")}` : ""}
+                        {v.price ? `₹${Number(v.price).toLocaleString("en-IN")}` : ""}
                       </div>
                     </div>
                   </TableCell>
@@ -771,7 +883,7 @@ function VariantPricingTab({
                         className="h-8 text-xs text-muted-foreground"
                       />
                       <div className="text-[10px] text-emerald-700 pl-1 font-semibold">
-                        Auto: ₹{(autoMrp / 100).toLocaleString("en-IN")}
+                        Auto: ₹{Number(autoMrp).toLocaleString("en-IN")}
                       </div>
                     </div>
                   </TableCell>
@@ -1123,7 +1235,7 @@ function ProductEditorModal({
                     {formData.variants[0]?.mrp > formData.variants[0]?.price
                       ? `${Math.round(
                           ((formData.variants[0].mrp - formData.variants[0].price) / formData.variants[0].mrp) * 100
-                        )}% OFF (Save ${inr(formData.variants[0].mrp - formData.variants[0].price)})`
+                        )}% OFF (Save ₹${Number(formData.variants[0].mrp - formData.variants[0].price).toLocaleString("en-IN")})`
                       : "No discount"}
                   </div>
                 </div>

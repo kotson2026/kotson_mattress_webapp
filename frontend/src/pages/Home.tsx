@@ -58,32 +58,35 @@ export default function Home() {
     staleTime: 30_000,
   });
 
-  // Map published CMS sections by type & id for fast lookup
-  const cmsMap = new Map<string, any>();
-  const rawSections: any[] = homePage?.sections || [];
-  for (const s of rawSections) {
-    if (s.type) cmsMap.set(s.type, s);
-    if (s.id) cmsMap.set(s.id, s);
-  }
+  // Determine authoritative section order from CMS (published_sections -> sections -> STRUCTURAL_SECTIONS fallback)
+  const sectionsToRender: any[] =
+    (homePage?.published_sections && homePage.published_sections.length > 0)
+      ? homePage.published_sections
+      : (homePage?.sections && homePage.sections.length > 0)
+      ? homePage.sections
+      : STRUCTURAL_SECTIONS;
 
   return (
     <div className="min-h-svh">
       <StorefrontHeader />
 
       <main>
-        {STRUCTURAL_SECTIONS.map((sec) => {
-          const cmsOverride = cmsMap.get(sec.type) || cmsMap.get(sec.key);
-
+        {sectionsToRender.map((sec: any, idx: number) => {
           // If owner explicitly hides section in CMS, respect that
-          if (cmsOverride && (cmsOverride.is_visible === false || cmsOverride.enabled === false)) {
+          if (sec.is_visible === false || sec.enabled === false) {
             return null;
           }
 
           // Use registered component from SectionRegistry or the approved default
           const registered = getWebsiteSection(sec.type);
-          const Component = registered ? registered.rendererComponent : sec.defaultComponent;
+          const fallbackDef = STRUCTURAL_SECTIONS.find(
+            (s) => s.type === sec.type || s.key === sec.type || s.key === sec.id
+          );
+          const Component = registered ? registered.rendererComponent : fallbackDef?.defaultComponent;
 
-          return <Component key={sec.key} config={cmsOverride?.config} />;
+          if (!Component) return null;
+
+          return <Component key={sec.id || sec.key || `${sec.type}-${idx}`} config={sec.config} />;
         })}
       </main>
 

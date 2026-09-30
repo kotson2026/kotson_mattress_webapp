@@ -12,6 +12,19 @@ import {
   supabaseVerifyForgotPasswordOtp,
   supabaseSubmitPasswordReset,
 } from "./supabaseClient";
+import { CANONICAL_CERTIFICATIONS } from "./storytellingDefaults";
+
+/**
+ * Normalizes price values into paise (integer).
+ * If the input is in standard rupees (< 1,000,000), converts to paise by multiplying by 100.
+ * If the input is already in paise (>= 1,000,000), keeps it intact.
+ */
+function toPaise(val: number | string | null | undefined): number {
+  if (val === null || val === undefined) return 0;
+  const num = typeof val === "string" ? parseFloat(val.replace(/,/g, "")) : Number(val);
+  if (isNaN(num) || num <= 0) return 0;
+  return num < 1000000 ? Math.round(num * 100) : Math.round(num);
+}
 
 export class ApiError extends Error {
   status: number;
@@ -287,8 +300,8 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
         ? Math.min(...vars.map((v: any) => v.price_paise || 0)) 
         : p.price_paise || 0;
       const lowestMrp = vars.length > 0 
-        ? Math.min(...vars.map((v: any) => (v.mrp_paise && v.mrp_paise > v.price_paise ? v.mrp_paise : Math.round((v.price_paise / 0.60) / 100) * 100))) 
-        : (p.mrp_paise && p.mrp_paise > p.price_paise ? p.mrp_paise : Math.round((p.price_paise / 0.60) / 100) * 100);
+        ? Math.min(...vars.map((v: any) => (v.mrp_paise && v.mrp_paise > v.price_paise ? v.mrp_paise : Math.round(v.price_paise / 0.60)))) 
+        : (p.mrp_paise && p.mrp_paise > p.price_paise ? p.mrp_paise : Math.round(p.price_paise / 0.60));
       
       const parsedVariants = vars.map((v: any) => {
         let size = v.title || "Standard";
@@ -332,7 +345,7 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
         const price = v.price_paise; // Authoritative SELLING price (e.g. 7400000 paise = ₹74,000)
         const mrp = (v.mrp_paise && v.mrp_paise > v.price_paise)
           ? v.mrp_paise
-          : Math.round((v.price_paise / 0.60) / 100) * 100; // Authoritative MRP (e.g. 12333300 paise = ₹123,333)
+          : Math.round(v.price_paise / 0.60); // Authoritative MRP (e.g. 12333333 paise = ₹123,333)
 
         return {
           id: v.id,
@@ -347,7 +360,7 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
           price,
           mrp,
           discount_amount: mrp - price,
-          discount_percent: 40,
+          discount_percent: mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 40,
           stock: v.stock || 20,
           reserved: v.reserved || 0,
           free_stock: Math.max(0, (v.stock || 20) - (v.reserved || 0)),
@@ -375,9 +388,11 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
         created_at: p.created_at || new Date().toISOString(),
         variants: parsedVariants,
         price_from: lowestPrice, // e.g. 7400000 paise = ₹74,000
-        mrp_from: lowestMrp,     // e.g. 12333300 paise = ₹123,333
-        discount_percent: 40,
+        mrp_from: lowestMrp,     // e.g. 12333333 paise = ₹123,333
+        discount_percent: lowestMrp > lowestPrice ? Math.round(((lowestMrp - lowestPrice) / lowestMrp) * 100) : 40,
         in_stock: vars.some((v: any) => (v.stock || 0) > (v.reserved || 0)),
+        storytelling: p.storytelling || null,
+        customization: p.customization || null,
       };
     };
 
@@ -399,8 +414,8 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
       ? Math.min(...vars.map((v: any) => v.price_paise || 0)) 
       : p.price_paise || 0;
     const lowestMrp = vars.length > 0 
-      ? Math.min(...vars.map((v: any) => (v.mrp_paise && v.mrp_paise > v.price_paise ? v.mrp_paise : Math.round((v.price_paise / 0.60) / 100) * 100))) 
-      : (p.mrp_paise && p.mrp_paise > p.price_paise ? p.mrp_paise : Math.round((p.price_paise / 0.60) / 100) * 100);
+      ? Math.min(...vars.map((v: any) => (v.mrp_paise && v.mrp_paise > v.price_paise ? v.mrp_paise : Math.round(v.price_paise / 0.60)))) 
+      : (p.mrp_paise && p.mrp_paise > p.price_paise ? p.mrp_paise : Math.round(p.price_paise / 0.60));
     
     const parsedVariants = vars.map((v: any) => {
       let size = v.title || "Standard";
@@ -444,7 +459,7 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
       const price = v.price_paise; // Authoritative SELLING price (e.g. 7400000 paise = ₹74,000)
       const mrp = (v.mrp_paise && v.mrp_paise > v.price_paise)
         ? v.mrp_paise
-        : Math.round((v.price_paise / 0.60) / 100) * 100; // Authoritative MRP (e.g. 12333300 paise = ₹123,333)
+        : Math.round(v.price_paise / 0.60); // Authoritative MRP (e.g. 12333333 paise = ₹123,333)
 
       return {
         id: v.id,
@@ -459,7 +474,7 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
         price,
         mrp,
         discount_amount: mrp - price,
-        discount_percent: 40,
+        discount_percent: mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 40,
         stock: v.stock || 20,
         reserved: v.reserved || 0,
         free_stock: Math.max(0, (v.stock || 20) - (v.reserved || 0)),
@@ -488,8 +503,10 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
       variants: parsedVariants,
       price_from: lowestPrice,
       mrp_from: lowestMrp,
-      discount_percent: 40,
+      discount_percent: lowestMrp > lowestPrice ? Math.round(((lowestMrp - lowestPrice) / lowestMrp) * 100) : 40,
       in_stock: vars.some((v: any) => (v.stock || 0) > (v.reserved || 0)),
+      storytelling: p.storytelling || null,
+      customization: p.customization || null,
     };
   }
 
@@ -755,7 +772,9 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
   if (pathname === "/cms/certifications") {
     const { data } = await supabase.rpc("kotson_get_public_homepage");
     const certSec = (data?.sections || []).find((s: any) => s.type === "certifications_badges");
-    return certSec?.config?.certifications || [];
+    const certs = certSec?.config?.certifications;
+    if (Array.isArray(certs) && certs.length > 0) return certs;
+    return CANONICAL_CERTIFICATIONS;
   }
 
   if (pathname === "/cms/footer") {
@@ -1331,10 +1350,17 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
     if (!pg) throw new ApiError(404, { detail: "CMS page not found" });
     const orderedIds: string[] = Array.isArray(body) ? body : [];
     const sections = normalizeCmsSections(pg.sections);
-    const reordered = orderedIds.map((id: string, idx: number) => {
+    const reordered: any[] = [];
+    for (let idx = 0; idx < orderedIds.length; idx++) {
+      const id = orderedIds[idx];
       const sec = sections.find((s: any) => s.id === id);
-      return sec ? { ...sec, order: idx } : null;
-    }).filter(Boolean);
+      if (sec) reordered.push({ ...sec, order: reordered.length });
+    }
+    for (const sec of sections) {
+      if (!orderedIds.includes(sec.id)) {
+        reordered.push({ ...sec, order: reordered.length });
+      }
+    }
     await supabase.from("cms_pages").update({ sections: reordered, has_draft_changes: true }).eq("id", pg.id);
     return { ok: true };
   }
@@ -1677,12 +1703,13 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
         size: v.title || v.size || "Standard",
         thickness: v.thickness || null,
         firmness: v.firmness || null,
-        price: v.price_paise || 0,
-        mrp: v.mrp_paise || Math.round((v.price_paise / 0.60) / 100) * 100,
+        // Admin prices in normal INR rupees: 74000 = ₹74,000 (NOT 7400000)
+        price: Math.round((v.price_paise || 0) / 100),
+        mrp: Math.round((v.mrp_paise || (v.price_paise ? Math.round(v.price_paise / 0.60) : 0)) / 100),
         stock: v.stock || 0,
         reserved: v.reserved || 0,
         free_stock: Math.max(0, (v.stock || 0) - (v.reserved || 0)),
-        discount_amount: Math.max(0, (v.mrp_paise || 0) - (v.price_paise || 0)),
+        discount_amount: Math.max(0, Math.round(((v.mrp_paise || 0) - (v.price_paise || 0)) / 100)),
         discount_percent: v.mrp_paise && v.mrp_paise > 0 ? Math.round(((v.mrp_paise - v.price_paise) / v.mrp_paise) * 100) : 40,
         is_active: v.is_active !== false,
       }));
@@ -1728,6 +1755,59 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
     return { total, rows: paged };
   }
 
+  // GLOBAL DISCOUNT: GET current active global discount
+  if (pathname === "/admin/catalog/global-discount" && method === "GET") {
+    const { data } = await supabase.from("settings").select("value").eq("id", "pricing").maybeSingle();
+    const discount = data?.value?.global_discount_percent ?? 40;
+    return { discount_percent: discount };
+  }
+
+  // GLOBAL DISCOUNT: POST apply global discount to ALL active standard products/variants
+  // Formula: MRP = base selling price / (1 - discount%)
+  // Examples: ₹74,000 at 40% -> MRP ₹1,23,333 -> selling ₹74,000
+  //           ₹74,000 at 50% -> MRP ₹1,48,000 -> selling ₹74,000
+  if (pathname === "/admin/catalog/global-discount" && method === "POST") {
+    const discountPercent = Number(body?.discount_percent ?? 40);
+    if (isNaN(discountPercent) || discountPercent < 0 || discountPercent >= 100) {
+      throw new ApiError(400, { detail: "discount_percent must be between 0 and 99" });
+    }
+    const factor = 1 - (discountPercent / 100);
+
+    // Fetch all active variants
+    const { data: variants, error: vErr } = await supabase
+      .from("product_variants")
+      .select("id, price_paise, mrp_paise")
+      .eq("is_active", true);
+
+    if (vErr) throw new ApiError(500, vErr);
+
+    const updatedList = (variants || []).map((v: any) => {
+      const basePrice = v.price_paise || 0;
+      const newMrpPaise = factor > 0 ? Math.round(basePrice / factor) : basePrice;
+      return { id: v.id, price_paise: basePrice, mrp_paise: newMrpPaise };
+    });
+
+    for (const item of updatedList) {
+      await supabase.from("product_variants").update({ mrp_paise: item.mrp_paise }).eq("id", item.id);
+    }
+
+    await supabase.from("settings").upsert({
+      id: "pricing",
+      value: {
+        global_discount_percent: discountPercent,
+        updated_at: new Date().toISOString(),
+        updated_by: authCtx.email || "owner@kotsonbeds.com",
+      },
+      updated_at: new Date().toISOString(),
+    });
+
+    return {
+      ok: true,
+      discount_percent: discountPercent,
+      updated_count: updatedList.length,
+    };
+  }
+
   if (pathname === "/admin/catalog/products" && method === "POST") {
     const { variants, ...productBody } = body || {};
     const { data: prod, error } = await supabase.from("products").insert({
@@ -1745,7 +1825,18 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
     if (error) throw new ApiError(400, { detail: error.message });
     if (prod && variants?.length) {
       await supabase.from("product_variants").insert(
-        variants.map((v: any) => ({ product_id: prod.id, sku: v.sku, title: v.size, price_paise: v.price, mrp_paise: v.mrp || Math.round((v.price / 0.60) / 100) * 100, stock: v.stock || 0 }))
+        variants.map((v: any) => {
+          const pricePaise = toPaise(v.price);
+          const mrpPaise = v.mrp ? toPaise(v.mrp) : Math.round(pricePaise / 0.60);
+          return {
+            product_id: prod.id,
+            sku: v.sku,
+            title: v.size,
+            price_paise: pricePaise,
+            mrp_paise: mrpPaise,
+            stock: v.stock || 0,
+          };
+        })
       );
     }
     return { ok: true, id: prod?.id };
@@ -1773,16 +1864,25 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
     // Upsert variants
     if (variants?.length) {
       for (const v of variants) {
+        const pricePaise = toPaise(v.price);
+        const mrpPaise = v.mrp ? toPaise(v.mrp) : Math.round(pricePaise / 0.60);
         if (v.id && !v.id.startsWith("v_")) {
           await supabase.from("product_variants").update({
             sku: v.sku,
             title: v.size,
-            price_paise: v.price,
-            mrp_paise: v.mrp || Math.round((v.price / 0.60) / 100) * 100,
+            price_paise: pricePaise,
+            mrp_paise: mrpPaise,
             stock: v.stock,
           }).eq("id", v.id);
         } else {
-          await supabase.from("product_variants").insert({ product_id: pid, sku: v.sku, title: v.size, price_paise: v.price, mrp_paise: v.mrp || Math.round((v.price / 0.60) / 100) * 100, stock: v.stock || 0 });
+          await supabase.from("product_variants").insert({
+            product_id: pid,
+            sku: v.sku,
+            title: v.size,
+            price_paise: pricePaise,
+            mrp_paise: mrpPaise,
+            stock: v.stock || 0,
+          });
         }
       }
     }
@@ -1792,12 +1892,14 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
   // VARIANT PRICE — dedicated per-variant price endpoint (fast, atomic)
   if (pathname.match(/^\/admin\/catalog\/variants\/[^/]+\/price$/) && method === "PUT") {
     const vid = pathname.split("/")[4];
-    const sellingPrice = body?.selling_price_paise ?? body?.price;
-    if (!sellingPrice) throw new ApiError(400, { detail: "selling_price_paise required" });
-    const mrp = body?.mrp_paise ?? Math.round((sellingPrice / 0.60) / 100) * 100;
-    const { error } = await supabase.from("product_variants").update({ price_paise: sellingPrice, mrp_paise: mrp }).eq("id", vid);
+    const rawPrice = body?.selling_price_paise ?? body?.price ?? body?.selling_price;
+    if (rawPrice === undefined || rawPrice === null) throw new ApiError(400, { detail: "price required" });
+    const pricePaise = toPaise(rawPrice);
+    const rawMrp = body?.mrp_paise ?? body?.mrp;
+    const mrpPaise = rawMrp ? toPaise(rawMrp) : Math.round(pricePaise / 0.60);
+    const { error } = await supabase.from("product_variants").update({ price_paise: pricePaise, mrp_paise: mrpPaise }).eq("id", vid);
     if (error) throw new ApiError(400, { detail: error.message });
-    return { ok: true, variant_id: vid, selling_price_paise: sellingPrice, mrp_paise: mrp };
+    return { ok: true, variant_id: vid, price: Math.round(pricePaise / 100), mrp: Math.round(mrpPaise / 100) };
   }
 
   if (pathname.match(/^\/admin\/catalog\/products\/[^/]+\/status$/) && method === "POST") {

@@ -63,6 +63,8 @@ export default function WebsiteEditStudio() {
   const [deleteConfirmSection, setDeleteConfirmSection] = useState<any>(null);
   const [homepageViewMode, setHomepageViewMode] = useState<"list" | "preview">("list");
   const [isDiscardModalOpen, setIsDiscardModalOpen] = useState(false);
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
   // Queries
   const { data: overview } = useQuery({
@@ -751,14 +753,60 @@ export default function WebsiteEditStudio() {
                 homePage.sections.map((sec: any, idx: number) => {
                   const typeMeta = sectionTypes.find((st: any) => st.type === sec.type);
                   const isLive = sec.is_visible !== false;
+                  const isDragging = draggedIdx === idx;
+                  const isDragOver = dragOverIdx === idx;
 
                   return (
                     <div
                       key={sec.id || idx}
-                      className="p-4 rounded-xl border border-border bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:shadow-xs transition-shadow"
+                      draggable={true}
+                      onDragStart={(e) => {
+                        setDraggedIdx(idx);
+                        e.dataTransfer.effectAllowed = "move";
+                        e.dataTransfer.setData("text/plain", `${idx}`);
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                        if (dragOverIdx !== idx) setDragOverIdx(idx);
+                      }}
+                      onDragLeave={() => {
+                        if (dragOverIdx === idx) setDragOverIdx(null);
+                      }}
+                      onDragEnd={() => {
+                        setDraggedIdx(null);
+                        setDragOverIdx(null);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (draggedIdx === null || draggedIdx === idx) {
+                          setDraggedIdx(null);
+                          setDragOverIdx(null);
+                          return;
+                        }
+                        const sections = [...homePage.sections];
+                        const [moved] = sections.splice(draggedIdx, 1);
+                        sections.splice(idx, 0, moved);
+                        const sectionIds = sections.map((s: any) => s.id);
+                        reorderSections.mutate(sectionIds);
+                        setDraggedIdx(null);
+                        setDragOverIdx(null);
+                      }}
+                      className={`p-4 rounded-xl border transition-all ${
+                        isDragging
+                          ? "opacity-40 scale-[0.99] border-dashed border-primary bg-primary/5"
+                          : isDragOver
+                          ? "border-primary bg-primary/10 shadow-md ring-2 ring-primary/20"
+                          : "border-border bg-card hover:shadow-xs hover:border-primary/40"
+                      } flex flex-col sm:flex-row sm:items-center justify-between gap-4`}
                     >
                       <div className="flex items-center gap-3.5">
-                        <GripVertical className="w-4 h-4 text-muted-foreground/60 shrink-0" />
+                        <div
+                          className="cursor-grab active:cursor-grabbing p-1.5 -ml-1 rounded-md hover:bg-muted text-muted-foreground/70 hover:text-foreground transition-colors"
+                          title="Drag handle: click and drag to reorder"
+                        >
+                          <GripVertical className="w-4 h-4 shrink-0" />
+                        </div>
                         <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center font-mono text-xs font-bold text-primary shrink-0">
                           #{idx + 1}
                         </div>

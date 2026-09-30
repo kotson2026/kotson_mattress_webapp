@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
 import { ShieldCheck, ExternalLink } from "lucide-react";
 
+import { CANONICAL_CERTIFICATIONS } from "@/lib/storytellingDefaults";
+
 interface ProductCertificationsProps {
   certificationIds?: string[];
   productName: string;
@@ -12,11 +14,6 @@ export default function ProductCertifications({
   certificationIds = [],
   productName,
 }: ProductCertificationsProps) {
-  // Graceful collapse if no certifications assigned
-  if (!certificationIds || certificationIds.length === 0) {
-    return null;
-  }
-
   // Fetch authoritative certifications from central Website Edit CMS
   const { data: allCmsCerts = [] } = useQuery<any[]>({
     queryKey: ["cms-certifications"],
@@ -24,14 +21,18 @@ export default function ProductCertifications({
     staleTime: 60_000,
   });
 
-  // Filter only certifications assigned to this product and visible
-  const activeProductCerts = allCmsCerts.filter(
+  const availableCerts = allCmsCerts.length > 0 ? allCmsCerts : CANONICAL_CERTIFICATIONS;
+
+  // Filter certifications assigned to this product or show all canonical if not specified
+  const activeProductCerts = availableCerts.filter(
     (c: any) =>
+      !certificationIds ||
+      certificationIds.length === 0 ||
       certificationIds.includes(c.id) ||
       certificationIds.includes(c.id?.toLowerCase())
   );
 
-  // If none found in CMS yet, gracefully collapse
+  // If none found, gracefully collapse
   if (activeProductCerts.length === 0) {
     return null;
   }

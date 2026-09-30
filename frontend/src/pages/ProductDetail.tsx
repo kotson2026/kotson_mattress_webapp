@@ -1,17 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { apiGet } from "@/lib/api";
 import type { Product, Variant } from "@/lib/types";
 import StorefrontHeader from "@/components/layout/StorefrontHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
 import StorytellingProductDetailView from "@/components/product/storytelling/StorytellingProductDetailView";
-import LegacyProductDetailView from "@/components/product/storytelling/LegacyProductDetailView";
-import { Sparkles, History, Eye } from "lucide-react";
+import { getCanonicalStorytelling } from "@/lib/storytellingDefaults";
 
 export default function ProductDetail() {
   const { slug } = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
 
   // 1. Authoritative Product Record
@@ -20,29 +18,6 @@ export default function ProductDetail() {
     queryFn: () => apiGet<Product>(`/catalog/products/${slug}`),
     retry: false,
   });
-
-  // 2. Authoritative Server-side PDP Design Version Setting
-  const { data: pdpSettings } = useQuery<{ pdp_design_version: string }>({
-    queryKey: ["pdp-settings"],
-    queryFn: () => apiGet<{ pdp_design_version: string }>("/catalog/pdp-settings"),
-    staleTime: 60_000,
-  });
-
-  // Feature Flag: "current" | "storytelling"
-  // Hierarchy: 1. URL ?pdp=... -> 2. LocalStorage -> 3. Server Setting -> 4. Default "storytelling"
-  const urlOverride = searchParams.get("pdp");
-  const localOverride = typeof window !== "undefined" ? localStorage.getItem("kotson_pdp_version") : null;
-  const serverVersion = pdpSettings?.pdp_design_version || "storytelling";
-  const activeVersion = (urlOverride || localOverride || serverVersion).toLowerCase() === "current"
-    ? "current"
-    : "storytelling";
-
-  const handleVersionSwitch = (target: "current" | "storytelling") => {
-    localStorage.setItem("kotson_pdp_version", target);
-    const next = new URLSearchParams(searchParams);
-    next.set("pdp", target);
-    setSearchParams(next);
-  };
 
   // Default the selectedVariant on load if only 1 variant exists
   useEffect(() => {
@@ -93,44 +68,6 @@ export default function ProductDetail() {
     <div className="min-h-svh bg-background">
       <StorefrontHeader />
 
-      {/* Feature Flag & Preview Bar: Discreet, non-intrusive control */}
-      <aside aria-label="PDP Presentation Mode" className="border-b border-border/60 bg-muted/40 px-4 py-1.5 text-xs">
-        <div className="mx-auto max-w-[1400px] flex items-center justify-between">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <span className="font-semibold text-foreground">PDP Design System:</span>
-            <span className="capitalize">{activeVersion === "storytelling" ? "Dynamic Storytelling (New Standard)" : "Current Legacy PDP"}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => handleVersionSwitch("storytelling")}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-medium transition-all ${
-                activeVersion === "storytelling"
-                  ? "bg-brand-leaf text-white shadow-xs"
-                  : "bg-background text-muted-foreground hover:text-foreground border border-border"
-              }`}
-              title="View Redesigned Storytelling PDP"
-            >
-              <Sparkles className="w-3 h-3" />
-              Storytelling
-            </button>
-            <button
-              type="button"
-              onClick={() => handleVersionSwitch("current")}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-medium transition-all ${
-                activeVersion === "current"
-                  ? "bg-brand-deep text-white shadow-xs"
-                  : "bg-background text-muted-foreground hover:text-foreground border border-border"
-              }`}
-              title="View Current Legacy PDP"
-            >
-              <History className="w-3 h-3" />
-              Current
-            </button>
-          </div>
-        </div>
-      </aside>
-
       {/* Loading Skeleton */}
       {isLoading && (
         <main className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 md:py-12 lg:px-8">
@@ -154,23 +91,17 @@ export default function ProductDetail() {
         </main>
       )}
 
-      {/* Product Content: Conditional on Feature Flag */}
+      {/* Product Content: Authoritative Storytelling PDP for all collections */}
       {product && (
-        activeVersion === "current" ? (
-          <LegacyProductDetailView
-            product={product}
-            selectedVariant={selectedVariant}
-            onVariantChange={setSelectedVariant}
-            related={related}
-          />
-        ) : (
-          <StorytellingProductDetailView
-            product={product}
-            selectedVariant={selectedVariant}
-            onVariantChange={setSelectedVariant}
-            related={related}
-          />
-        )
+        <StorytellingProductDetailView
+          product={{
+            ...product,
+            storytelling: product.storytelling || getCanonicalStorytelling(product.category_slug, product.slug),
+          }}
+          selectedVariant={selectedVariant}
+          onVariantChange={setSelectedVariant}
+          related={related}
+        />
       )}
 
       <SiteFooter />
