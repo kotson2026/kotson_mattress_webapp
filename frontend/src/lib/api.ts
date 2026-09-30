@@ -187,7 +187,12 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
 
     const mapProduct = (p: any) => {
       const vars = (p.product_variants || []).filter((v: any) => v.is_active !== false);
-      const lowestMrp = vars.length > 0 ? Math.min(...vars.map((v: any) => v.mrp_paise || v.price_paise || 0)) : p.mrp_paise || p.price_paise;
+      const lowestPrice = vars.length > 0 
+        ? Math.min(...vars.map((v: any) => v.price_paise || 0)) 
+        : p.price_paise || 0;
+      const lowestMrp = vars.length > 0 
+        ? Math.min(...vars.map((v: any) => (v.mrp_paise && v.mrp_paise > v.price_paise ? v.mrp_paise : Math.round((v.price_paise / 0.60) / 100) * 100))) 
+        : (p.mrp_paise && p.mrp_paise > p.price_paise ? p.mrp_paise : Math.round((p.price_paise / 0.60) / 100) * 100);
       
       const parsedVariants = vars.map((v: any) => {
         let size = v.title || "Standard";
@@ -228,8 +233,10 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
           }
         }
 
-        const mrp = v.mrp_paise || v.price_paise;
-        const price = Math.round(mrp * 0.6); // Authoritative 40% OFF sale price
+        const price = v.price_paise; // Authoritative SELLING price (e.g. 7400000 paise = ₹74,000)
+        const mrp = (v.mrp_paise && v.mrp_paise > v.price_paise)
+          ? v.mrp_paise
+          : Math.round((v.price_paise / 0.60) / 100) * 100; // Authoritative MRP (e.g. 12333300 paise = ₹123,333)
 
         return {
           id: v.id,
@@ -271,8 +278,8 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
         sort: 0,
         created_at: p.created_at || new Date().toISOString(),
         variants: parsedVariants,
-        price_from: Math.round(lowestMrp * 0.6), // 40% OFF sale price
-        mrp_from: lowestMrp,
+        price_from: lowestPrice, // e.g. 7400000 paise = ₹74,000
+        mrp_from: lowestMrp,     // e.g. 12333300 paise = ₹123,333
         discount_percent: 40,
         in_stock: vars.some((v: any) => (v.stock || 0) > (v.reserved || 0)),
       };
@@ -292,7 +299,12 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
     if (error || !p) throw new ApiError(404, { detail: "Product not found" });
 
     const vars = (p.product_variants || []).filter((v: any) => v.is_active !== false);
-    const lowestMrp = vars.length > 0 ? Math.min(...vars.map((v: any) => v.mrp_paise || v.price_paise || 0)) : p.mrp_paise || p.price_paise;
+    const lowestPrice = vars.length > 0 
+      ? Math.min(...vars.map((v: any) => v.price_paise || 0)) 
+      : p.price_paise || 0;
+    const lowestMrp = vars.length > 0 
+      ? Math.min(...vars.map((v: any) => (v.mrp_paise && v.mrp_paise > v.price_paise ? v.mrp_paise : Math.round((v.price_paise / 0.60) / 100) * 100))) 
+      : (p.mrp_paise && p.mrp_paise > p.price_paise ? p.mrp_paise : Math.round((p.price_paise / 0.60) / 100) * 100);
     
     const parsedVariants = vars.map((v: any) => {
       let size = v.title || "Standard";
@@ -333,8 +345,10 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
         }
       }
 
-      const mrp = v.mrp_paise || v.price_paise;
-      const price = Math.round(mrp * 0.6); // Authoritative 40% OFF sale price
+      const price = v.price_paise; // Authoritative SELLING price (e.g. 7400000 paise = ₹74,000)
+      const mrp = (v.mrp_paise && v.mrp_paise > v.price_paise)
+        ? v.mrp_paise
+        : Math.round((v.price_paise / 0.60) / 100) * 100; // Authoritative MRP (e.g. 12333300 paise = ₹123,333)
 
       return {
         id: v.id,
@@ -376,7 +390,7 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
       sort: 0,
       created_at: p.created_at || new Date().toISOString(),
       variants: parsedVariants,
-      price_from: Math.round(lowestMrp * 0.6),
+      price_from: lowestPrice,
       mrp_from: lowestMrp,
       discount_percent: 40,
       in_stock: vars.some((v: any) => (v.stock || 0) > (v.reserved || 0)),
@@ -422,22 +436,22 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
       thickness: null,
       firmness: null,
       qty: item.qty || item.quantity || 1,
-      unit_price: item.sale_price_paise || Math.round((item.mrp_paise || 2000000) * 0.6),
-      line_total: (item.sale_price_paise || Math.round((item.mrp_paise || 2000000) * 0.6)) * (item.qty || item.quantity || 1),
-      mrp: item.mrp_paise || 2000000,
-      stock: 20,
-      free_stock: 20,
-      is_active: true,
+      unit_price: item.sale_price_paise || item.price_paise,
+      line_total: item.line_total_paise || ((item.sale_price_paise || item.price_paise) * (item.qty || item.quantity || 1)),
+      mrp: item.mrp_paise || Math.round(((item.sale_price_paise || item.price_paise) / 0.60) / 100) * 100,
+      stock: item.stock || 20,
+      free_stock: item.available || 20,
+      is_active: item.is_active !== false,
       image: item.image || null,
     }));
 
     return {
       items,
       item_count: items.reduce((acc: number, cur: any) => acc + cur.qty, 0),
-      subtotal: view?.total_paise || view?.subtotal_sale_paise || 0,
+      subtotal: view?.final_total_paise || view?.subtotal_sale_paise || 0,
       total_mrp: view?.subtotal_mrp_paise || 0,
-      total_discount: (view?.subtotal_mrp_paise || 0) - (view?.total_paise || view?.subtotal_sale_paise || 0),
-      referred_code: view?.referred_code || null,
+      total_discount: (view?.subtotal_mrp_paise || 0) - (view?.final_total_paise || view?.subtotal_sale_paise || 0),
+      referred_code: view?.referral_code || null,
       referral_status: view?.referral_status || "none",
       referral_discount: view?.total_referral_discount_paise || 0,
       referral_note: "",

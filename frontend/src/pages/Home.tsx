@@ -8,6 +8,7 @@ import ExploreCategories from "@/components/home/ExploreCategories";
 import WhatsInside from "@/components/home/WhatsInside";
 import SevenZonesSection from "@/components/home/SevenZonesSection";
 import CertificationExperience from "@/components/home/CertificationExperience";
+import OrganicProcessSection from "@/components/home/OrganicProcessSection";
 import SharkTankSection from "@/components/home/SharkTankSection";
 import ExploreStores from "@/components/home/ExploreStores";
 import CustomerTestimonials from "@/components/home/CustomerTestimonials";
@@ -15,23 +16,19 @@ import CustomerSupportCta from "@/components/home/CustomerSupportCta";
 import { getWebsiteSection } from "@/lib/cms/SectionRegistry";
 
 /**
- * Authoritative 10 Structural Sections for the Kotson Homepage (Step 9).
- * Exact Structural Order:
- * 1. Hero video
- * 2. Scrolling announcement
+ * Authoritative 11 Structural Content Sections + Footer for Kotson Homepage:
+ * 1. Hero
+ * 2. Announcement
  * 3. Explore Categories
- * 4. What's Inside Kotson
- * 5. 7-Zone ergonomic support
- * 6. Certifications / manufacturing
- * 7. Shark Tank
- * 8. Explore Store
- * 9. Customer Testimonials
- * 10. Need Help Choosing
- * 11. Footer (SiteFooter)
- *
- * Architecture:
- * Approved source-controlled structure -> published CMS overrides -> render.
- * Missing CMS records NEVER destroy the complete 11-section approved homepage.
+ * 4. What's Inside
+ * 5. 7-Zone
+ * 6. Certifications
+ * 7. How Organic Latex Is Made
+ * 8. Shark Tank
+ * 9. Explore Store
+ * 10. Testimonials
+ * 11. Need Help
+ * 12. Footer (SiteFooter)
  */
 interface SectionDef {
   key: string;
@@ -46,6 +43,7 @@ const STRUCTURAL_SECTIONS: SectionDef[] = [
   { key: "mattress_layer_breakdown", type: "mattress_layer_breakdown", defaultComponent: WhatsInside },
   { key: "seven_zones_support", type: "seven_zones_support", defaultComponent: SevenZonesSection },
   { key: "certifications_badges", type: "certifications_badges", defaultComponent: CertificationExperience },
+  { key: "organic_latex_process", type: "organic_latex_process", defaultComponent: OrganicProcessSection },
   { key: "shark_tank_feature", type: "shark_tank_feature", defaultComponent: SharkTankSection },
   { key: "explore_stores", type: "explore_stores", defaultComponent: ExploreStores },
   { key: "customer_testimonials", type: "customer_testimonials", defaultComponent: CustomerTestimonials },

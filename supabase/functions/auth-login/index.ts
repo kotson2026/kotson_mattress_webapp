@@ -68,8 +68,12 @@ serve(async (req: Request) => {
     const userRoles = userRecord.roles || ["customer"];
     let supabaseAuthId = userRecord.supabase_auth_id;
 
-    // 2. CHECK IF MIGRATION BRIDGE NEEDED (Unmigrated legacy user)
-    if (!supabaseAuthId || !userRecord.migrated_at) {
+    // 2. CHECK IF MIGRATION BRIDGE NEEDED (Unmigrated legacy user with pbkdf2_ hash)
+    const isLegacyPbkdf2 = !supabaseAuthId && 
+      userRecord.password_hash && 
+      userRecord.password_hash.startsWith("pbkdf2_");
+
+    if (isLegacyPbkdf2) {
       console.log(`Evaluating legacy PBKDF2 migration bridge for user ${publicUserId}...`);
       const legacyHash = userRecord.password_hash || "";
 
@@ -143,16 +147,25 @@ serve(async (req: Request) => {
     // Authenticate using public client to generate authoritative tokens
     const publicClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const { data: signInData, error: signInError } = await publicClient.auth.signInWithPassword({
-      email: userEmail,
+      email: userEmail.toLowerCase().trim(),
       password: password,
     });
 
     if (signInError || !signInData.session) {
       console.error("Supabase Auth signInWithPassword error:", signInError);
-      return new Response(JSON.stringify({ ok: false, error: signInError?.message || "Authentication failed" }), {
+      return new Response(JSON.stringify({ ok: false, error: "Invalid email/phone or password" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Ensure public.users has supabase_auth_id linked
+    if (!supabaseAuthId && signInData.user?.id) {
+      supabaseAuthId = signInData.user.id;
+      await adminClient.from("users").update({
+        supabase_auth_id: supabaseAuthId,
+        migrated_at: new Date().toISOString(),
+      }).eq("id", publicUserId);
     }
 
     return new Response(
