@@ -185,10 +185,73 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
     const { data, error } = await query;
     if (error) throw new ApiError(500, error);
 
-    return (data || []).map((p: any) => {
+    const mapProduct = (p: any) => {
       const vars = (p.product_variants || []).filter((v: any) => v.is_active !== false);
       const lowestMrp = vars.length > 0 ? Math.min(...vars.map((v: any) => v.mrp_paise || v.price_paise || 0)) : p.mrp_paise || p.price_paise;
-      const lowestPrice = vars.length > 0 ? Math.min(...vars.map((v: any) => v.price_paise || 0)) : p.price_paise;
+      
+      const parsedVariants = vars.map((v: any) => {
+        let size = v.title || "Standard";
+        let length: string | null = null;
+        let width: string | null = null;
+        let thickness: string | null = null;
+
+        if (p.category_slug === "mattresses") {
+          const isQueen = v.title?.includes("Queen") || v.sku?.includes("-Q-");
+          const isKing = v.title?.includes("King") || v.sku?.includes("-K-");
+          if (isQueen) size = "Queen";
+          else if (isKing) size = "King";
+
+          const match = (v.title || "").match(/(\d+)[^\d]+(\d+)\s+(\d+)/);
+          if (match) {
+            length = match[1];
+            width = match[2];
+            thickness = match[3];
+          } else if (v.sku) {
+            const parts = v.sku.split("-");
+            if (parts.length >= 6) {
+              length = parts[3];
+              width = parts[4];
+              thickness = parts[5];
+            }
+          }
+        } else if (p.category_slug === "toppers") {
+          const isQueen = v.title?.includes("Queen") || v.sku?.includes("-Q-");
+          const isKing = v.title?.includes("King") || v.sku?.includes("-K-");
+          if (isQueen) size = "Queen";
+          else if (isKing) size = "King";
+
+          const match = (v.title || "").match(/(\d+)[^\d]+(\d+)/);
+          if (match) {
+            length = match[1];
+            width = match[2];
+            thickness = "2";
+          }
+        }
+
+        const mrp = v.mrp_paise || v.price_paise;
+        const price = Math.round(mrp * 0.6); // Authoritative 40% OFF sale price
+
+        return {
+          id: v.id,
+          product_id: p.id,
+          sku: v.sku,
+          title: v.title,
+          size,
+          length,
+          width,
+          thickness,
+          firmness: null,
+          price,
+          mrp,
+          discount_amount: mrp - price,
+          discount_percent: 40,
+          stock: v.stock || 20,
+          reserved: v.reserved || 0,
+          free_stock: Math.max(0, (v.stock || 20) - (v.reserved || 0)),
+          is_active: v.is_active,
+        };
+      });
+
       return {
         id: p.id,
         slug: p.slug,
@@ -207,24 +270,15 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
         is_active: p.is_active,
         sort: 0,
         created_at: p.created_at || new Date().toISOString(),
-        variants: vars.map((v: any) => ({
-          id: v.id,
-          product_id: p.id,
-          sku: v.sku,
-          size: v.title,
-          price: Math.round((v.mrp_paise || v.price_paise) * 0.6), // 40% OFF
-          mrp: v.mrp_paise || v.price_paise,
-          stock: v.stock || 20,
-          reserved: v.reserved || 0,
-          free_stock: Math.max(0, (v.stock || 20) - (v.reserved || 0)),
-          is_active: v.is_active,
-        })),
+        variants: parsedVariants,
         price_from: Math.round(lowestMrp * 0.6), // 40% OFF sale price
         mrp_from: lowestMrp,
         discount_percent: 40,
         in_stock: vars.some((v: any) => (v.stock || 0) > (v.reserved || 0)),
       };
-    });
+    };
+
+    return (data || []).map(mapProduct);
   }
 
   if (pathname.startsWith("/catalog/products/")) {
@@ -239,6 +293,70 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
 
     const vars = (p.product_variants || []).filter((v: any) => v.is_active !== false);
     const lowestMrp = vars.length > 0 ? Math.min(...vars.map((v: any) => v.mrp_paise || v.price_paise || 0)) : p.mrp_paise || p.price_paise;
+    
+    const parsedVariants = vars.map((v: any) => {
+      let size = v.title || "Standard";
+      let length: string | null = null;
+      let width: string | null = null;
+      let thickness: string | null = null;
+
+      if (p.category_slug === "mattresses") {
+        const isQueen = v.title?.includes("Queen") || v.sku?.includes("-Q-");
+        const isKing = v.title?.includes("King") || v.sku?.includes("-K-");
+        if (isQueen) size = "Queen";
+        else if (isKing) size = "King";
+
+        const match = (v.title || "").match(/(\d+)[^\d]+(\d+)\s+(\d+)/);
+        if (match) {
+          length = match[1];
+          width = match[2];
+          thickness = match[3];
+        } else if (v.sku) {
+          const parts = v.sku.split("-");
+          if (parts.length >= 6) {
+            length = parts[3];
+            width = parts[4];
+            thickness = parts[5];
+          }
+        }
+      } else if (p.category_slug === "toppers") {
+        const isQueen = v.title?.includes("Queen") || v.sku?.includes("-Q-");
+        const isKing = v.title?.includes("King") || v.sku?.includes("-K-");
+        if (isQueen) size = "Queen";
+        else if (isKing) size = "King";
+
+        const match = (v.title || "").match(/(\d+)[^\d]+(\d+)/);
+        if (match) {
+          length = match[1];
+          width = match[2];
+          thickness = "2";
+        }
+      }
+
+      const mrp = v.mrp_paise || v.price_paise;
+      const price = Math.round(mrp * 0.6); // Authoritative 40% OFF sale price
+
+      return {
+        id: v.id,
+        product_id: p.id,
+        sku: v.sku,
+        title: v.title,
+        size,
+        length,
+        width,
+        thickness,
+        firmness: null,
+        price,
+        mrp,
+        discount_amount: mrp - price,
+        discount_percent: 40,
+        stock: v.stock || 20,
+        reserved: v.reserved || 0,
+        free_stock: Math.max(0, (v.stock || 20) - (v.reserved || 0)),
+        is_active: v.is_active,
+      };
+    });
+
     return {
       id: p.id,
       slug: p.slug,
@@ -257,18 +375,7 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
       is_active: p.is_active,
       sort: 0,
       created_at: p.created_at || new Date().toISOString(),
-      variants: vars.map((v: any) => ({
-        id: v.id,
-        product_id: p.id,
-        sku: v.sku,
-        size: v.title,
-        price: Math.round((v.mrp_paise || v.price_paise) * 0.6), // 40% OFF
-        mrp: v.mrp_paise || v.price_paise,
-        stock: v.stock || 20,
-        reserved: v.reserved || 0,
-        free_stock: Math.max(0, (v.stock || 20) - (v.reserved || 0)),
-        is_active: v.is_active,
-      })),
+      variants: parsedVariants,
       price_from: Math.round(lowestMrp * 0.6),
       mrp_from: lowestMrp,
       discount_percent: 40,
@@ -307,9 +414,9 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
       variant_id: item.variant_id,
       product_id: item.product_id || item.variant_id,
       product_slug: item.product_slug || "",
-      product_name: item.title || item.product_name || "Mattress",
+      product_name: item.product_name || item.name || "Kotson Mattress",
       sku: item.sku || "",
-      size: item.size || "Standard",
+      size: item.title || item.size || "Standard",
       length: null,
       width: null,
       thickness: null,
