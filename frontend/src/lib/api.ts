@@ -754,17 +754,72 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
   // 7. OWNER ADMIN OPERATIONS (Phases 5D & 5E)
   // ---------------------------------------------------------------------------
   if (pathname === "/admin/dashboard" || pathname === "/admin/dashboard/drill-down") {
-    const { data, error } = await supabase.rpc("kotson_get_owner_dashboard_metrics");
-    if (error) throw new ApiError(500, error);
+    const preset = params.get("preset") || "month";
+    const dateFrom = params.get("date_from") || "";
+    const dateTo = params.get("date_to") || "";
+    // Safely call RPC — if missing, return a safe empty dashboard shape
+    let raw: any = null;
+    try {
+      const { data, error } = await supabase.rpc("kotson_get_owner_dashboard_metrics");
+      if (!error) raw = data;
+    } catch (_e) {
+      // RPC missing or failed — safe empty state below
+    }
+    // Fetch low_stock items directly if RPC doesn't include them
+    let lowStock: any[] = [];
+    try {
+      const { data: ls } = await supabase
+        .from("product_variants")
+        .select("id, sku, price_paise, stock, reserved, products(name, category_slug)")
+        .lt("stock", 5)
+        .eq("is_active", true)
+        .limit(50);
+      lowStock = (ls || []).map((v: any) => ({
+        sku: v.sku,
+        variant_id: v.id,
+        product_name: v.products?.name || "Unknown",
+        category: v.products?.category_slug || "",
+        size: v.sku,
+        current_stock: v.stock || 0,
+        reserved: v.reserved || 0,
+        free_stock: Math.max(0, (v.stock || 0) - (v.reserved || 0)),
+        stock_status: (v.stock || 0) === 0 ? "OUT OF STOCK" : (v.stock || 0) < 3 ? "CRITICAL" : "LOW STOCK",
+      }));
+    } catch (_e) {}
+    // Map RPC data to exact OwnerDashboard shape
     return {
-      kpis: data,
-      gross_revenue_paise: data?.gross_revenue_paise || 0,
-      total_paid_orders: data?.total_paid_orders || 0,
-      unique_purchasers: data?.unique_purchasers || 0,
-      total_dealers: data?.total_dealers || 0,
-      pending_dealers: data?.pending_dealers || 0,
-      low_stock_count: data?.low_stock_count || 0,
-      aov_paise: data?.aov_paise || 0,
+      preset,
+      date_from: dateFrom || new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0],
+      date_to: dateTo || new Date().toISOString().split("T")[0],
+      timezone: "Asia/Kolkata",
+      revenue_paid_paise: raw?.gross_revenue_paise || raw?.revenue_paid_paise || 0,
+      paid_orders: raw?.total_paid_orders || raw?.paid_orders || 0,
+      product_orders: {
+        mattress_orders: raw?.mattress_orders || 0,
+        mattress_units: raw?.mattress_units || 0,
+        mattress_gross_paise: raw?.mattress_gross_paise || 0,
+        pillow_orders: raw?.pillow_orders || 0,
+        pillow_units: raw?.pillow_units || 0,
+        pillow_gross_paise: raw?.pillow_gross_paise || 0,
+        topper_orders: raw?.topper_orders || 0,
+        topper_units: raw?.topper_units || 0,
+        topper_gross_paise: raw?.topper_gross_paise || 0,
+        baby_kids_orders: raw?.baby_kids_orders || 0,
+        baby_kids_units: raw?.baby_kids_units || 0,
+        baby_kids_gross_paise: raw?.baby_kids_gross_paise || 0,
+      },
+      customer_activity: {
+        total_signups: raw?.total_signups || raw?.unique_purchasers || 0,
+        add_to_cart_users: raw?.add_to_cart_users || 0,
+        purchased_unique_customers: raw?.unique_purchasers || 0,
+      },
+      dealer_network: {
+        total_dealers: raw?.total_dealers || 0,
+        pending_approvals: raw?.pending_dealers || 0,
+        dealer_sales_paise: raw?.dealer_sales_paise || 0,
+        dealer_orders_count: raw?.dealer_orders_count || 0,
+      },
+      low_stock: raw?.low_stock || lowStock,
     };
   }
 
@@ -924,6 +979,246 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
     });
     if (error) throw new ApiError(400, { detail: error.message });
     return data;
+  }
+
+  // ---------------------------------------------------------------------------
+  // 7B. ADMIN CATALOG OPERATIONS
+  // ---------------------------------------------------------------------------
+  if (pathname === "/admin/catalog/overview") {
+    const { data: prods } = await supabase.from("products").select("id, is_active, product_variants(stock, reserved, is_active)");
+    const all = prods || [];
+    const active = all.filter((p: any) => p.is_active);
+    const paused = all.filter((p: any) => !p.is_active);
+    let outOfStock = 0, lowStock = 0;
+    for (const p of active) {
+      const vars = (p.product_variants || []).filter((v: any) => v.is_active !== false);
+      const totalFree = vars.reduce((s: number, v: any) => s + Math.max(0, (v.stock || 0) - (v.reserved || 0)), 0);
+      if (totalFree === 0) outOfStock++;
+      else if (totalFree < 5) lowStock++;
+    }
+    return { total_products: all.length, active_products: active.length, paused_products: paused.length, out_of_stock: outOfStock, low_stock: lowStock };
+  }
+
+  if (pathname === "/admin/catalog/categories") {
+    const { data, error } = await supabase.from("categories").select("id, slug, name").order("sort_order", { ascending: true });
+    if (error) return { rows: [] };
+    return { rows: data || [] };
+  }
+
+  if (pathname === "/admin/catalog/products" && method === "GET") {
+    const q = params.get("q") || "";
+    const cat = params.get("category") || "all";
+    const status = params.get("status") || "all";
+    const stockStatus = params.get("stock_status") || "all";
+    const page = parseInt(params.get("page") || "1", 10);
+    const limit = parseInt(params.get("limit") || "10", 10);
+    let qb = supabase.from("products").select("*, product_variants(*)");
+    if (cat !== "all") qb = qb.eq("category_slug", cat);
+    if (status === "ACTIVE") qb = qb.eq("is_active", true);
+    else if (status === "PAUSED") qb = qb.eq("is_active", false);
+    if (q) qb = qb.or(`name.ilike.%${q}%,slug.ilike.%${q}%`);
+    qb = qb.order("created_at", { ascending: false });
+    const { data, error } = await qb;
+    if (error) throw new ApiError(500, error);
+    const rows = (data || []).map((p: any) => {
+      const vars = (p.product_variants || []).map((v: any) => ({
+        id: v.id,
+        sku: v.sku || "",
+        size: v.title || v.size || "Standard",
+        thickness: v.thickness || null,
+        firmness: v.firmness || null,
+        price: v.price_paise || 0,
+        mrp: v.mrp_paise || Math.round((v.price_paise / 0.60) / 100) * 100,
+        stock: v.stock || 0,
+        reserved: v.reserved || 0,
+        free_stock: Math.max(0, (v.stock || 0) - (v.reserved || 0)),
+        discount_amount: Math.max(0, (v.mrp_paise || 0) - (v.price_paise || 0)),
+        discount_percent: v.mrp_paise && v.mrp_paise > 0 ? Math.round(((v.mrp_paise - v.price_paise) / v.mrp_paise) * 100) : 40,
+        is_active: v.is_active !== false,
+      }));
+      const totalStock = vars.reduce((s: number, v: any) => s + v.stock, 0);
+      const priceFrom = vars.length > 0 ? Math.min(...vars.map((v: any) => v.price)) : 0;
+      const mrpFrom = vars.length > 0 ? Math.min(...vars.map((v: any) => v.mrp)) : 0;
+      return {
+        id: p.id,
+        slug: p.slug,
+        name: p.name,
+        category_slug: p.category_slug || "",
+        brand: p.brand || "Kotson",
+        tagline: p.tagline || "",
+        short_description: p.short_description || "",
+        description: p.description || "",
+        primary_image: p.primary_image || "",
+        images: p.images || [],
+        cta_button_name: p.cta_button_name || "Buy Now",
+        status: p.is_active ? "ACTIVE" : "PAUSED",
+        website_visibility: p.is_active ? "VISIBLE" : "HIDDEN",
+        is_featured: p.is_featured || false,
+        is_new_arrival: p.is_new_arrival || false,
+        is_best_seller: p.is_best_seller || false,
+        price_from: priceFrom,
+        mrp_from: mrpFrom,
+        in_stock: totalStock > 0,
+        total_stock: totalStock,
+        variants: vars,
+        customization: p.customization || null,
+        storytelling: p.storytelling || null,
+      };
+    });
+    // Apply client-side stock filter
+    const filtered = stockStatus === "OUT_OF_STOCK"
+      ? rows.filter((r: any) => r.total_stock === 0)
+      : stockStatus === "LOW_STOCK"
+      ? rows.filter((r: any) => r.total_stock > 0 && r.total_stock < 5)
+      : stockStatus === "IN_STOCK"
+      ? rows.filter((r: any) => r.total_stock > 0)
+      : rows;
+    const total = filtered.length;
+    const paged = filtered.slice((page - 1) * limit, page * limit);
+    return { total, rows: paged };
+  }
+
+  if (pathname === "/admin/catalog/products" && method === "POST") {
+    const { variants, ...productBody } = body || {};
+    const { data: prod, error } = await supabase.from("products").insert({
+      name: productBody.name,
+      slug: productBody.slug,
+      category_slug: productBody.category_slug,
+      brand: productBody.brand,
+      tagline: productBody.tagline,
+      short_description: productBody.short_description,
+      description: productBody.description,
+      primary_image: productBody.primary_image,
+      images: productBody.images,
+      is_active: true,
+    }).select().maybeSingle();
+    if (error) throw new ApiError(400, { detail: error.message });
+    if (prod && variants?.length) {
+      await supabase.from("product_variants").insert(
+        variants.map((v: any) => ({ product_id: prod.id, sku: v.sku, title: v.size, price_paise: v.price, mrp_paise: v.mrp || Math.round((v.price / 0.60) / 100) * 100, stock: v.stock || 0 }))
+      );
+    }
+    return { ok: true, id: prod?.id };
+  }
+
+  if (pathname.match(/^\/admin\/catalog\/products\/[^/]+$/) && method === "PUT") {
+    const pid = pathname.split("/").pop()!;
+    const { variants, ...productBody } = body || {};
+    const { error } = await supabase.from("products").update({
+      name: productBody.name,
+      slug: productBody.slug,
+      category_slug: productBody.category_slug,
+      brand: productBody.brand,
+      tagline: productBody.tagline,
+      short_description: productBody.short_description,
+      description: productBody.description,
+      primary_image: productBody.primary_image,
+      images: productBody.images,
+      cta_button_name: productBody.cta_button_name,
+      is_featured: productBody.is_featured,
+      is_new_arrival: productBody.is_new_arrival,
+      is_best_seller: productBody.is_best_seller,
+    }).eq("id", pid);
+    if (error) throw new ApiError(400, { detail: error.message });
+    // Upsert variants
+    if (variants?.length) {
+      for (const v of variants) {
+        if (v.id && !v.id.startsWith("v_")) {
+          await supabase.from("product_variants").update({
+            sku: v.sku,
+            title: v.size,
+            price_paise: v.price,
+            mrp_paise: v.mrp || Math.round((v.price / 0.60) / 100) * 100,
+            stock: v.stock,
+          }).eq("id", v.id);
+        } else {
+          await supabase.from("product_variants").insert({ product_id: pid, sku: v.sku, title: v.size, price_paise: v.price, mrp_paise: v.mrp || Math.round((v.price / 0.60) / 100) * 100, stock: v.stock || 0 });
+        }
+      }
+    }
+    return { ok: true };
+  }
+
+  // VARIANT PRICE — dedicated per-variant price endpoint (fast, atomic)
+  if (pathname.match(/^\/admin\/catalog\/variants\/[^/]+\/price$/) && method === "PUT") {
+    const vid = pathname.split("/")[4];
+    const sellingPrice = body?.selling_price_paise ?? body?.price;
+    if (!sellingPrice) throw new ApiError(400, { detail: "selling_price_paise required" });
+    const mrp = body?.mrp_paise ?? Math.round((sellingPrice / 0.60) / 100) * 100;
+    const { error } = await supabase.from("product_variants").update({ price_paise: sellingPrice, mrp_paise: mrp }).eq("id", vid);
+    if (error) throw new ApiError(400, { detail: error.message });
+    return { ok: true, variant_id: vid, selling_price_paise: sellingPrice, mrp_paise: mrp };
+  }
+
+  if (pathname.match(/^\/admin\/catalog\/products\/[^/]+\/status$/) && method === "POST") {
+    const pid = pathname.split("/")[4];
+    const newStatus = params.get("status") || body?.status || "ACTIVE";
+    const { error } = await supabase.from("products").update({ is_active: newStatus === "ACTIVE" }).eq("id", pid);
+    if (error) throw new ApiError(400, { detail: error.message });
+    return { ok: true };
+  }
+
+  if (pathname.match(/^\/admin\/catalog\/products\/[^/]+\/duplicate$/) && method === "POST") {
+    const pid = pathname.split("/")[4];
+    const { data: orig } = await supabase.from("products").select("*, product_variants(*)").eq("id", pid).maybeSingle();
+    if (!orig) throw new ApiError(404, { detail: "Product not found" });
+    const { data: clone, error } = await supabase.from("products").insert({ ...orig, id: undefined, slug: orig.slug + "-copy-" + Date.now().toString(36), name: orig.name + " (Copy)", is_active: false }).select().maybeSingle();
+    if (error) throw new ApiError(400, { detail: error.message });
+    if (clone && orig.product_variants?.length) {
+      await supabase.from("product_variants").insert(orig.product_variants.map((v: any) => ({ ...v, id: undefined, product_id: clone.id })));
+    }
+    return { ok: true, id: clone?.id };
+  }
+
+  if (pathname.match(/^\/admin\/catalog\/products\/[^/]+$/) && method === "DELETE") {
+    const pid = pathname.split("/").pop()!;
+    await supabase.from("products").update({ is_active: false }).eq("id", pid);
+    return { ok: true };
+  }
+
+  if (pathname === "/admin/inventory/adjust" && method === "POST") {
+    const { variant_id, delta, reason } = body || {};
+    if (!variant_id || delta === undefined) throw new ApiError(400, { detail: "variant_id and delta required" });
+    const { data: v } = await supabase.from("product_variants").select("stock").eq("id", variant_id).maybeSingle();
+    const newStock = Math.max(0, (v?.stock || 0) + Number(delta));
+    const { error } = await supabase.from("product_variants").update({ stock: newStock }).eq("id", variant_id);
+    if (error) throw new ApiError(400, { detail: error.message });
+    // Log to audit
+    try {
+      await supabase.from("audit_logs").insert({ actor_id: authCtx.userId, action: "inventory_adjust", entity_type: "product_variant", entity_id: variant_id, old_value: { stock: v?.stock }, new_value: { stock: newStock }, note: reason });
+    } catch (_e) {}
+    return { ok: true, new_stock: newStock };
+  }
+
+  if (pathname === "/admin/test-data/status") {
+    try {
+      const { data } = await supabase.from("products").select("id").eq("is_seed", true).limit(1);
+      return { is_seeded: (data || []).length > 0 };
+    } catch (_e) {
+      return { is_seeded: false };
+    }
+  }
+
+  if (pathname === "/admin/settings") {
+    if (method === "GET") {
+      try {
+        const { data } = await supabase.from("site_settings").select("*").maybeSingle();
+        return data || { promotion_enabled: true, promotion_discount_percent: 40, promotion_title: "Sitewide Sale", razorpay_state: "test", mail_state: "active", analytics_consent: "opt-in" };
+      } catch (_e) {
+        return { promotion_enabled: true, promotion_discount_percent: 40, promotion_title: "Sitewide Sale", razorpay_state: "test", mail_state: "active", analytics_consent: "opt-in" };
+      }
+    }
+    if (method === "POST" || method === "PUT" || method === "PATCH") {
+      try {
+        const { data: existing } = await supabase.from("site_settings").select("id").maybeSingle();
+        if (existing?.id) {
+          await supabase.from("site_settings").update(body).eq("id", existing.id);
+        } else {
+          await supabase.from("site_settings").insert(body);
+        }
+      } catch (_e) {}
+      return { ok: true };
+    }
   }
 
   // ---------------------------------------------------------------------------

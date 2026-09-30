@@ -526,6 +526,346 @@ export default function CatalogCentralHub() {
 }
 
 // -------------------------------------------------------------
+// VariantPricingTab — rich per-variant pricing editor
+// Pricing Rule: Supplied prices are SELLING PRICES.
+// MRP = Selling Price / 0.60 (reflects 40% OFF sitewide discount)
+// Admin can override MRP manually if needed.
+// -------------------------------------------------------------
+function VariantPricingTab({
+  product,
+  formData,
+  setFormData,
+}: {
+  product: ProductItem | null;
+  formData: any;
+  setFormData: (d: any) => void;
+}) {
+  const qc = useQueryClient();
+  const [savingIdx, setSavingIdx] = React.useState<number | null>(null);
+  const [bulkDiscount, setBulkDiscount] = React.useState<string>("");
+
+  // Per-variant quick save (atomic, bypasses full product save)
+  const saveVariantPrice = async (v: any, idx: number) => {
+    if (!v.id || v.id.startsWith("v_")) {
+      toast.info("Save the product first to persist new variants.");
+      return;
+    }
+    setSavingIdx(idx);
+    try {
+      await apiPut(`/admin/catalog/variants/${v.id}/price`, {
+        selling_price_paise: v.price,
+        mrp_paise: v.mrp,
+      });
+      toast.success(`${v.size || v.sku} price saved — ₹${(v.price / 100).toLocaleString("en-IN")}`);
+      qc.invalidateQueries({ queryKey: ["catalog-products"] });
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to save variant price");
+    } finally {
+      setSavingIdx(null);
+    }
+  };
+
+  // Apply bulk discount: recalculate MRP from selling price for all variants
+  const applyBulkDiscount = () => {
+    const pct = parseFloat(bulkDiscount);
+    if (isNaN(pct) || pct < 0 || pct > 90) {
+      toast.error("Enter a valid discount between 0 and 90");
+      return;
+    }
+    const updated = formData.variants.map((v: any) => ({
+      ...v,
+      mrp: Math.round((v.price / (1 - pct / 100)) / 100) * 100,
+    }));
+    setFormData({ ...formData, variants: updated });
+    toast.success(`MRP recalculated for ${pct}% discount on all ${updated.length} variants`);
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Pricing Rule Banner */}
+      <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900">
+        <strong>Kotson Pricing Rule:</strong> Supplied prices are <strong>Selling Prices</strong>.
+        MRP auto-calculates as <code>Selling Price ÷ 0.60</code> for 40% OFF display.
+        You may override MRP manually. Changes persist immediately on "Quick Save".
+      </div>
+
+      {/* Bulk Discount Override */}
+      <div className="flex flex-wrap items-end gap-3 p-4 rounded-xl border border-border bg-muted/20">
+        <div>
+          <Label className="text-xs font-semibold">Bulk: Set Discount % for All Variants</Label>
+          <p className="text-[11px] text-muted-foreground mb-1.5">
+            Sets MRP = Selling Price ÷ (1 − discount%). Overrides all MRP values.
+          </p>
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              min="0"
+              max="90"
+              value={bulkDiscount}
+              onChange={(e) => setBulkDiscount(e.target.value)}
+              placeholder="e.g. 40"
+              className="h-9 w-24 text-sm font-bold"
+            />
+            <span className="text-sm font-bold text-muted-foreground">% OFF</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={applyBulkDiscount}
+              className="h-9 border-amber-300 text-amber-800 hover:bg-amber-50"
+            >
+              <Sliders className="w-3.5 h-3.5 mr-1" /> Apply to All
+            </Button>
+          </div>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setFormData({
+                ...formData,
+                variants: [
+                  ...formData.variants,
+                  {
+                    id: `v_${Date.now()}`,
+                    sku: `KS-NEW-${Date.now().toString().slice(-4)}`,
+                    size: "Custom Size",
+                    thickness: null,
+                    firmness: null,
+                    price: 14999,
+                    mrp: Math.round((14999 / 0.60) / 100) * 100,
+                    stock: 5,
+                    is_active: true,
+                  },
+                ],
+              });
+            }}
+          >
+            <Plus className="w-3.5 h-3.5 mr-1" /> Add Variant
+          </Button>
+        </div>
+      </div>
+
+      {/* Per-Variant Pricing Table */}
+      <div className="border border-border rounded-xl overflow-x-auto">
+        <Table>
+          <TableHeader className="bg-muted/40">
+            <TableRow>
+              <TableHead className="min-w-[140px]">Size / Dimension</TableHead>
+              <TableHead>SKU</TableHead>
+              <TableHead className="min-w-[70px]">Thickness</TableHead>
+              <TableHead className="min-w-[80px]">Firmness</TableHead>
+              <TableHead className="min-w-[130px]">
+                <div>Selling Price (₹)</div>
+                <div className="text-[10px] font-normal text-muted-foreground">Current price shown</div>
+              </TableHead>
+              <TableHead className="min-w-[130px]">
+                <div>MRP (₹)</div>
+                <div className="text-[10px] font-normal text-muted-foreground">Strikethrough price</div>
+              </TableHead>
+              <TableHead className="min-w-[80px]">Discount %</TableHead>
+              <TableHead>Stock</TableHead>
+              <TableHead>Active</TableHead>
+              <TableHead className="text-right min-w-[100px]">Quick Save</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(formData.variants || []).map((v: any, idx: number) => {
+              // Auto-derived MRP from selling price using 40% rule
+              const autoMrp = v.price > 0 ? Math.round((v.price / 0.60) / 100) * 100 : 0;
+              const effectiveMrp = v.mrp || autoMrp;
+              const discountPct = effectiveMrp > 0 && effectiveMrp > v.price
+                ? Math.round(((effectiveMrp - v.price) / effectiveMrp) * 100)
+                : 0;
+              const isSaving = savingIdx === idx;
+              const isNew = !v.id || v.id.startsWith("v_");
+
+              return (
+                <TableRow key={v.id || idx} className={isNew ? "bg-emerald-50/40" : ""}>
+                  {/* Size */}
+                  <TableCell>
+                    <Input
+                      value={v.size || ""}
+                      onChange={(e) => {
+                        const n = [...formData.variants];
+                        n[idx] = { ...n[idx], size: e.target.value };
+                        setFormData({ ...formData, variants: n });
+                      }}
+                      className="h-8 text-xs"
+                      placeholder="e.g. King (78×72)"
+                    />
+                  </TableCell>
+                  {/* SKU */}
+                  <TableCell>
+                    <Input
+                      value={v.sku || ""}
+                      onChange={(e) => {
+                        const n = [...formData.variants];
+                        n[idx] = { ...n[idx], sku: e.target.value };
+                        setFormData({ ...formData, variants: n });
+                      }}
+                      className="h-8 text-xs font-mono"
+                    />
+                  </TableCell>
+                  {/* Thickness */}
+                  <TableCell>
+                    <Input
+                      value={v.thickness || ""}
+                      onChange={(e) => {
+                        const n = [...formData.variants];
+                        n[idx] = { ...n[idx], thickness: e.target.value };
+                        setFormData({ ...formData, variants: n });
+                      }}
+                      className="h-8 text-xs"
+                      placeholder='e.g. 6"'
+                    />
+                  </TableCell>
+                  {/* Firmness */}
+                  <TableCell>
+                    <Input
+                      value={v.firmness || ""}
+                      onChange={(e) => {
+                        const n = [...formData.variants];
+                        n[idx] = { ...n[idx], firmness: e.target.value };
+                        setFormData({ ...formData, variants: n });
+                      }}
+                      className="h-8 text-xs"
+                      placeholder="Medium"
+                    />
+                  </TableCell>
+                  {/* Selling Price */}
+                  <TableCell>
+                    <div className="space-y-0.5">
+                      <Input
+                        type="number"
+                        value={v.price || ""}
+                        onChange={(e) => {
+                          const price = Number(e.target.value);
+                          const n = [...formData.variants];
+                          // Auto-update MRP when selling price changes (40% rule)
+                          n[idx] = {
+                            ...n[idx],
+                            price,
+                            mrp: price > 0 ? Math.round((price / 0.60) / 100) * 100 : n[idx].mrp,
+                          };
+                          setFormData({ ...formData, variants: n });
+                        }}
+                        className="h-8 text-xs font-bold text-[#16241C]"
+                      />
+                      <div className="text-[10px] text-muted-foreground pl-1">
+                        {v.price ? `₹${(v.price / 100).toLocaleString("en-IN")}` : ""}
+                      </div>
+                    </div>
+                  </TableCell>
+                  {/* MRP (overrideable) */}
+                  <TableCell>
+                    <div className="space-y-0.5">
+                      <Input
+                        type="number"
+                        value={effectiveMrp || ""}
+                        onChange={(e) => {
+                          const n = [...formData.variants];
+                          n[idx] = { ...n[idx], mrp: Number(e.target.value) };
+                          setFormData({ ...formData, variants: n });
+                        }}
+                        className="h-8 text-xs text-muted-foreground"
+                      />
+                      <div className="text-[10px] text-emerald-700 pl-1 font-semibold">
+                        Auto: ₹{(autoMrp / 100).toLocaleString("en-IN")}
+                      </div>
+                    </div>
+                  </TableCell>
+                  {/* Discount % — read-only display */}
+                  <TableCell>
+                    <div className={`h-8 flex items-center px-2 rounded-md text-xs font-bold ${discountPct > 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-muted text-muted-foreground"}`}>
+                      {discountPct > 0 ? `${discountPct}% OFF` : "—"}
+                    </div>
+                  </TableCell>
+                  {/* Stock */}
+                  <TableCell>
+                    <Input
+                      type="number"
+                      value={v.stock ?? ""}
+                      onChange={(e) => {
+                        const n = [...formData.variants];
+                        n[idx] = { ...n[idx], stock: Number(e.target.value) };
+                        setFormData({ ...formData, variants: n });
+                      }}
+                      className="h-8 text-xs w-16"
+                    />
+                  </TableCell>
+                  {/* Active toggle */}
+                  <TableCell>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const n = [...formData.variants];
+                        n[idx] = { ...n[idx], is_active: !n[idx].is_active };
+                        setFormData({ ...formData, variants: n });
+                      }}
+                      className={`text-xs px-2 py-1 rounded-lg font-semibold transition-colors ${
+                        v.is_active !== false
+                          ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
+                    >
+                      {v.is_active !== false ? "Active" : "Off"}
+                    </button>
+                  </TableCell>
+                  {/* Quick Save */}
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs border-[#7C9C59] text-[#16241C] hover:bg-[#EAF2EC] font-semibold"
+                        onClick={() => saveVariantPrice(v, idx)}
+                        disabled={isSaving || isNew}
+                        title={isNew ? "Save product first before quick-saving new variants" : "Save this variant's price immediately"}
+                        data-testid={`variant-quick-save-${v.sku || idx}`}
+                      >
+                        {isSaving ? (
+                          <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        ) : (
+                          "Save"
+                        )}
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-rose-400 hover:bg-rose-50"
+                        onClick={() => {
+                          const n = formData.variants.filter((_: any, i: number) => i !== idx);
+                          setFormData({ ...formData, variants: n });
+                        }}
+                        title="Remove variant"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+        {(!formData.variants || formData.variants.length === 0) && (
+          <div className="p-8 text-center text-sm text-muted-foreground">
+            No variants yet. Click "Add Variant" to add sizes.
+          </div>
+        )}
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        <strong>Quick Save</strong> writes this variant's price directly to the database without touching other variants.
+        The full <strong>Save Product</strong> button saves all tabs at once.
+        New variants (highlighted) must be saved via the full Save first.
+      </p>
+    </div>
+  );
+}
+
+// -------------------------------------------------------------
 // 10-Tab Product Editor Modal Component
 // -------------------------------------------------------------
 function ProductEditorModal({
@@ -792,125 +1132,11 @@ function ProductEditorModal({
           )}
 
           {activeTab === 3 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-base font-bold">Product Sizes & SKUs</Label>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setFormData({
-                      ...formData,
-                      variants: [
-                        ...formData.variants,
-                        {
-                          id: `v_${Date.now()}`,
-                          sku: `KS-${Date.now().toString().slice(-4)}`,
-                          size: "Single (72x36)",
-                          price: 14999,
-                          mrp: 19999,
-                          stock: 5,
-                        },
-                      ],
-                    });
-                  }}
-                >
-                  <Plus className="w-3.5 h-3.5 mr-1" /> Add Variant
-                </Button>
-              </div>
-
-              <div className="border border-border rounded-xl overflow-hidden">
-                <Table>
-                  <TableHeader className="bg-muted/40">
-                    <TableRow>
-                      <TableHead>Size / Dimension</TableHead>
-                      <TableHead>SKU</TableHead>
-                      <TableHead>Selling Price (₹)</TableHead>
-                      <TableHead>MRP (₹)</TableHead>
-                      <TableHead>Stock Qty</TableHead>
-                      <TableHead className="w-12"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {formData.variants.map((v: any, idx: number) => (
-                      <TableRow key={v.id || idx}>
-                        <TableCell>
-                          <Input
-                            value={v.size}
-                            onChange={(e) => {
-                              const n = [...formData.variants];
-                              n[idx].size = e.target.value;
-                              setFormData({ ...formData, variants: n });
-                            }}
-                            className="h-8"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={v.sku}
-                            onChange={(e) => {
-                              const n = [...formData.variants];
-                              n[idx].sku = e.target.value;
-                              setFormData({ ...formData, variants: n });
-                            }}
-                            className="h-8 font-mono"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            value={v.price}
-                            onChange={(e) => {
-                              const n = [...formData.variants];
-                              n[idx].price = Number(e.target.value);
-                              setFormData({ ...formData, variants: n });
-                            }}
-                            className="h-8 font-bold"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            value={v.mrp}
-                            onChange={(e) => {
-                              const n = [...formData.variants];
-                              n[idx].mrp = Number(e.target.value);
-                              setFormData({ ...formData, variants: n });
-                            }}
-                            className="h-8"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            value={v.stock}
-                            onChange={(e) => {
-                              const n = [...formData.variants];
-                              n[idx].stock = Number(e.target.value);
-                              setFormData({ ...formData, variants: n });
-                            }}
-                            className="h-8"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-rose-500 hover:bg-rose-50"
-                            onClick={() => {
-                              const n = formData.variants.filter((_: any, i: number) => i !== idx);
-                              setFormData({ ...formData, variants: n });
-                            }}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
+            <VariantPricingTab
+              product={product}
+              formData={formData}
+              setFormData={setFormData}
+            />
           )}
 
           {activeTab === 4 && (

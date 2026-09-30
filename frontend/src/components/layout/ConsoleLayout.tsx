@@ -126,6 +126,17 @@ export default function ConsoleLayout({
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+  // Compute permitted safely (me may be null/undefined)
+  const permitted = !!me && Array.isArray(me.roles) && me.roles.some((r) => allowedRoles.includes(r));
+
+  // testDataStatus query must be declared before any conditional return to satisfy Rules of Hooks
+  const { data: testDataStatus } = useQuery<{ is_seeded: boolean }>({
+    queryKey: ["admin-test-data-status"],
+    queryFn: () => apiGet<{ is_seeded: boolean }>("/admin/test-data/status"),
+    enabled: !isLoading && permitted,
+    staleTime: 15000,
+  });
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F7F4EE] text-sm text-muted-foreground">
@@ -134,14 +145,15 @@ export default function ConsoleLayout({
     );
   }
 
-  const permitted = !!me && me.roles.some((r) => allowedRoles.includes(r));
-
-  const { data: testDataStatus } = useQuery<{ is_seeded: boolean }>({
-    queryKey: ["admin-test-data-status"],
-    queryFn: () => apiGet<{ is_seeded: boolean }>("/admin/test-data/status"),
-    enabled: permitted,
-    staleTime: 15000,
-  });
+  // me is undefined transiently during session refresh — hold loading state
+  // until we have a definitive resolved value (null = not authenticated, object = user)
+  if (me === undefined) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F7F4EE] text-sm text-muted-foreground">
+        Verifying session…
+      </div>
+    );
+  }
 
   if (!permitted) {
     return (

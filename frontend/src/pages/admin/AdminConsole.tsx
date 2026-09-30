@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Route, Routes, useLocation } from "react-router-dom";
-import { useState, lazy, Suspense } from "react";
+import { useState, lazy, Suspense, Component, type ReactNode } from "react";
 import { toast } from "sonner";
 import { apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
 import type { AssetSlot, AuditEntry, Claim, CMSBlock, Dashboard, Dealer, DealerOrder, Order, Product, ReferralRule, RewardEntry, SiteSettings, User } from "@/lib/types";
@@ -34,6 +34,38 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+// Error boundary — prevents a failed module/widget from blanking the entire Admin shell.
+class AdminErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  componentDidCatch(error: Error, info: any) {
+    // Log but don't re-throw — keeps Admin shell alive
+    console.error("[AdminErrorBoundary]", error, info);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center text-sm text-rose-800 m-4">
+          <p className="font-bold text-base mb-1">Module failed to load</p>
+          <p className="text-xs text-rose-600 mb-3">{this.state.error.message}</p>
+          <button
+            className="text-xs underline text-rose-700"
+            onClick={() => this.setState({ error: null })}
+          >
+            Try again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const NAV = [
   { to: "/admin", label: "Dashboard" },
@@ -829,39 +861,41 @@ export default function AdminConsole() {
       nav={effectiveNav}
       hideHeader={isDashboardRoute && !isCrmMasterOnly}
     >
-      <Suspense
-        fallback={
-          <div className="min-h-[40vh] flex flex-col items-center justify-center p-8 space-y-3">
-            <div className="h-7 w-7 animate-spin rounded-full border-3 border-[#1B365D] border-t-transparent" />
-            <p className="text-xs text-muted-foreground font-medium">Loading Module...</p>
-          </div>
-        }
-      >
-        <Routes>
-          <Route index element={isCrmMasterOnly ? <SalesRevenueDashboard /> : <OwnerDashboard />} />
-          <Route path="sales" element={<SalesRevenueDashboard />} />
-          <Route path="orders" element={<OrdersCentralHub />} />
-          <Route path="custom-requests" element={<CustomRequestsHub />} />
-          <Route path="stock-point/*" element={<StockPointHub isOwnerAdmin={true} />} />
-          <Route path="dispatch/*" element={<DispatchReturnsHub />} />
-          {!isCrmMasterOnly && (
-            <>
-              <Route path="catalog" element={<CatalogCentralHub />} />
-              <Route path="blogs/*" element={<BlogHub />} />
-              <Route path="website-edit" element={<WebsiteEditStudio />} />
-              <Route path="cms" element={<WebsiteEditStudio />} />
-              <Route path="claims" element={<ClaimsTrustHub />} />
-              <Route path="assets" element={<AssetLibraryHub />} />
-              <Route path="referrals" element={<ReferEarnHub />} />
-              <Route path="dealers" element={<DealerManagementHub />} />
-              <Route path="staff" element={<StaffAccessHub />} />
-              <Route path="audit" element={<AuditLogView />} />
-              <Route path="test-data" element={<TestDataManager />} />
-              <Route path="settings" element={<SettingsView />} />
-            </>
-          )}
-        </Routes>
-      </Suspense>
+      <AdminErrorBoundary>
+        <Suspense
+          fallback={
+            <div className="min-h-[40vh] flex flex-col items-center justify-center p-8 space-y-3">
+              <div className="h-7 w-7 animate-spin rounded-full border-3 border-[#1B365D] border-t-transparent" />
+              <p className="text-xs text-muted-foreground font-medium">Loading Module...</p>
+            </div>
+          }
+        >
+          <Routes>
+            <Route index element={isCrmMasterOnly ? <SalesRevenueDashboard /> : <OwnerDashboard />} />
+            <Route path="sales" element={<SalesRevenueDashboard />} />
+            <Route path="orders" element={<OrdersCentralHub />} />
+            <Route path="custom-requests" element={<CustomRequestsHub />} />
+            <Route path="stock-point/*" element={<StockPointHub isOwnerAdmin={true} />} />
+            <Route path="dispatch/*" element={<DispatchReturnsHub />} />
+            {!isCrmMasterOnly && (
+              <>
+                <Route path="catalog" element={<CatalogCentralHub />} />
+                <Route path="blogs/*" element={<BlogHub />} />
+                <Route path="website-edit" element={<WebsiteEditStudio />} />
+                <Route path="cms" element={<WebsiteEditStudio />} />
+                <Route path="claims" element={<ClaimsTrustHub />} />
+                <Route path="assets" element={<AssetLibraryHub />} />
+                <Route path="referrals" element={<ReferEarnHub />} />
+                <Route path="dealers" element={<DealerManagementHub />} />
+                <Route path="staff" element={<StaffAccessHub />} />
+                <Route path="audit" element={<AuditLogView />} />
+                <Route path="test-data" element={<TestDataManager />} />
+                <Route path="settings" element={<SettingsView />} />
+              </>
+            )}
+          </Routes>
+        </Suspense>
+      </AdminErrorBoundary>
     </ConsoleLayout>
   );
 }
