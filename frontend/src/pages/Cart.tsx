@@ -154,7 +154,14 @@ export default function Cart() {
                           <span className="text-xs font-semibold text-muted-foreground">Qty: {l.qty}</span>
                         ) : (
                           <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon-xs" aria-label={`Decrease ${l.product_name}`} data-testid={`cart-dec-${l.sku}`} onClick={() => setQty.mutate({ variant_id: l.variant_id, qty: l.qty - 1 })}>
+                            <Button 
+                              variant="outline" 
+                              size="icon-xs" 
+                              aria-label={`Decrease ${l.product_name}`} 
+                              data-testid={`cart-dec-${l.sku}`} 
+                              disabled={l.qty <= 1 || setQty.isPending}
+                              onClick={() => setQty.mutate({ variant_id: l.variant_id, qty: Math.max(1, l.qty - 1) })}
+                            >
                               <Minus className="h-3 w-3" />
                             </Button>
                             <span className="w-6 text-center tabular-nums">{l.qty}</span>
@@ -163,7 +170,7 @@ export default function Cart() {
                               size="icon-xs"
                               aria-label={`Increase ${l.product_name}`}
                               data-testid={`cart-inc-${l.sku}`}
-                              disabled={l.qty >= Math.min(l.free_stock, 10)}
+                              disabled={setQty.isPending || (l.free_stock ? l.qty >= Math.min(l.free_stock, 10) : false)}
                               onClick={() => setQty.mutate({ variant_id: l.variant_id, qty: l.qty + 1 })}
                             >
                               <Plus className="h-3 w-3" />
@@ -196,8 +203,9 @@ export default function Cart() {
                 const kotsonDiscount = Math.max(0, totalMrp - cart.subtotal);
                 const sellingPrice = cart.subtotal;
                 const refDiscount = cart.referral_discount || 0;
-                const finalPayable = Math.max(0, sellingPrice - refDiscount);
-                const totalSavings = kotsonDiscount + refDiscount;
+                const couponDiscount = cart.coupon_discount || 0;
+                const finalPayable = cart.final_total !== undefined ? cart.final_total : Math.max(0, sellingPrice - refDiscount - couponDiscount);
+                const totalSavings = kotsonDiscount + refDiscount + couponDiscount;
                 return (
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between text-muted-foreground">
@@ -218,6 +226,12 @@ export default function Cart() {
                       <div className="flex justify-between text-[#2F5233] font-semibold" data-testid="cart-discount">
                         <span>Referral Discount</span>
                         <span className="tabular-nums">−{inr(refDiscount)}</span>
+                      </div>
+                    )}
+                    {couponDiscount > 0 && (
+                      <div className="flex justify-between text-[#2F5233] font-semibold" data-testid="cart-coupon-discount">
+                        <span>Coupon Discount ({cart.coupon_code})</span>
+                        <span className="tabular-nums">−{inr(couponDiscount)}</span>
                       </div>
                     )}
                     <div className="flex justify-between border-t border-border pt-3 text-base font-bold text-foreground">

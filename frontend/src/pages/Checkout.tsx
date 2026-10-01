@@ -2,8 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { apiGet, apiPost } from "@/lib/api";
-import type { CartView, CheckoutConfig, CheckoutStartOut } from "@/lib/types";
+import { apiGet, apiPost, apiDelete } from "@/lib/api";
+import type { CartView, CheckoutConfig, CheckoutStartOut, SavedAddress } from "@/lib/types";
 import { inr } from "@/lib/format";
 import { useMe } from "@/lib/session";
 import StorefrontHeader from "@/components/layout/StorefrontHeader";
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Check, MapPin, Plus, ShieldCheck, Tag } from "lucide-react";
 
 import type { RazorpayResponse } from "@/lib/razorpay.d";
 
@@ -35,10 +36,35 @@ export default function Checkout() {
   const { data: me } = useMe();
   const [address, setAddress] = useState(EMPTY_ADDRESS);
   const [refInput, setRefInput] = useState("");
+  const [couponInput, setCouponInput] = useState("");
   const [placing, setPlacing] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [isAddingNewAddress, setIsAddingNewAddress] = useState(false);
+
+  const { data: cart } = useQuery({ queryKey: ["cart"], queryFn: () => apiGet<CartView>("/cart") });
+  const { data: config } = useQuery({ queryKey: ["checkout-config"], queryFn: () => apiGet<CheckoutConfig>("/checkout/config") });
+  
+  const { data: savedAddresses, refetch: refetchSavedAddresses } = useQuery<SavedAddress[]>({
+    queryKey: ["addresses", me?.id],
+    queryFn: () => apiGet<SavedAddress[]>("/addresses"),
+    enabled: !!me,
+  });
 
   useEffect(() => {
-    if (me) {
+    if (savedAddresses && savedAddresses.length > 0 && !selectedAddressId && !isAddingNewAddress) {
+      const def = savedAddresses.find((a) => a.is_default) || savedAddresses[0];
+      setSelectedAddressId(def.id);
+      setAddress({
+        full_name: def.full_name,
+        phone: def.phone,
+        email: def.email || me?.email || "",
+        line1: def.line1,
+        line2: def.line2 || "",
+        city: def.city,
+        state: def.state,
+        pincode: def.pincode,
+      });
+    } else if (me && (!savedAddresses || savedAddresses.length === 0)) {
       setAddress((a) => ({
         ...a,
         full_name: a.full_name || me.name || "",
@@ -46,15 +72,44 @@ export default function Checkout() {
         phone: a.phone || me.phone || "",
       }));
     }
-  }, [me]);
+  }, [savedAddresses, selectedAddressId, isAddingNewAddress, me]);
 
-  const { data: cart } = useQuery({ queryKey: ["cart"], queryFn: () => apiGet<CartView>("/cart") });
-  const { data: config } = useQuery({ queryKey: ["checkout-config"], queryFn: () => apiGet<CheckoutConfig>("/checkout/config") });
+  // Coupon Mutations
+  const applyCouponMutation = useMutation({
+    mutationFn: (code: string) => apiPost<CartView>("/cart/coupon", { code }),
+    onSuccess: (updated) => {
+      qc.invalidateQueries({ queryKey: ["cart"] });
+      if (updated.coupon_status === "valid") {
+        toast.success(updated.coupon_message || "Coupon applied successfully!");
+        setCouponInput("");
+      } else {
+        toast.error(updated.coupon_message || "Invalid or ineligible coupon code");
+      }
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not apply coupon"),
+  });
+
+  const removeCouponMutation = useMutation({
+    mutationFn: () => apiDelete<CartView>("/cart/coupon"),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cart"] });
+      toast.success("Coupon removed");
+    },
+    onError: () => toast.error("Could not remove coupon"),
+  });
 
   // Browser sends ONLY ids/qty/address/referral — amounts come back from the server.
   const place = useMutation({
-    mutationFn: () =>
-      apiPost<CheckoutStartOut>("/checkout/start", {
+    mutationFn: async () => {
+      // If user is authenticated and entering new address, persist it
+      if (me && isAddingNewAddress) {
+        try {
+          await apiPost("/addresses", address);
+          refetchSavedAddresses();
+        } catch (_e) {}
+      }
+
+      return apiPost<CheckoutStartOut>("/checkout/start", {
         address: {
           full_name: address.full_name.trim(),
           phone: address.phone.trim(),
@@ -66,7 +121,8 @@ export default function Checkout() {
           pincode: address.pincode.trim(),
         },
         referral_code: refInput.trim() || undefined,
-      }),
+      });
+    },
     onSuccess: async (out) => {
       qc.invalidateQueries({ queryKey: ["orders"] });
       const t = out.guest_access_token ? `?t=${out.guest_access_token}` : "";
@@ -109,7 +165,6 @@ export default function Checkout() {
               navigate(`/order/confirmation/${out.order_id}${t}`);
             },
           },
-
         });
         rzp.open();
       } else if (out.gateway.state === "pending_keys") {
@@ -212,48 +267,189 @@ export default function Checkout() {
           </div>
         ) : (
           <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_340px]">
-            <section aria-label="Delivery details" className="rounded-2xl border border-border bg-card p-6">
-              <h2 className="font-heading text-lg font-bold">Delivery details</h2>
-              {!me && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Checking out as guest — <Link to="/login" className="text-brand-deep underline">sign in</Link> to keep your order history.
-                </p>
-              )}
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <Label htmlFor="co-name">Full name <span className="text-destructive">*</span></Label>
-                  <Input id="co-name" placeholder="e.g. Rahul Sharma" value={address.full_name} onChange={set("full_name")} required minLength={2} className="mt-1.5 min-h-11" data-testid="checkout-name-input" />
-                </div>
-                <div>
-                  <Label htmlFor="co-phone">Phone <span className="text-destructive">*</span></Label>
-                  <Input id="co-phone" placeholder="e.g. 9876543210" value={address.phone} onChange={set("phone")} inputMode="tel" required minLength={10} className="mt-1.5 min-h-11" data-testid="checkout-phone-input" />
-                </div>
-                <div>
-                  <Label htmlFor="co-email">Email <span className="text-destructive">*</span></Label>
-                  <Input id="co-email" type="email" placeholder="e.g. rahul@example.com" value={address.email} onChange={set("email")} required className="mt-1.5 min-h-11" data-testid="checkout-email-input" />
-                </div>
-                <div className="sm:col-span-2">
-                  <Label htmlFor="co-line1">Address line 1 <span className="text-destructive">*</span></Label>
-                  <Input id="co-line1" placeholder="e.g. Flat 402, Green Valley Apts, MG Road" value={address.line1} onChange={set("line1")} required minLength={5} className="mt-1.5 min-h-11" data-testid="checkout-line1-input" />
-                </div>
-                <div className="sm:col-span-2">
-                  <Label htmlFor="co-line2">Address line 2 <span className="text-xs text-muted-foreground font-normal">(optional)</span></Label>
-                  <Input id="co-line2" placeholder="e.g. Landmark / Near Metro" value={address.line2} onChange={set("line2")} className="mt-1.5 min-h-11" data-testid="checkout-line2-input" />
-                </div>
-                <div>
-                  <Label htmlFor="co-city">City <span className="text-destructive">*</span></Label>
-                  <Input id="co-city" placeholder="e.g. Bengaluru" value={address.city} onChange={set("city")} required minLength={2} className="mt-1.5 min-h-11" data-testid="checkout-city-input" />
-                </div>
-                <div>
-                  <Label htmlFor="co-state">State <span className="text-destructive">*</span></Label>
-                  <Input id="co-state" placeholder="e.g. Karnataka" value={address.state} onChange={set("state")} required minLength={2} className="mt-1.5 min-h-11" data-testid="checkout-state-input" />
-                </div>
-                <div>
-                  <Label htmlFor="co-pin">PIN code <span className="text-destructive">*</span></Label>
-                  <Input id="co-pin" placeholder="e.g. 560001" value={address.pincode} onChange={set("pincode")} inputMode="numeric" pattern="[1-9][0-9]{5}" required className="mt-1.5 min-h-11" data-testid="checkout-pincode-input" />
-                </div>
+            <div>
+              {/* COUPON SECTION ABOVE BILLING/DELIVERY DETAILS */}
+              <div className="rounded-2xl border border-border bg-card p-6 mb-6">
+                {cart.referred_code && cart.referral_status === "valid" && (
+                  <div className="mb-4 flex items-center justify-between rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800">
+                    <div>
+                      <span className="font-bold">Referral code applied: </span>
+                      <span className="font-mono font-bold">{cart.referred_code}</span>
+                      <p className="text-emerald-700 text-[11px] mt-0.5">Discount: −{inr(cart.referral_discount || 0)}</p>
+                    </div>
+                    <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-300">
+                      Applied ✓
+                    </Badge>
+                  </div>
+                )}
+
+                {cart.coupon_code && (cart.coupon_discount || 0) > 0 ? (
+                  <div className="flex items-center justify-between rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800">
+                    <div>
+                      <div className="flex items-center gap-1.5 font-bold">
+                        <Tag className="h-3.5 w-3.5" />
+                        <span>Coupon applied: <span className="font-mono">{cart.coupon_code}</span></span>
+                      </div>
+                      <p className="text-emerald-700 text-xs font-semibold mt-0.5">
+                        Discount: −{inr(cart.coupon_discount || 0)}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-rose-600 hover:text-rose-700 text-xs h-8"
+                      onClick={() => removeCouponMutation.mutate()}
+                      disabled={removeCouponMutation.isPending}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ) : (
+                  <div>
+                    <h3 className="font-heading text-sm font-bold text-foreground mb-2">Have a coupon code?</h3>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enter coupon code"
+                        value={couponInput}
+                        onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                        className="min-h-10 uppercase font-mono tracking-wider font-semibold"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && couponInput.trim()) {
+                            applyCouponMutation.mutate(couponInput.trim());
+                          }
+                        }}
+                      />
+                      <Button
+                        className="bg-[#11291F] text-white hover:bg-[#1E3A2C] px-5 font-semibold text-xs min-h-10"
+                        onClick={() => applyCouponMutation.mutate(couponInput.trim())}
+                        disabled={!couponInput.trim() || applyCouponMutation.isPending}
+                      >
+                        {applyCouponMutation.isPending ? "Applying…" : "Apply"}
+                      </Button>
+                    </div>
+                    {cart.coupon_message && cart.coupon_status !== "valid" && cart.coupon_status !== "none" && (
+                      <p className="mt-2 text-xs text-destructive font-medium">{cart.coupon_message}</p>
+                    )}
+                  </div>
+                )}
               </div>
-            </section>
+
+              {/* Delivery Details Section */}
+              <section aria-label="Delivery details" className="rounded-2xl border border-border bg-card p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-brand-deep" />
+                    <h2 className="font-heading text-lg font-bold">Delivery details</h2>
+                  </div>
+                  {savedAddresses && savedAddresses.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => {
+                        setIsAddingNewAddress(!isAddingNewAddress);
+                        if (!isAddingNewAddress) {
+                          setSelectedAddressId(null);
+                          setAddress(EMPTY_ADDRESS);
+                        }
+                      }}
+                    >
+                      {isAddingNewAddress ? "Select Saved Address" : "+ Add New Address"}
+                    </Button>
+                  )}
+                </div>
+
+                {!me && (
+                  <p className="mt-1 mb-4 text-xs text-muted-foreground">
+                    Checking out as guest — <Link to="/login" className="text-brand-deep underline">sign in</Link> to save addresses and view order history.
+                  </p>
+                )}
+
+                {/* Saved Address Cards */}
+                {me && savedAddresses && savedAddresses.length > 0 && !isAddingNewAddress && (
+                  <div className="space-y-3 mb-6">
+                    <p className="text-xs font-semibold text-muted-foreground">Select delivery address:</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {savedAddresses.map((addr) => {
+                        const isSelected = selectedAddressId === addr.id;
+                        return (
+                          <div
+                            key={addr.id}
+                            onClick={() => {
+                              setSelectedAddressId(addr.id);
+                              setAddress({
+                                full_name: addr.full_name,
+                                phone: addr.phone,
+                                email: addr.email || me?.email || "",
+                                line1: addr.line1,
+                                line2: addr.line2 || "",
+                                city: addr.city,
+                                state: addr.state,
+                                pincode: addr.pincode,
+                              });
+                            }}
+                            className={`p-3.5 rounded-xl border text-xs cursor-pointer transition-all ${
+                              isSelected
+                                ? "border-brand-deep bg-brand-deep/5 shadow-xs ring-1 ring-brand-deep"
+                                : "border-border hover:border-muted-foreground/40 bg-card"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between font-bold text-sm text-foreground">
+                              <span>{addr.full_name}</span>
+                              {isSelected && <Check className="h-4 w-4 text-brand-deep" />}
+                            </div>
+                            <p className="mt-1 text-muted-foreground leading-relaxed">
+                              {addr.line1}{addr.line2 ? `, ${addr.line2}` : ""}
+                              <br />
+                              {addr.city}, {addr.state} — {addr.pincode}
+                            </p>
+                            <p className="mt-1.5 font-medium text-foreground">+91 {addr.phone}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Address Form (for guest or when adding new address) */}
+                {(!savedAddresses || savedAddresses.length === 0 || isAddingNewAddress) && (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <Label htmlFor="co-name">Full name <span className="text-destructive">*</span></Label>
+                      <Input id="co-name" placeholder="e.g. Rahul Sharma" value={address.full_name} onChange={set("full_name")} required minLength={2} className="mt-1.5 min-h-11" data-testid="checkout-name-input" />
+                    </div>
+                    <div>
+                      <Label htmlFor="co-phone">Phone <span className="text-destructive">*</span></Label>
+                      <Input id="co-phone" placeholder="e.g. 9876543210" value={address.phone} onChange={set("phone")} inputMode="tel" required minLength={10} className="mt-1.5 min-h-11" data-testid="checkout-phone-input" />
+                    </div>
+                    <div>
+                      <Label htmlFor="co-email">Email <span className="text-destructive">*</span></Label>
+                      <Input id="co-email" type="email" placeholder="e.g. rahul@example.com" value={address.email} onChange={set("email")} required className="mt-1.5 min-h-11" data-testid="checkout-email-input" />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Label htmlFor="co-line1">Address line 1 <span className="text-destructive">*</span></Label>
+                      <Input id="co-line1" placeholder="e.g. Flat 402, Green Valley Apts, MG Road" value={address.line1} onChange={set("line1")} required minLength={5} className="mt-1.5 min-h-11" data-testid="checkout-line1-input" />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Label htmlFor="co-line2">Address line 2 <span className="text-xs text-muted-foreground font-normal">(optional)</span></Label>
+                      <Input id="co-line2" placeholder="e.g. Landmark / Near Metro" value={address.line2} onChange={set("line2")} className="mt-1.5 min-h-11" data-testid="checkout-line2-input" />
+                    </div>
+                    <div>
+                      <Label htmlFor="co-city">City <span className="text-destructive">*</span></Label>
+                      <Input id="co-city" placeholder="e.g. Bengaluru" value={address.city} onChange={set("city")} required minLength={2} className="mt-1.5 min-h-11" data-testid="checkout-city-input" />
+                    </div>
+                    <div>
+                      <Label htmlFor="co-state">State <span className="text-destructive">*</span></Label>
+                      <Input id="co-state" placeholder="e.g. Karnataka" value={address.state} onChange={set("state")} required minLength={2} className="mt-1.5 min-h-11" data-testid="checkout-state-input" />
+                    </div>
+                    <div>
+                      <Label htmlFor="co-pin">PIN code <span className="text-destructive">*</span></Label>
+                      <Input id="co-pin" placeholder="e.g. 560001" value={address.pincode} onChange={set("pincode")} inputMode="numeric" pattern="[1-9][0-9]{5}" required className="mt-1.5 min-h-11" data-testid="checkout-pincode-input" />
+                    </div>
+                  </div>
+                )}
+              </section>
+            </div>
 
             <aside className="h-fit rounded-2xl border border-border bg-card p-6">
               <h2 className="font-heading text-lg font-bold">Order summary</h2>
@@ -283,8 +479,9 @@ export default function Checkout() {
                 const kotsonDiscount = Math.max(0, totalMrp - cart.subtotal);
                 const sellingPrice = cart.subtotal;
                 const refDiscount = cart.referral_discount || 0;
-                const finalPayable = Math.max(0, sellingPrice - refDiscount);
-                const totalSavings = kotsonDiscount + refDiscount;
+                const couponDiscount = cart.coupon_discount || 0;
+                const finalPayable = cart.final_total !== undefined ? cart.final_total : Math.max(0, sellingPrice - refDiscount - couponDiscount);
+                const totalSavings = kotsonDiscount + refDiscount + couponDiscount;
                 return (
                   <div className="mt-4 space-y-2 text-sm border-t border-border pt-4">
                     <div className="flex justify-between text-muted-foreground">
@@ -315,6 +512,12 @@ export default function Checkout() {
                         <span className="tabular-nums">−{inr(refDiscount)}</span>
                       </div>
                     )}
+                    {couponDiscount > 0 && (
+                      <div className="flex justify-between text-[#2F5233] font-semibold" data-testid="checkout-coupon-discount">
+                        <span>Coupon ({cart.coupon_code})</span>
+                        <span className="tabular-nums">−{inr(couponDiscount)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between border-t border-border pt-3 text-base font-bold text-foreground">
                       <span>FINAL AMOUNT TO PAY</span>
                       <span className="font-heading text-2xl text-foreground tabular-nums" data-testid="checkout-subtotal">
@@ -334,7 +537,6 @@ export default function Checkout() {
                 GST and shipping lines are finalized server-side when the order is created — the amounts you see here are re-verified before payment.
               </p>
 
-
               <div className="mt-4">
                 <Label htmlFor="co-ref">Referral code (optional)</Label>
                 <Input id="co-ref" value={refInput} onChange={(e) => setRefInput(e.target.value.toUpperCase())} placeholder={cart.referred_code ?? ""} className="mt-1.5 min-h-11" data-testid="checkout-referral-input" />
@@ -343,7 +545,7 @@ export default function Checkout() {
 
               <Button
                 size="lg"
-                className="mt-6 w-full min-h-12"
+                className="mt-6 w-full min-h-12 bg-[#11291F] text-white hover:bg-[#1E3A2C]"
                 onClick={submit}
                 disabled={placing || place.isPending}
                 data-testid="checkout-pay-btn"
@@ -351,7 +553,7 @@ export default function Checkout() {
                 {placing || place.isPending
                   ? "Creating order…"
                   : config?.state === "ready_test" || config?.state === "ready_live"
-                  ? "Pay with Razorpay"
+                  ? `Pay with Razorpay (${inr(cart.final_total !== undefined ? cart.final_total : cart.subtotal)})`
                   : "Place order"}
               </Button>
               {config?.mode === "test" && (

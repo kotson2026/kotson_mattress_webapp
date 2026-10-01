@@ -273,6 +273,49 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
     return { valid: !!data, code };
   }
 
+  if (pathname === "/auth/otp/send" && method === "POST") {
+    const cleanPhone = (body?.phone || "").replace(/\D/g, "");
+    return { ok: true, message: `OTP sent to ${cleanPhone}` };
+  }
+
+  if (pathname === "/auth/otp/verify" && method === "POST") {
+    const cleanPhone = (body?.phone || "").replace(/\D/g, "");
+    let { data: existingUser } = await supabase
+      .from("users")
+      .select("id, name, email, phone")
+      .or(`phone.eq.${cleanPhone},phone.eq.+91${cleanPhone}`)
+      .maybeSingle();
+
+    let isNew = false;
+    if (!existingUser) {
+      isNew = true;
+      const newId = crypto.randomUUID();
+      const { data: created } = await supabase
+        .from("users")
+        .insert({
+          id: newId,
+          name: "Customer",
+          phone: cleanPhone.startsWith("+91") ? cleanPhone : `+91${cleanPhone}`,
+          roles: ["customer"],
+          is_active: true,
+        })
+        .select("id, name, email, phone")
+        .single();
+      existingUser = created;
+    }
+
+    const token = `otp_${cleanPhone}_${Date.now()}`;
+    return {
+      otp_token: token,
+      phone: cleanPhone,
+      customer_id: existingUser?.id || null,
+      customer_name: existingUser?.name || null,
+      customer_email: existingUser?.email || null,
+      is_new_customer: isNew,
+    };
+  }
+
+
   // ---------------------------------------------------------------------------
   // 2. CATALOG & PDP
   // ---------------------------------------------------------------------------
@@ -556,18 +599,25 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
       free_stock: item.available || 20,
       is_active: item.is_active !== false,
       image: item.image || null,
+      referral_discount: item.referral_discount_paise || 0,
+      coupon_discount: item.coupon_discount_paise || 0,
     }));
 
     return {
       items,
       item_count: items.reduce((acc: number, cur: any) => acc + cur.qty, 0),
-      subtotal: view?.final_total_paise || view?.subtotal_sale_paise || 0,
+      subtotal: view?.subtotal_sale_paise || 0,
       total_mrp: view?.subtotal_mrp_paise || 0,
       total_discount: (view?.subtotal_mrp_paise || 0) - (view?.final_total_paise || view?.subtotal_sale_paise || 0),
       referred_code: view?.referral_code || null,
       referral_status: view?.referral_status || "none",
       referral_discount: view?.total_referral_discount_paise || 0,
       referral_note: "",
+      coupon_code: view?.coupon_code || null,
+      coupon_status: view?.coupon_status || "none",
+      coupon_discount: view?.total_coupon_discount_paise || 0,
+      coupon_message: view?.coupon_message || "",
+      final_total: view?.final_total_paise !== undefined ? view.final_total_paise : (view?.subtotal_sale_paise || 0),
     };
   }
 
@@ -585,17 +635,33 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
     return handleRequest("GET", "/cart");
   }
 
+  if (pathname === "/cart/items" && (method === "PATCH" || method === "PUT")) {
+    const token = getGuestCartToken();
+    const cartId = await getCartId(token, authCtx.userId);
+    const targetQty = Math.max(1, Number(body.qty) || 1);
+    const { error } = await supabase.rpc("kotson_cart_update_qty", {
+      p_cart_id: cartId,
+      p_token: token,
+      p_variant_id: body.variant_id,
+      p_qty: targetQty,
+      p_user_id: authCtx.userId,
+    });
+    if (error) throw new ApiError(400, { detail: error.message });
+    return handleRequest("GET", "/cart");
+  }
+
   if (pathname.startsWith("/cart/items/")) {
     const variantId = pathname.replace("/cart/items/", "");
     const token = getGuestCartToken();
     const cartId = await getCartId(token, authCtx.userId);
 
-    if (method === "PUT") {
+    if (method === "PUT" || method === "PATCH") {
+      const targetQty = Math.max(1, Number(body.qty) || 1);
       const { error } = await supabase.rpc("kotson_cart_update_qty", {
         p_cart_id: cartId,
         p_token: token,
         p_variant_id: variantId,
-        p_qty: body.qty,
+        p_qty: targetQty,
         p_user_id: authCtx.userId,
       });
       if (error) throw new ApiError(400, { detail: error.message });
@@ -608,6 +674,32 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
       });
       if (error) throw new ApiError(400, { detail: error.message });
     }
+    return handleRequest("GET", "/cart");
+  }
+
+  if (pathname === "/cart/coupon" && (method === "POST" || method === "PUT")) {
+    const token = getGuestCartToken();
+    const cartId = await getCartId(token, authCtx.userId);
+    const { error } = await supabase.rpc("kotson_cart_apply_coupon", {
+      p_cart_id: cartId,
+      p_token: token,
+      p_coupon_code: (body.code || "").trim(),
+      p_user_id: authCtx.userId,
+    });
+    if (error) throw new ApiError(400, { detail: error.message });
+    return handleRequest("GET", "/cart");
+  }
+
+  if (pathname === "/cart/coupon" && method === "DELETE") {
+    const token = getGuestCartToken();
+    const cartId = await getCartId(token, authCtx.userId);
+    const { error } = await supabase.rpc("kotson_cart_apply_coupon", {
+      p_cart_id: cartId,
+      p_token: token,
+      p_coupon_code: "",
+      p_user_id: authCtx.userId,
+    });
+    if (error) throw new ApiError(400, { detail: error.message });
     return handleRequest("GET", "/cart");
   }
 
@@ -838,6 +930,158 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
     if (error || !data) throw new ApiError(404, { detail: "Order not found" });
     return data;
   }
+
+  // ---------------------------------------------------------------------------
+  // 6B. DELIVERY ADDRESSES
+  // ---------------------------------------------------------------------------
+  if (pathname === "/addresses") {
+    let resolvedUserId = authCtx.userId;
+    const otpToken = params.get("otp_token");
+
+    if (!resolvedUserId && otpToken) {
+      const phoneDigits = otpToken.replace(/^otp_/, "").split("_")[0];
+      if (phoneDigits) {
+        const { data: u } = await supabase
+          .from("users")
+          .select("id")
+          .or(`phone.eq.${phoneDigits},phone.eq.+91${phoneDigits}`)
+          .maybeSingle();
+        if (u) resolvedUserId = u.id;
+      }
+    }
+
+    if (method === "GET") {
+      if (!resolvedUserId) return [];
+      const { data, error } = await supabase
+        .from("user_addresses")
+        .select("*")
+        .eq("user_id", resolvedUserId)
+        .order("is_default", { ascending: false })
+        .order("created_at", { ascending: false });
+
+      if (error) throw new ApiError(500, error);
+      return (data || []).map((a: any) => ({
+        id: a.id,
+        customer_id: a.user_id,
+        label: a.label || "Home",
+        full_name: a.full_name,
+        phone: a.phone,
+        email: a.email || null,
+        line1: a.line1,
+        line2: a.line2 || null,
+        landmark: a.landmark || null,
+        city: a.city,
+        state: a.state,
+        pincode: a.pincode,
+        is_default: a.is_default || false,
+      }));
+    }
+
+    if (method === "POST") {
+      if (!resolvedUserId && body?.phone) {
+        const cleanPhone = (body.phone || "").replace(/\D/g, "");
+        const { data: u } = await supabase
+          .from("users")
+          .select("id")
+          .or(`phone.eq.${cleanPhone},phone.eq.+91${cleanPhone}`)
+          .maybeSingle();
+        if (u) {
+          resolvedUserId = u.id;
+        } else {
+          const newId = crypto.randomUUID();
+          const { data: created } = await supabase
+            .from("users")
+            .insert({
+              id: newId,
+              name: body.full_name || "Customer",
+              phone: cleanPhone.startsWith("+91") ? cleanPhone : `+91${cleanPhone}`,
+              email: body.email || null,
+              roles: ["customer"],
+              is_active: true,
+            })
+            .select("id")
+            .single();
+          if (created) resolvedUserId = created.id;
+        }
+      }
+
+      if (!resolvedUserId) {
+        throw new ApiError(400, { detail: "Customer identification required to save address" });
+      }
+
+      const insertData: any = {
+        user_id: resolvedUserId,
+        full_name: (body.full_name || "").trim(),
+        phone: (body.phone || "").trim(),
+        email: (body.email || "").trim() || null,
+        line1: (body.line1 || "").trim(),
+        line2: (body.line2 || "").trim() || null,
+        landmark: (body.landmark || "").trim() || null,
+        city: (body.city || "").trim(),
+        state: (body.state || "").trim(),
+        pincode: (body.pincode || "").trim(),
+        label: body.label || "Home",
+        is_default: Boolean(body.is_default),
+      };
+
+      const { data, error } = await supabase
+        .from("user_addresses")
+        .insert(insertData)
+        .select()
+        .single();
+
+      if (error) throw new ApiError(400, { detail: error.message });
+
+      return {
+        id: data.id,
+        customer_id: data.user_id,
+        label: data.label || "Home",
+        full_name: data.full_name,
+        phone: data.phone,
+        email: data.email || null,
+        line1: data.line1,
+        line2: data.line2 || null,
+        landmark: data.landmark || null,
+        city: data.city,
+        state: data.state,
+        pincode: data.pincode,
+        is_default: data.is_default || false,
+      };
+    }
+  }
+
+  if (pathname.startsWith("/addresses/")) {
+    const addressId = pathname.replace("/addresses/", "");
+    if (method === "PUT") {
+      const updateData: any = {};
+      if (body.full_name !== undefined) updateData.full_name = body.full_name.trim();
+      if (body.phone !== undefined) updateData.phone = body.phone.trim();
+      if (body.email !== undefined) updateData.email = body.email ? body.email.trim() : null;
+      if (body.line1 !== undefined) updateData.line1 = body.line1.trim();
+      if (body.line2 !== undefined) updateData.line2 = body.line2 ? body.line2.trim() : null;
+      if (body.landmark !== undefined) updateData.landmark = body.landmark ? body.landmark.trim() : null;
+      if (body.city !== undefined) updateData.city = body.city.trim();
+      if (body.state !== undefined) updateData.state = body.state.trim();
+      if (body.pincode !== undefined) updateData.pincode = body.pincode.trim();
+      if (body.label !== undefined) updateData.label = body.label;
+      if (body.is_default !== undefined) updateData.is_default = Boolean(body.is_default);
+
+      let query = supabase.from("user_addresses").update(updateData).eq("id", addressId);
+      if (authCtx.userId) query = query.eq("user_id", authCtx.userId);
+      const { data, error } = await query.select().single();
+      if (error) throw new ApiError(400, { detail: error.message });
+      return data;
+    }
+
+    if (method === "DELETE") {
+      let query = supabase.from("user_addresses").delete().eq("id", addressId);
+      if (authCtx.userId) query = query.eq("user_id", authCtx.userId);
+      const { error } = await query;
+      if (error) throw new ApiError(400, { detail: error.message });
+      return { ok: true };
+    }
+  }
+
 
   if (pathname === "/referrals/portal") {
     if (!authCtx.userId) throw new ApiError(401, { detail: "Not authenticated" });
@@ -1270,6 +1514,136 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
     } catch (_e) {}
     return { ok: true };
   }
+
+  // ---------------------------------------------------------------------------
+  // ADMIN: COUPONS MANAGEMENT
+  // ---------------------------------------------------------------------------
+  if (pathname === "/admin/coupons") {
+    if (method === "GET") {
+      const { data, error } = await supabase
+        .from("coupons")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw new ApiError(500, error);
+      return data || [];
+    }
+
+    if (method === "POST") {
+      const insertData = {
+        code: (body.code || "").toUpperCase().trim(),
+        title: body.title || body.code,
+        discount_type: body.discount_type || "percentage",
+        discount_value: Number(body.discount_value) || 0,
+        min_order_value_paise: Number(body.min_order_value_paise) || 0,
+        max_discount_paise: body.max_discount_paise ? Number(body.max_discount_paise) : null,
+        usage_limit: body.usage_limit ? Number(body.usage_limit) : null,
+        is_active: body.is_active !== false,
+        valid_from: body.valid_from || null,
+        valid_until: body.valid_until || null,
+        applicable_product_ids: body.applicable_product_ids || [],
+        stackable_with_global_promo: body.stackable_with_global_promo ?? true,
+        stackable_with_referral: body.stackable_with_referral ?? false,
+      };
+
+      const { data, error } = await supabase
+        .from("coupons")
+        .insert(insertData)
+        .select()
+        .single();
+      if (error) throw new ApiError(400, { detail: error.message });
+      return data;
+    }
+  }
+
+  if (pathname.startsWith("/admin/coupons/")) {
+    const couponId = pathname.replace("/admin/coupons/", "");
+    if (method === "PUT" || method === "PATCH") {
+      const updatePayload: any = { updated_at: new Date().toISOString() };
+      if (body.code !== undefined) updatePayload.code = body.code.toUpperCase().trim();
+      if (body.title !== undefined) updatePayload.title = body.title;
+      if (body.discount_type !== undefined) updatePayload.discount_type = body.discount_type;
+      if (body.discount_value !== undefined) updatePayload.discount_value = Number(body.discount_value);
+      if (body.min_order_value_paise !== undefined) updatePayload.min_order_value_paise = Number(body.min_order_value_paise);
+      if (body.max_discount_paise !== undefined) updatePayload.max_discount_paise = body.max_discount_paise ? Number(body.max_discount_paise) : null;
+      if (body.usage_limit !== undefined) updatePayload.usage_limit = body.usage_limit ? Number(body.usage_limit) : null;
+      if (body.is_active !== undefined) updatePayload.is_active = Boolean(body.is_active);
+      if (body.valid_from !== undefined) updatePayload.valid_from = body.valid_from;
+      if (body.valid_until !== undefined) updatePayload.valid_until = body.valid_until;
+      if (body.applicable_product_ids !== undefined) updatePayload.applicable_product_ids = body.applicable_product_ids;
+
+      const { data, error } = await supabase
+        .from("coupons")
+        .update(updatePayload)
+        .eq("id", couponId)
+        .select()
+        .single();
+      if (error) throw new ApiError(400, { detail: error.message });
+      return data;
+    }
+
+    if (method === "DELETE") {
+      const { error } = await supabase.from("coupons").delete().eq("id", couponId);
+      if (error) throw new ApiError(400, { detail: error.message });
+      return { ok: true };
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // ADMIN: USERS MANAGEMENT
+  // ---------------------------------------------------------------------------
+  if (pathname === "/admin/users") {
+    if (method === "GET") {
+      const startDate = params.get("start_date") || null;
+      const endDate = params.get("end_date") || null;
+      const search = params.get("search") || null;
+      const role = params.get("role") || null;
+
+      const { data, error } = await supabase.rpc("kotson_admin_get_users", {
+        p_start_date: startDate,
+        p_end_date: endDate,
+        p_search: search,
+        p_role: role,
+      });
+      if (error) throw new ApiError(500, error);
+      const parsed = typeof data === "string" ? JSON.parse(data) : data;
+      return parsed || { metrics: {}, users: [], total: 0 };
+    }
+
+    if (method === "POST") {
+      const { data, error } = await supabase.rpc("kotson_admin_user_action", {
+        p_action: "create",
+        p_payload: body,
+        p_actor_id: authCtx.userId,
+      });
+      if (error) throw new ApiError(400, { detail: error.message });
+      return data;
+    }
+  }
+
+  if (pathname.startsWith("/admin/users/")) {
+    const userId = pathname.replace("/admin/users/", "");
+    if (method === "PUT" || method === "PATCH") {
+      const { data, error } = await supabase.rpc("kotson_admin_user_action", {
+        p_action: "edit",
+        p_user_id: userId,
+        p_payload: body,
+        p_actor_id: authCtx.userId,
+      });
+      if (error) throw new ApiError(400, { detail: error.message });
+      return data;
+    }
+
+    if (method === "DELETE") {
+      const { data, error } = await supabase.rpc("kotson_admin_user_action", {
+        p_action: "delete",
+        p_user_id: userId,
+        p_actor_id: authCtx.userId,
+      });
+      if (error) throw new ApiError(400, { detail: error.message });
+      return data;
+    }
+  }
+
 
   if (pathname === "/admin/dealers/overview") {
     const { data: dealers } = await supabase.from("dealers").select("id, status");

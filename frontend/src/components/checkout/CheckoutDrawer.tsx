@@ -239,17 +239,21 @@ function QtyStepper({
   onIncrease: () => void;
   loading?: boolean;
 }) {
+  const canDecrease = !loading && qty > 1;
+  const canIncrease = !loading && qty < maxQty;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, opacity: loading ? 0.5 : 1 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, opacity: loading ? 0.6 : 1 }}>
       <button
         onClick={onDecrease}
-        disabled={loading}
+        disabled={!canDecrease}
         aria-label="Decrease quantity"
         style={{
           width: 28, height: 28, borderRadius: 6,
           border: `1.5px solid ${C.border}`, background: C.cream,
-          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 18, color: C.charcoal, transition: "background 0.15s",
+          cursor: canDecrease ? "pointer" : "not-allowed",
+          opacity: canDecrease ? 1 : 0.4,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 18, color: C.charcoal, transition: "all 0.15s",
         }}
       >
         −
@@ -257,15 +261,15 @@ function QtyStepper({
       <span style={{ minWidth: 20, textAlign: "center", fontWeight: 600, fontSize: 15 }}>{qty}</span>
       <button
         onClick={onIncrease}
-        disabled={loading || qty >= maxQty}
+        disabled={!canIncrease}
         aria-label="Increase quantity"
         style={{
           width: 28, height: 28, borderRadius: 6,
           border: `1.5px solid ${C.border}`, background: C.cream,
-          cursor: qty >= maxQty ? "not-allowed" : "pointer",
-          opacity: qty >= maxQty ? 0.4 : 1,
+          cursor: canIncrease ? "pointer" : "not-allowed",
+          opacity: canIncrease ? 1 : 0.4,
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 18, color: C.charcoal, transition: "background 0.15s",
+          fontSize: 18, color: C.charcoal, transition: "all 0.15s",
         }}
       >
         +
@@ -385,8 +389,8 @@ function DrawerCartItem({ line, onQty, onRemove, onEditCustom, busy }: {
           ) : (
             <QtyStepper
               qty={line.qty}
-              maxQty={Math.min(line.free_stock, 10)}
-              onDecrease={() => onQty(line.qty - 1)}
+              maxQty={Math.min(line.free_stock || 20, 10)}
+              onDecrease={() => onQty(Math.max(1, line.qty - 1))}
               onIncrease={() => onQty(line.qty + 1)}
               loading={busy}
             />
@@ -728,148 +732,141 @@ function OrderSummaryAccordion({ cart, couponDiscount }: { cart: CartView; coupo
 }
 
 /** Coupon section */
-function CouponSection({ state, dispatch, subtotal }: {
-  state: CheckoutState;
-  dispatch: React.Dispatch<CheckoutAction>;
-  subtotal: number;
+function CouponSection({ cart, onCartUpdate }: {
+  cart: CartView;
+  onCartUpdate: () => void;
 }) {
-  const [input, setInput] = useState(state.couponCode);
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [publicCoupons, setPublicCoupons] = useState<{ code: string; description: string }[]>([]);
-  const [showCoupons, setShowCoupons] = useState(false);
 
-  const apply = async () => {
-    if (!input.trim()) return;
+  const apply = async (codeToUse?: string) => {
+    const c = (codeToUse || input).trim().toUpperCase();
+    if (!c) {
+      toast.error("Please enter a coupon code");
+      return;
+    }
     setLoading(true);
     try {
-      const result = await apiPost<CouponResult>("/checkout/apply-coupon", {
-        code: input.trim().toUpperCase(),
-        cart_subtotal_paise: subtotal,
-      });
-      dispatch({ type: "SET_COUPON", result, code: input.trim().toUpperCase() });
-      if (result.valid) {
-        toast.success(result.message);
+      const updated = await apiPost<CartView>("/cart/coupon", { code: c });
+      onCartUpdate();
+      if (updated.coupon_status === "valid") {
+        toast.success(updated.coupon_message || "Coupon applied successfully!");
+        setInput("");
       } else {
-        toast.error(result.message);
+        toast.error(updated.coupon_message || "Invalid or ineligible coupon code");
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not validate coupon");
+      toast.error(e instanceof Error ? e.message : "Could not apply coupon");
     } finally {
       setLoading(false);
     }
   };
 
-  const remove = () => {
-    setInput("");
-    dispatch({ type: "SET_COUPON", result: null, code: "" });
+  const remove = async () => {
+    try {
+      await apiDelete("/cart/coupon");
+      onCartUpdate();
+      toast.success("Coupon removed");
+    } catch {
+      toast.error("Could not remove coupon");
+    }
   };
 
-  const loadPublicCoupons = async () => {
-    if (showCoupons) { setShowCoupons(false); return; }
-    try {
-      const coupons = await apiGet<typeof publicCoupons>("/checkout/coupons");
-      setPublicCoupons(coupons);
-      setShowCoupons(true);
-    } catch { /* silently ignore if none */ }
-  };
+  const hasValidReferral = cart?.referred_code && cart.referral_status === "valid";
+  const hasValidCoupon = cart?.coupon_code && (cart.coupon_discount || 0) > 0;
 
   return (
     <div style={{
-      background: C.white, borderRadius: 12, border: `1px solid ${C.border}`,
-      padding: "14px 16px", marginBottom: 12,
+      background: C.white, borderRadius: 12, border: `1.5px solid ${C.border}`,
+      padding: "14px 16px", marginBottom: 16,
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <Tag size={15} color={C.green} />
-        <span style={{ fontWeight: 700, fontSize: 13, color: C.charcoal }}>Offers & Coupons</span>
-      </div>
-
-      {state.couponResult?.valid ? (
+      {/* Referral auto-applied indicator */}
+      {hasValidReferral && (
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          background: C.greenBg, padding: "10px 12px", borderRadius: 8,
+          background: C.greenBg, padding: "8px 12px", borderRadius: 8,
+          marginBottom: 10, border: `1px solid ${C.green}30`,
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Check size={14} color={C.green} />
-            <span style={{ fontSize: 13, color: C.green, fontWeight: 600 }}>{state.couponCode}</span>
-            <span style={{ fontSize: 12, color: C.muted }}>— {state.couponResult.message}</span>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.green }}>
+              Referral code applied: <span style={{ fontFamily: "monospace" }}>{cart.referred_code}</span>
+            </div>
+            <div style={{ fontSize: 11, color: C.charcoal, marginTop: 1 }}>
+              Referral discount: −{inr(cart.referral_discount || 0)}
+            </div>
           </div>
-          <button
-            onClick={remove}
-            style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, padding: 2 }}
-          >
-            <X size={14} />
-          </button>
-        </div>
-      ) : (
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            value={input}
-            onChange={e => setInput(e.target.value.toUpperCase())}
-            onKeyDown={e => e.key === "Enter" && apply()}
-            placeholder="Enter coupon code"
-            style={{
-              flex: 1, padding: "10px 12px", borderRadius: 8,
-              border: `1.5px solid ${C.border}`, fontSize: 13, color: C.charcoal,
-              background: C.cream, outline: "none", fontFamily: "inherit",
-              letterSpacing: "0.05em",
-            }}
-          />
-          <button
-            onClick={apply}
-            disabled={loading || !input.trim()}
-            style={{
-              padding: "10px 16px", borderRadius: 8,
-              background: input.trim() ? C.green : C.creamDark,
-              color: input.trim() ? C.white : C.muted,
-              border: "none", cursor: input.trim() ? "pointer" : "default",
-              fontWeight: 700, fontSize: 13, transition: "all 0.15s",
-            }}
-          >
-            {loading ? "…" : "Apply"}
-          </button>
+          <span style={{ fontSize: 11, fontWeight: 700, color: C.green, background: "#fff", padding: "2px 8px", borderRadius: 12 }}>
+            Applied ✓
+          </span>
         </div>
       )}
 
-      <button
-        onClick={loadPublicCoupons}
-        style={{
-          marginTop: 8, background: "none", border: "none", cursor: "pointer",
-          color: C.green, fontSize: 12, fontWeight: 600, padding: 0, textDecoration: "underline",
-        }}
-      >
-        {showCoupons ? "Hide coupons" : "View available coupons"}
-      </button>
-
-      <AnimatePresence>
-        {showCoupons && publicCoupons.length > 0 && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}
-            style={{ overflow: "hidden" }}
+      {hasValidCoupon ? (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          background: C.greenBg, padding: "10px 12px", borderRadius: 8,
+          border: `1px solid ${C.green}40`,
+        }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <Tag size={14} color={C.green} />
+              <span style={{ fontSize: 13, color: C.green, fontWeight: 700 }}>
+                Coupon applied: <span style={{ fontFamily: "monospace" }}>{cart.coupon_code}</span>
+              </span>
+            </div>
+            <div style={{ fontSize: 12, color: C.green, fontWeight: 600, marginTop: 2, paddingLeft: 20 }}>
+              Discount: −{inr(cart.coupon_discount || 0)}
+            </div>
+          </div>
+          <button
+            onClick={remove}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              color: C.error, fontSize: 12, fontWeight: 600, padding: "4px 8px",
+            }}
           >
-            {publicCoupons.map(c => (
-              <div
-                key={c.code}
-                onClick={() => { setInput(c.code); setShowCoupons(false); }}
-                style={{
-                  marginTop: 8, padding: "8px 10px", borderRadius: 8, cursor: "pointer",
-                  border: `1px dashed ${C.green}`, background: C.greenBg, display: "flex",
-                  justifyContent: "space-between", alignItems: "center",
-                }}
-              >
-                <div>
-                  <span style={{ fontWeight: 700, color: C.green, fontSize: 12 }}>{c.code}</span>
-                  {c.description && <span style={{ fontSize: 11, color: C.muted, marginLeft: 8 }}>{c.description}</span>}
-                </div>
-                <span style={{ fontSize: 11, color: C.green, fontWeight: 600 }}>Use</span>
-              </div>
-            ))}
-          </motion.div>
-        )}
-        {showCoupons && publicCoupons.length === 0 && (
-          <div style={{ marginTop: 8, fontSize: 12, color: C.muted }}>No coupons available right now</div>
-        )}
-      </AnimatePresence>
+            Remove
+          </button>
+        </div>
+      ) : (
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.charcoal, marginBottom: 8 }}>
+            Have a coupon code?
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              value={input}
+              onChange={e => setInput(e.target.value.toUpperCase())}
+              onKeyDown={e => e.key === "Enter" && apply()}
+              placeholder="Enter coupon code"
+              style={{
+                flex: 1, padding: "9px 12px", borderRadius: 8,
+                border: `1.5px solid ${C.border}`, fontSize: 13, color: C.charcoal,
+                background: C.cream, outline: "none", fontFamily: "inherit",
+                letterSpacing: "0.05em", fontWeight: 600, textTransform: "uppercase",
+              }}
+            />
+            <button
+              onClick={() => apply()}
+              disabled={loading || !input.trim()}
+              style={{
+                padding: "9px 16px", borderRadius: 8,
+                background: loading || !input.trim() ? C.creamDark : C.green,
+                color: loading || !input.trim() ? C.muted : C.white,
+                border: "none", cursor: loading || !input.trim() ? "not-allowed" : "pointer",
+                fontWeight: 700, fontSize: 13, transition: "all 0.15s",
+              }}
+            >
+              {loading ? "…" : "Apply"}
+            </button>
+          </div>
+          {cart?.coupon_message && cart.coupon_status !== "valid" && cart.coupon_status !== "none" && (
+            <div style={{ fontSize: 11, color: C.error, marginTop: 6, fontWeight: 500 }}>
+              {cart.coupon_message}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1134,10 +1131,18 @@ export function CheckoutDrawer({ open, onClose }: CheckoutDrawerProps) {
     }
   }, [me]);
 
+  // Auto-select default/first address when loaded
+  useEffect(() => {
+    if (addresses && addresses.length > 0 && !state.selectedAddressId) {
+      const def = addresses.find(a => a.is_default) || addresses[0];
+      dispatch({ type: "SELECT_ADDRESS", id: def.id });
+    }
+  }, [addresses, state.selectedAddressId]);
+
   // ── Cart mutations ──
   const setQty = useMutation({
     mutationFn: ({ variant_id, qty }: { variant_id: string; qty: number }) =>
-      apiPatch("/cart/items", { variant_id, qty }),
+      apiPatch("/cart/items", { variant_id, qty: Math.max(1, qty) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["cart"] }),
     onError: (e) => toast.error(e instanceof Error ? e.message : "Could not update cart"),
   });
@@ -1196,8 +1201,12 @@ export function CheckoutDrawer({ open, onClose }: CheckoutDrawerProps) {
     setAddressSaving(true);
     try {
       const params = state.otpToken ? `?otp_token=${state.otpToken}` : "";
-      await apiPost<SavedAddress>(`/addresses${params}`, fields);
-      await refetchAddresses();
+      const saved = await apiPost<SavedAddress>(`/addresses${params}`, fields);
+      const updated = await refetchAddresses();
+      const newId = saved?.id || updated.data?.[0]?.id;
+      if (newId) {
+        dispatch({ type: "SELECT_ADDRESS", id: newId });
+      }
       dispatch({ type: "SET_STEP", step: "ADDRESS_SELECT" });
       toast.success("Address saved");
     } catch (e) {
@@ -1320,7 +1329,7 @@ export function CheckoutDrawer({ open, onClose }: CheckoutDrawerProps) {
     }
   };
 
-  const couponDiscount = 0; // Coupons UI coming soon — backend infrastructure is ready
+  const couponDiscount = cart?.coupon_discount || 0;
 
   // ─────────────────────────────────────────────────
   // Step content
@@ -1621,7 +1630,14 @@ export function CheckoutDrawer({ open, onClose }: CheckoutDrawerProps) {
       case "ADDRESS_SELECT":
         return (
           <div style={{ padding: "0 20px" }}>
-            {cart && <OrderSummaryAccordion cart={cart} couponDiscount={0} />}
+            {cart && <OrderSummaryAccordion cart={cart} couponDiscount={couponDiscount} />}
+
+            {cart && (
+              <CouponSection
+                cart={cart}
+                onCartUpdate={() => qc.invalidateQueries({ queryKey: ["cart"] })}
+              />
+            )}
 
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -1746,6 +1762,15 @@ export function CheckoutDrawer({ open, onClose }: CheckoutDrawerProps) {
       case "ADDRESS_ADD":
         return (
           <div style={{ padding: "0 20px" }}>
+            {cart && <OrderSummaryAccordion cart={cart} couponDiscount={couponDiscount} />}
+
+            {cart && (
+              <CouponSection
+                cart={cart}
+                onCartUpdate={() => qc.invalidateQueries({ queryKey: ["cart"] })}
+              />
+            )}
+
             <div style={{ fontWeight: 700, fontSize: 15, color: C.charcoal, marginBottom: 16 }}>
               Add Delivery Address
             </div>

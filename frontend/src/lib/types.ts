@@ -277,6 +277,7 @@ export interface CartLine {
   custom_pricing_status?: string | null;
   custom_quote_label?: string | null;
   referral_discount?: number;
+  coupon_discount?: number;
   referral_rule_id?: string | null;
   referral_rule_name?: string | null;
 }
@@ -291,6 +292,11 @@ export interface CartView {
   referral_status: "none" | "valid" | "invalid" | "self" | "no_published_rule";
   referral_discount: number;
   referral_note: string;
+  coupon_code?: string | null;
+  coupon_status?: string | null;
+  coupon_discount?: number;
+  coupon_message?: string;
+  final_total?: number;
 }
 
 export interface OrderItem {
