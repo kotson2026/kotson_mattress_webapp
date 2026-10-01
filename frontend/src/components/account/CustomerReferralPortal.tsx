@@ -919,7 +919,7 @@ export default function CustomerReferralPortal() {
                     <tr key={l.id} className="hover:bg-[#F7F4EE]/30 transition">
                       <td className="py-2.5 px-3 font-medium">
                         <div className="font-bold text-[#11291F]">
-                          {l.lead_number || `Customer #${(l.id || "").slice(-6).toUpperCase()}`}
+                          {l.name || l.lead_number || `Customer #${(l.id || "").slice(-6).toUpperCase()}`}
                         </div>
                         <div className="text-[11px] font-mono text-[#6B716C]">
                           {l.customer_email_masked || l.customer_phone_masked || l.code}

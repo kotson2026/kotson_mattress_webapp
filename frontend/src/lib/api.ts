@@ -993,14 +993,44 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
       .eq("user_id", authCtx.userId)
       .order("created_at", { ascending: false });
     if (error) throw new ApiError(500, error);
-    return data || [];
+    return (data || []).map((o: any) => {
+      const ship = typeof o.shipping_address === "string" ? JSON.parse(o.shipping_address) : (o.shipping_address || {});
+      const addr = {
+        full_name: ship.name || ship.full_name || o.customer_name || "",
+        phone: ship.phone || o.phone || "",
+        line1: ship.address_line1 || ship.line1 || "",
+        line2: ship.address_line2 || ship.line2 || "",
+        landmark: ship.landmark || "",
+        city: ship.city || "",
+        state: ship.state || "",
+        pincode: ship.pincode || ship.postal_code || "",
+      };
+      return {
+        ...o,
+        address: o.address || addr,
+      };
+    });
   }
 
   if (pathname.startsWith("/orders/")) {
     const id = pathname.replace("/orders/", "");
     const { data, error } = await supabase.from("orders").select("*").eq("id", id).maybeSingle();
     if (error || !data) throw new ApiError(404, { detail: "Order not found" });
-    return data;
+    const ship = typeof data.shipping_address === "string" ? JSON.parse(data.shipping_address) : (data.shipping_address || {});
+    const addr = {
+      full_name: ship.name || ship.full_name || data.customer_name || "",
+      phone: ship.phone || data.phone || "",
+      line1: ship.address_line1 || ship.line1 || "",
+      line2: ship.address_line2 || ship.line2 || "",
+      landmark: ship.landmark || "",
+      city: ship.city || "",
+      state: ship.state || "",
+      pincode: ship.pincode || ship.postal_code || "",
+    };
+    return {
+      ...data,
+      address: data.address || addr,
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -1182,14 +1212,115 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
       balancePaise = 0;
     }
 
-    const { data: rewardsData } = await supabase.from("referral_rewards").select("*").eq("user_id", authCtx.userId);
+    const { data: rewardsData } = await supabase
+      .from("referral_rewards")
+      .select("*")
+      .eq("user_id", authCtx.userId)
+      .order("created_at", { ascending: false });
     const rewards = Array.isArray(rewardsData) ? rewardsData : [];
 
-    const { data: withdrawalsData } = await supabase.from("referral_withdrawals").select("*").eq("user_id", authCtx.userId).order("created_at", { ascending: false });
+    const { data: withdrawalsData } = await supabase
+      .from("referral_withdrawals")
+      .select("*")
+      .eq("user_id", authCtx.userId)
+      .order("created_at", { ascending: false });
     const rawWithdrawals = Array.isArray(withdrawalsData) ? withdrawalsData : [];
 
-    const { data: attributionsData } = await supabase.from("referral_attributions").select("*").eq("code", user.referral_code);
-    const attributions = Array.isArray(attributionsData) ? attributionsData : [];
+    // Authoritative referred leads from users table (genuine registered accounts with this referral code)
+    const { data: referredUsers } = await supabase
+      .from("users")
+      .select("id, name, email, phone, created_at, is_active")
+      .ilike("referred_by", user.referral_code)
+      .neq("id", user.id)
+      .order("created_at", { ascending: false });
+
+    const refUsers = Array.isArray(referredUsers) ? referredUsers : [];
+    const userIds = refUsers.map((u: any) => u.id);
+    const paidOrdersByUser: Record<string, any[]> = {};
+
+    if (userIds.length > 0) {
+      const { data: userOrders } = await supabase
+        .from("orders")
+        .select("id, order_number, user_id, total_paise, subtotal_paise, amounts, status, payment_status, created_at")
+        .in("user_id", userIds);
+      if (userOrders) {
+        userOrders.forEach((o: any) => {
+          const isPaid = (o.payment_status || "").toLowerCase() === "paid" || (o.status || "").toUpperCase() === "PAID";
+          if (isPaid) {
+            if (!paidOrdersByUser[o.user_id]) paidOrdersByUser[o.user_id] = [];
+            paidOrdersByUser[o.user_id].push(o);
+          }
+        });
+      }
+    }
+
+    const leads = refUsers.map((u: any) => {
+      const userOrders = paidOrdersByUser[u.id] || [];
+      const hasPurchased = userOrders.length > 0;
+      const totalPurchasedPaise = userOrders.reduce((sum: number, o: any) => sum + (Number(o.total_paise) || Number(o.amounts?.total) || 0), 0);
+      const emailMasked = u.email ? u.email.replace(/^(.)(.*)(@.*)$/, (_: any, a: string, b: string, c: string) => a + "*".repeat(Math.max(1, b.length)) + c) : "";
+      const phoneMasked = u.phone ? u.phone.slice(0, 3) + "•••••" + u.phone.slice(-3) : "";
+
+      return {
+        id: u.id,
+        name: u.name || "Customer",
+        lead_number: u.name || `Customer #${u.id.slice(-6).toUpperCase()}`,
+        customer_email_masked: emailMasked,
+        customer_phone_masked: phoneMasked,
+        created_at: u.created_at,
+        attributed_date: u.created_at,
+        activity: hasPurchased ? "Purchased Order" : "Account Created",
+        status: hasPurchased ? "PURCHASED" : "REGISTERED",
+        converted: hasPurchased,
+        sale_value: totalPurchasedPaise, // in paise for inr()
+        sales: hasPurchased ? "₹" + Math.round(totalPurchasedPaise / 100).toLocaleString("en-IN") : "—",
+        commission_status: hasPurchased ? "APPROVED" : "—",
+      };
+    });
+
+    // Authoritative Sales mapping with order details
+    const orderIds = rewards.map((r: any) => r.order_id).filter(Boolean);
+    const ordersMap: Record<string, any> = {};
+    if (orderIds.length > 0) {
+      const { data: ords } = await supabase
+        .from("orders")
+        .select("id, order_number, total_paise, subtotal_paise, amounts, items, created_at")
+        .in("id", orderIds);
+      if (ords) {
+        ords.forEach((o: any) => {
+          ordersMap[o.id] = o;
+          if (o.order_number) ordersMap[o.order_number] = o;
+        });
+      }
+    }
+
+    const sales = rewards.map((r: any) => {
+      const ord = ordersMap[r.order_id] || ordersMap[r.order_number] || {};
+      const items = typeof ord.items === "string" ? JSON.parse(ord.items) : (ord.items || []);
+      const firstItem = items[0] || {};
+      const eligiblePaise = ord.subtotal_paise || ord.total_paise || ord.amounts?.total || (Number(r.amount_paise) * 20) || 0;
+      const commissionPaise = Number(r.amount_paise) || 0;
+      const rateStr = r.rate_applied ? `${r.rate_applied}% Commission` : "5% Standard Rule";
+
+      return {
+        id: r.id,
+        order_id: r.order_id,
+        order_number: r.order_number || ord.order_number || r.id.slice(-8).toUpperCase(),
+        product_name: firstItem.product_name || "Kotson Mattress",
+        product_category: firstItem.category_slug || "Mattress",
+        quantity: items.reduce((sum: number, it: any) => sum + (it.qty || 1), 0) || 1,
+        eligible_sale_amount: eligiblePaise, // in paise for inr()
+        eligible_sale_value: eligiblePaise,
+        commission_rule: rateStr,
+        amount: commissionPaise, // in paise for inr()
+        commission_amount: commissionPaise,
+        status: (r.status === "AVAILABLE_FOR_WITHDRAWAL" ? "APPROVED" : r.status) || "APPROVED",
+        created_at: r.created_at,
+        order_date: ord.created_at || r.created_at,
+      };
+    });
+
+    const totalSalesValuePaise = sales.reduce((sum: number, s: any) => sum + (s.eligible_sale_amount || 0), 0);
 
     const totalEarnedPaise = rewards.reduce((acc: number, r: any) => acc + (Number(r.amount_paise) || 0), 0);
     const totalPaidPaise = rawWithdrawals
@@ -1239,24 +1370,13 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
         paid_commission: Math.floor(totalPaidPaise / 100),
       },
       performance: {
-        total_leads: attributions.length,
-        total_sales: rewards.length,
-        sales_value: Math.floor(rewards.reduce((acc: number, r: any) => acc + (Number(r.amount_paise) || 0) * 20, 0) / 100),
-        conversion_rate: attributions.length > 0 ? Math.round((rewards.length / attributions.length) * 100) : (rewards.length > 0 ? 100 : 0),
+        total_leads: leads.length,
+        total_sales: sales.length,
+        sales_value: totalSalesValuePaise,
+        conversion_rate: leads.length > 0 ? Math.round((sales.length / leads.length) * 100) : (sales.length > 0 ? 100 : 0),
       },
-      leads: attributions.map((a: any) => ({
-        id: a.id,
-        name: "Referred Shopper",
-        created_at: a.created_at,
-        status: a.status || "Visited Store",
-      })),
-      sales: rewards.map((r: any) => ({
-        id: r.id,
-        order_number: r.order_number,
-        amount: Math.round((Number(r.amount_paise) || 0) / 100),
-        status: r.status,
-        created_at: r.created_at,
-      })),
+      leads,
+      sales,
       withdrawals: rawWithdrawals.map((w: any) => ({
         id: w.id,
         amount: Math.round((Number(w.amount_paise) || 0) / 100),

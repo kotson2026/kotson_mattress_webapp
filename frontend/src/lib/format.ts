@@ -18,6 +18,34 @@ export function fmtDateTime(iso: string | null | undefined): string {
   return new Date(iso).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+export function fmtDateIST(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
+    return "—";
+  }
+}
+
+export function fmtTimeIST(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleTimeString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  } catch {
+    return "—";
+  }
+}
+
 export function parseJsonBlock<T>(value: string, fallback: T): T {
   try {
     return JSON.parse(value) as T;
@@ -25,3 +53,4 @@ export function parseJsonBlock<T>(value: string, fallback: T): T {
     return fallback;
   }
 }
+

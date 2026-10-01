@@ -108,10 +108,25 @@ export default function AddressesPanel({ orders = [] }: AddressesPanelProps) {
     },
   });
 
+  // Mutation: Set default address
+  const setDefaultMutation = useMutation({
+    mutationFn: (addr: SavedAddress) =>
+      apiPut<SavedAddress>(`/addresses/${addr.id}`, { ...addr, is_default: true }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["addresses"] });
+      toast.success("Default address updated");
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || "Failed to update default address");
+    },
+  });
+
+  const addressList = Array.isArray(savedAddresses) ? savedAddresses : [];
+
   const handleOpenAdd = () => {
     setFormData({
       ...emptyForm,
-      is_default: savedAddresses.length === 0,
+      is_default: addressList.length === 0,
     });
     setIsDialogOpen(true);
   };
@@ -120,15 +135,15 @@ export default function AddressesPanel({ orders = [] }: AddressesPanelProps) {
     setFormData({
       id: addr.id,
       label: addr.label || "Home",
-      full_name: addr.full_name,
-      phone: addr.phone,
-      line1: addr.line1,
+      full_name: addr.full_name || "",
+      phone: addr.phone || "",
+      line1: addr.line1 || "",
       line2: addr.line2 || "",
       landmark: addr.landmark || "",
-      city: addr.city,
-      state: addr.state,
-      pincode: addr.pincode,
-      is_default: addr.is_default,
+      city: addr.city || "",
+      state: addr.state || "",
+      pincode: addr.pincode || "",
+      is_default: Boolean(addr.is_default),
     });
     setIsDialogOpen(true);
   };
@@ -167,14 +182,32 @@ export default function AddressesPanel({ orders = [] }: AddressesPanelProps) {
     }
   };
 
-  // Derive any addresses used in orders if user hasn't explicitly saved any yet
-  const orderAddresses = [
-    ...new Map(
-      orders.map((o) => [`${o.address.line1}-${o.address.pincode}`, o.address])
-    ).values(),
-  ];
+  // Derive any addresses used in orders if user hasn't explicitly saved any yet (safe extraction)
+  const orderAddresses = Array.isArray(orders)
+    ? [
+        ...new Map(
+          orders
+            .filter((o) => o && (o.address || (o as any).shipping_address))
+            .map((o) => {
+              const raw = o.address || (o as any).shipping_address || {};
+              return {
+                full_name: raw.full_name || raw.name || "",
+                phone: raw.phone || "",
+                line1: raw.line1 || raw.address_line1 || "",
+                line2: raw.line2 || raw.address_line2 || "",
+                landmark: raw.landmark || "",
+                city: raw.city || "",
+                state: raw.state || "",
+                pincode: raw.pincode || raw.postal_code || "",
+              };
+            })
+            .filter((a) => Boolean(a.line1 && a.pincode))
+            .map((a) => [`${a.line1}-${a.pincode}`, a])
+        ).values(),
+      ]
+    : [];
 
-  const hasAnyAddresses = savedAddresses.length > 0 || orderAddresses.length > 0;
+  const hasAnyAddresses = addressList.length > 0 || orderAddresses.length > 0;
 
   if (isLoading) {
     return (
@@ -267,9 +300,9 @@ export default function AddressesPanel({ orders = [] }: AddressesPanelProps) {
       )}
 
       {/* Explicit Saved Addresses */}
-      {savedAddresses.length > 0 && (
+      {addressList.length > 0 && (
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          {savedAddresses.map((addr) => (
+          {addressList.map((addr) => (
             <div
               key={addr.id}
               className="relative flex flex-col justify-between rounded-xl border border-[#E4E9E2] bg-[#FAFAF8] p-5 transition-all hover:border-[#CBD6C7] hover:shadow-xs"
@@ -313,12 +346,26 @@ export default function AddressesPanel({ orders = [] }: AddressesPanelProps) {
 
               {/* Actions */}
               <div className="mt-5 pt-3 border-t border-[#E9EFE7] flex items-center justify-end gap-2">
+                {!addr.is_default && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setDefaultMutation.mutate(addr)}
+                    disabled={setDefaultMutation.isPending}
+                    className="h-8 px-2.5 text-xs text-[#467065] hover:text-[#11291F] hover:bg-[#EAF0E6]"
+                    data-testid={`btn-set-default-${addr.id}`}
+                  >
+                    Set as default
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   onClick={() => handleOpenEdit(addr)}
                   className="h-8 px-2.5 text-xs text-[#555555] hover:text-[#2D2D2D] hover:bg-[#EAF0E6]"
+                  data-testid={`btn-edit-address-${addr.id}`}
                 >
                   <Pencil className="mr-1.5 h-3.5 w-3.5" />
                   Edit
@@ -330,6 +377,7 @@ export default function AddressesPanel({ orders = [] }: AddressesPanelProps) {
                   onClick={() => setDeleteConfirmId(addr.id)}
                   disabled={deleteMutation.isPending}
                   className="h-8 px-2.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                  data-testid={`btn-delete-address-${addr.id}`}
                 >
                   <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                   Delete
@@ -341,7 +389,7 @@ export default function AddressesPanel({ orders = [] }: AddressesPanelProps) {
       )}
 
       {/* Fallback / Prior Order Addresses if user has no explicitly saved address yet */}
-      {savedAddresses.length === 0 && orderAddresses.length > 0 && (
+      {addressList.length === 0 && orderAddresses.length > 0 && (
         <div className="mt-6">
           <p className="text-xs uppercase font-bold tracking-wider text-[#7C9C59] mb-3">
             Addresses from recent orders

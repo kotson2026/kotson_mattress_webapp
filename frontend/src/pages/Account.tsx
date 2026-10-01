@@ -14,6 +14,7 @@ import AccountHeader from "@/components/account/AccountHeader";
 import AccountNavigation, { type AccountTabId } from "@/components/account/AccountNavigation";
 import OrdersPanel from "@/components/account/OrdersPanel";
 import AddressesPanel from "@/components/account/AddressesPanel";
+import ErrorBoundary from "@/components/common/ErrorBoundary";
 
 export default function Account() {
   const qc = useQueryClient();
@@ -141,7 +142,12 @@ export default function Account() {
 
           {activeTab === "addresses" && (
             <div id="panel-addresses" role="tabpanel" aria-labelledby="tab-addresses">
-              <AddressesPanel orders={orders} />
+              <ErrorBoundary
+                fallbackTitle="Address Book Unavailable"
+                fallbackMessage="We could not display your saved addresses right now. Click retry to reload."
+              >
+                <AddressesPanel orders={orders} />
+              </ErrorBoundary>
             </div>
           )}
 

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiGet, apiPost } from "@/lib/api";
 import { exportToCsv } from "@/lib/csvExport";
-import { inr, fmtDateTime, fmtDate } from "@/lib/format";
+import { inr, fmtDateTime, fmtDate, fmtDateIST, fmtTimeIST } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -139,16 +139,23 @@ export default function OrdersCentralHub() {
       toast.error("No orders to export");
       return;
     }
-    const headers = ["Order Number", "Customer Name", "Phone", "Status", "Payment Status", "Total (Rs)", "Created At"];
-    const rows = orders.map((o: any) => [
-      o.order_number || o.id,
-      o.customer_name || "",
-      o.customer_phone || "",
-      o.status || "",
-      o.payment_status || "",
-      ((o.total_paise || 0) / 100).toFixed(2),
-      o.created_at || ""
-    ]);
+    const headers = ["Order ID", "Date", "Time", "Customer", "Phone", "Amount", "Payment", "Status"];
+    const rows = orders.map((o: any) => {
+      const dt = o.sale_date || o.created_at;
+      const addr = o.address || o.shipping_address || {};
+      const customerName = addr.full_name || o.customer_name || o.email || "";
+      const customerPhone = addr.phone || o.customer_phone || o.phone || "";
+      return [
+        o.order_number || o.id,
+        fmtDateIST(dt),
+        fmtTimeIST(dt),
+        customerName,
+        customerPhone,
+        ((o.amounts?.total || o.total_paise || 0) / 100).toFixed(2),
+        o.payment_status || "",
+        o.fulfilment_status || o.status || "",
+      ];
+    });
     exportToCsv(`orders_export_${Date.now()}`, headers, rows);
     toast.success("Orders exported successfully");
   };
@@ -397,14 +404,14 @@ export default function OrdersCentralHub() {
         <Table data-testid="admin-orders-table">
           <TableHeader>
             <TableRow className="bg-muted/40">
-              <TableHead className="text-xs font-semibold">Order # & Date</TableHead>
+              <TableHead className="text-xs font-semibold">Order ID</TableHead>
+              <TableHead className="text-xs font-semibold">Date</TableHead>
+              <TableHead className="text-xs font-semibold">Time</TableHead>
               <TableHead className="text-xs font-semibold">Customer</TableHead>
-              <TableHead className="text-xs font-semibold">Channel & Source</TableHead>
-              <TableHead className="text-xs font-semibold">Items Preview</TableHead>
               <TableHead className="text-right text-xs font-semibold">Amount</TableHead>
               <TableHead className="text-center text-xs font-semibold">Payment</TableHead>
-              <TableHead className="text-center text-xs font-semibold">Fulfilment</TableHead>
-              <TableHead className="text-right text-xs font-semibold">Action</TableHead>
+              <TableHead className="text-center text-xs font-semibold">Status</TableHead>
+              <TableHead className="text-right text-xs font-semibold">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -422,92 +429,67 @@ export default function OrdersCentralHub() {
               </TableRow>
             ) : (
               orders.map((o) => {
-                const isManual =
-                  o.order_channel === "STORE" ||
-                  o.payment_verification_source === "ADMIN_RECORDED" ||
-                  o.order_source === "WALK_IN";
-                const addr = o.address || {};
-                const customerName = addr.full_name || o.email;
-                const itemsCount = (o.items || []).reduce((acc, it) => acc + (it.qty || 1), 0);
-                const firstItem = o.items?.[0];
+                const ord = o as any;
+                const addr = ord.address || ord.shipping_address || {};
+                const customerName = addr.full_name || ord.customer_name || ord.email || "Customer";
+                const customerPhone = addr.phone || ord.customer_phone || ord.phone || "";
+                const dt = ord.sale_date || ord.created_at;
 
                 return (
-                  <TableRow key={o.id} className="hover:bg-muted/30" data-testid={`order-row-${o.order_number}`}>
-                    {/* Order & Date */}
+                  <TableRow key={ord.id} className="hover:bg-muted/30" data-testid={`order-row-${ord.order_number || ord.id}`}>
+                    {/* 1. Order ID */}
                     <TableCell>
                       <div className="flex items-center gap-1.5">
-                        <p className="font-mono text-xs font-bold text-foreground">{o.order_number}</p>
-                        {o.is_test_data && (
+                        <p className="font-mono text-xs font-bold text-foreground">{ord.order_number || ord.id}</p>
+                        {ord.is_test_data && (
                           <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-800 border border-amber-500/30 tracking-tight">
                             TEST
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-muted-foreground">
-                        {fmtDate(o.sale_date || o.created_at)}
-                      </p>
-                      {o.stock_exception && (
+                      {ord.stock_exception && (
                         <Badge variant="destructive" className="mt-1 text-[9px]">
                           stock exception
                         </Badge>
                       )}
                     </TableCell>
 
-                    {/* Customer */}
+                    {/* 2. Date (IST) */}
+                    <TableCell className="text-xs font-medium text-foreground whitespace-nowrap">
+                      {fmtDateIST(dt)}
+                    </TableCell>
+
+                    {/* 3. Time (IST) */}
+                    <TableCell className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                      {fmtTimeIST(dt)}
+                    </TableCell>
+
+                    {/* 4. Customer */}
                     <TableCell>
                       <p className="text-xs font-medium text-foreground">{customerName}</p>
-                      <p className="text-[11px] text-muted-foreground">{addr.phone || o.email}</p>
+                      {customerPhone && (
+                        <p className="text-[11px] text-muted-foreground">{customerPhone}</p>
+                      )}
                       {addr.city && (
                         <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                          <MapPin className="h-3 w-3" /> {addr.city}, {addr.state}
+                          <MapPin className="h-3 w-3" /> {addr.city}{addr.state ? `, ${addr.state}` : ""}
                         </p>
                       )}
                     </TableCell>
 
-                    {/* Channel & Source */}
-                    <TableCell>
-                      <div className="flex flex-col gap-1 items-start">
-                        <Badge
-                          variant="outline"
-                          className={`text-[10px] flex items-center gap-1 ${
-                            isManual
-                              ? "border-emerald-600/40 bg-emerald-50 text-emerald-800"
-                              : "border-blue-600/40 bg-blue-50 text-blue-800"
-                          }`}
-                        >
-                          {isManual ? <Store className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
-                          {o.order_channel || (isManual ? "STORE" : "WEBSITE")}
-                        </Badge>
-                        <span className="text-[10px] text-muted-foreground font-mono">
-                          {o.order_source || "DIRECT"}
-                        </span>
-                      </div>
-                    </TableCell>
-
-                    {/* Items preview */}
-                    <TableCell className="max-w-[200px]">
-                      <p className="truncate text-xs text-foreground font-medium">
-                        {firstItem?.product_name || "Custom Items"}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {itemsCount} unit{itemsCount > 1 ? "s" : ""}
-                        {o.items?.length > 1 ? ` (${o.items.length} variants)` : ""}
-                      </p>
-                    </TableCell>
-
-                    {/* Amount */}
+                    {/* 5. Amount */}
                     <TableCell className="text-right">
                       <p className="font-mono text-xs font-bold text-foreground">
-                        {inr(o.amounts?.total || 0)}
+                        {inr(ord.amounts?.total || ord.total_paise || 0)}
                       </p>
-                      {o.amounts?.discount > 0 && (
+                      {ord.amounts?.discount > 0 && (
                         <p className="text-[10px] text-destructive font-mono">
-                          -{inr(o.amounts.discount)}
+                          -{inr(ord.amounts.discount)}
                         </p>
                       )}
                     </TableCell>
 
-                    {/* Payment */}
+                    {/* 6. Payment */}
                     <TableCell className="text-center">
                       <Badge
                         variant={
@@ -519,27 +501,33 @@ export default function OrdersCentralHub() {
                         }
                         className="text-[10px] uppercase font-mono"
                       >
-                        {o.payment_status}
+                        {o.payment_status || "PENDING"}
                       </Badge>
                       <p className="text-[9px] text-muted-foreground mt-0.5">
                         {o.payment_verification_source === "ADMIN_RECORDED" ? "Recorded" : "Gateway"}
                       </p>
                     </TableCell>
 
-                    {/* Fulfilment */}
+                    {/* 7. Status */}
                     <TableCell className="text-center">
                       <Badge variant="outline" className="text-[10px] capitalize">
-                        {o.fulfilment_status.replace(/_/g, " ")}
+                        {(o.fulfilment_status || o.status || "processing").replace(/_/g, " ")}
                       </Badge>
+                      {o.order_channel && (
+                        <p className="text-[9px] text-muted-foreground mt-0.5 uppercase">
+                          {o.order_channel}
+                        </p>
+                      )}
                     </TableCell>
 
-                    {/* Action */}
+                    {/* 8. Actions */}
                     <TableCell className="text-right">
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => setSelectedOrder(o)}
                         className="h-7 text-xs gap-1"
+                        data-testid={`btn-order-details-${o.order_number || o.id}`}
                       >
                         <Eye className="h-3 w-3" /> Details
                       </Button>

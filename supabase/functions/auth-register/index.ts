@@ -139,14 +139,16 @@ serve(async (req: Request) => {
     let verifiedReferredBy = null;
     if (referral_code && typeof referral_code === "string") {
       const cleanRef = referral_code.trim().toUpperCase();
-      const { data: refOwner } = await supabase
-        .from("users")
-        .select("id")
-        .eq("referral_code", cleanRef)
-        .eq("is_active", true)
-        .maybeSingle();
-      if (refOwner) {
-        verifiedReferredBy = cleanRef;
+      if (cleanRef && cleanRef !== userReferralCode) {
+        const { data: refOwner } = await supabase
+          .from("users")
+          .select("id")
+          .eq("referral_code", cleanRef)
+          .eq("is_active", true)
+          .maybeSingle();
+        if (refOwner) {
+          verifiedReferredBy = cleanRef;
+        }
       }
     }
 
