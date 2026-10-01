@@ -19,6 +19,7 @@ import {
   CreditCard,
   Truck,
   Percent,
+  RefreshCw,
 } from "lucide-react";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api";
 import { inr } from "@/lib/format";
@@ -125,11 +126,26 @@ export default function DealerManagementHub() {
         </div>
         <div className="flex items-center gap-3">
           <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              qc.invalidateQueries({ queryKey: ["dealers-overview"] });
+              qc.invalidateQueries({ queryKey: ["admin-dealers"] });
+              qc.invalidateQueries({ queryKey: ["dealers-pricing-rules"] });
+              toast.success("Dealer data refreshed");
+            }}
+            className="flex items-center gap-1.5 text-xs h-9"
+            title="Refresh dealer data"
+          >
+            <RefreshCw size={14} className={dealersLoading ? "animate-spin" : ""} />
+            <span>Refresh</span>
+          </Button>
+          <Button
             onClick={() => {
               setEditingRule(null);
               setIsRuleModalOpen(true);
             }}
-            className="bg-primary text-primary-foreground"
+            className="bg-primary text-primary-foreground text-xs h-9"
           >
             <Plus className="w-4 h-4 mr-2" /> Add Pricing Rule
           </Button>

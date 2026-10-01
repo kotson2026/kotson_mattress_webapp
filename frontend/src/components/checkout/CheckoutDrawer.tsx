@@ -356,11 +356,16 @@ function DrawerCartItem({ line, onQty, onRemove, onEditCustom, busy }: {
         )}
         <div style={{ marginTop: 6 }}>
           <PriceDisplay
-            salePrice={line.unit_price}
-            mrp={line.mrp}
+            salePrice={(line.unit_price || 0) * line.qty}
+            mrp={line.mrp ? line.mrp * line.qty : undefined}
             discountPercent={line.discount_percent}
             size="sm"
           />
+          {line.qty > 1 && (
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+              {line.qty} × {inr(line.unit_price)} each
+            </div>
+          )}
         </div>
         {line.referral_discount && line.referral_discount > 0 ? (
           <div style={{ fontSize: 11, fontWeight: 600, color: C.green, marginTop: 3 }}>
@@ -762,13 +767,23 @@ function CouponSection({ cart, onCartUpdate }: {
     }
   };
 
-  const remove = async () => {
+  const removeCoupon = async () => {
     try {
       await apiDelete("/cart/coupon");
       onCartUpdate();
       toast.success("Coupon removed");
     } catch {
       toast.error("Could not remove coupon");
+    }
+  };
+
+  const removeReferral = async () => {
+    try {
+      await apiDelete("/cart/referral");
+      onCartUpdate();
+      toast.success("Referral removed");
+    } catch {
+      toast.error("Could not remove referral");
     }
   };
 
@@ -795,9 +810,20 @@ function CouponSection({ cart, onCartUpdate }: {
               Referral discount: −{inr(cart.referral_discount || 0)}
             </div>
           </div>
-          <span style={{ fontSize: 11, fontWeight: 700, color: C.green, background: "#fff", padding: "2px 8px", borderRadius: 12 }}>
-            Applied ✓
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: C.green, background: "#fff", padding: "2px 8px", borderRadius: 12 }}>
+              Applied ✓
+            </span>
+            <button
+              onClick={removeReferral}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                color: C.error, fontSize: 11, fontWeight: 600, padding: "2px 4px",
+              }}
+            >
+              Remove
+            </button>
+          </div>
         </div>
       )}
 
@@ -819,7 +845,7 @@ function CouponSection({ cart, onCartUpdate }: {
             </div>
           </div>
           <button
-            onClick={remove}
+            onClick={removeCoupon}
             style={{
               background: "none", border: "none", cursor: "pointer",
               color: C.error, fontSize: 12, fontWeight: 600, padding: "4px 8px",
@@ -831,14 +857,14 @@ function CouponSection({ cart, onCartUpdate }: {
       ) : (
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, color: C.charcoal, marginBottom: 8 }}>
-            Have a coupon code?
+            Coupon / Referral Code
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <input
               value={input}
               onChange={e => setInput(e.target.value.toUpperCase())}
               onKeyDown={e => e.key === "Enter" && apply()}
-              placeholder="Enter coupon code"
+              placeholder="Enter code"
               style={{
                 flex: 1, padding: "9px 12px", borderRadius: 8,
                 border: `1.5px solid ${C.border}`, fontSize: 13, color: C.charcoal,
@@ -1433,6 +1459,14 @@ export function CheckoutDrawer({ open, onClose }: CheckoutDrawerProps) {
                     ))}
                   </AnimatePresence>
 
+                  {/* Coupon / Referral Code */}
+                  <div style={{ marginTop: 16 }}>
+                    <CouponSection
+                      cart={cart}
+                      onCartUpdate={() => qc.invalidateQueries({ queryKey: ["cart"] })}
+                    />
+                  </div>
+
                   {/* Recommendations */}
                   <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
                     <DrawerRecommendations cart={cart} onClose={onClose} />
@@ -1632,13 +1666,6 @@ export function CheckoutDrawer({ open, onClose }: CheckoutDrawerProps) {
           <div style={{ padding: "0 20px" }}>
             {cart && <OrderSummaryAccordion cart={cart} couponDiscount={couponDiscount} />}
 
-            {cart && (
-              <CouponSection
-                cart={cart}
-                onCartUpdate={() => qc.invalidateQueries({ queryKey: ["cart"] })}
-              />
-            )}
-
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
               marginBottom: 12,
@@ -1763,13 +1790,6 @@ export function CheckoutDrawer({ open, onClose }: CheckoutDrawerProps) {
         return (
           <div style={{ padding: "0 20px" }}>
             {cart && <OrderSummaryAccordion cart={cart} couponDiscount={couponDiscount} />}
-
-            {cart && (
-              <CouponSection
-                cart={cart}
-                onCartUpdate={() => qc.invalidateQueries({ queryKey: ["cart"] })}
-              />
-            )}
 
             <div style={{ fontWeight: 700, fontSize: 15, color: C.charcoal, marginBottom: 16 }}>
               Add Delivery Address

@@ -16,6 +16,7 @@ import {
   Sparkles,
   Power,
   Info,
+  RefreshCw,
 } from "lucide-react";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api";
 import { inr } from "@/lib/format";
@@ -32,6 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import DataTablePagination from "@/components/ui/DataTablePagination";
 
 export interface CouponItem {
   id: string;
@@ -56,6 +58,8 @@ export default function CouponManagementHub() {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<"ALL" | "percentage" | "fixed">("ALL");
   const [filterStatus, setFilterStatus] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -209,6 +213,9 @@ export default function CouponManagementHub() {
     return true;
   });
 
+  // Pagination
+  const paginatedCoupons = filtered.slice((page - 1) * pageSize, page * pageSize);
+
   // Metrics
   const totalCoupons = coupons.length;
   const activeCoupons = coupons.filter((c) => c.is_active).length;
@@ -227,13 +234,28 @@ export default function CouponManagementHub() {
             Manage percentage and flat discount codes, applicability rules, and usage thresholds.
           </p>
         </div>
-        <Button
-          onClick={openCreateModal}
-          className="bg-[#11291F] hover:bg-[#1E3A2C] text-white font-medium flex items-center gap-2 shadow-xs"
-        >
-          <Plus size={16} />
-          <span>Create Coupon</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              qc.invalidateQueries({ queryKey: ["admin-coupons"] });
+              toast.success("Coupons refreshed");
+            }}
+            className="flex items-center gap-1.5 text-xs h-9"
+            title="Refresh coupon data"
+          >
+            <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
+            <span>Refresh</span>
+          </Button>
+          <Button
+            onClick={openCreateModal}
+            className="bg-[#11291F] hover:bg-[#1E3A2C] text-white font-medium flex items-center gap-2 shadow-xs text-xs h-9"
+          >
+            <Plus size={16} />
+            <span>Create Coupon</span>
+          </Button>
+        </div>
       </div>
 
       {/* Metrics Row */}
@@ -329,7 +351,7 @@ export default function CouponManagementHub() {
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((c) => {
+              paginatedCoupons.map((c) => {
                 const applicableCount = Array.isArray(c.applicable_product_ids)
                   ? c.applicable_product_ids.length
                   : 0;
@@ -448,6 +470,21 @@ export default function CouponManagementHub() {
             )}
           </TableBody>
         </Table>
+
+        {/* Pagination */}
+        <div className="border-t border-border px-4 bg-muted/10">
+          <DataTablePagination
+            totalItems={filtered.length}
+            currentPage={page}
+            pageSize={pageSize}
+            onPageChange={(p) => setPage(p)}
+            onPageSizeChange={(sz) => {
+              setPageSize(sz);
+              setPage(1);
+            }}
+            pageSizeOptions={[10, 25, 50, 100]}
+          />
+        </div>
       </div>
 
       {/* Create / Edit Modal */}

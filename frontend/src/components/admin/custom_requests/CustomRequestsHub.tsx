@@ -16,6 +16,7 @@ import {
   MessageSquare,
   ArrowRight,
   TrendingUp,
+  RefreshCw,
 } from "lucide-react";
 import { apiGet, apiPatch } from "@/lib/api";
 import { fmtDateTime, inr } from "@/lib/format";
@@ -204,6 +205,19 @@ export default function CustomRequestsHub() {
             Authoritative queue for bespoke mattress dimensions, quotation reviews, and customer follow-up.
           </p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            qc.invalidateQueries({ queryKey: ["admin-custom-requests"] });
+            toast.success("Custom requests refreshed");
+          }}
+          className="flex items-center gap-1.5 text-xs h-9"
+          title="Refresh custom requests"
+        >
+          <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
+          <span>Refresh</span>
+        </Button>
       </div>
 
       {/* ── Top 5 KPI Cards ── */}

@@ -5,10 +5,8 @@ import {
   Users,
   UserPlus,
   UserCheck,
-  UserX,
   Search,
   Calendar,
-  Filter,
   Eye,
   Edit3,
   Phone,
@@ -16,14 +14,17 @@ import {
   MapPin,
   ShoppingBag,
   IndianRupee,
-  ShieldCheck,
   Clock,
-  ChevronRight,
   X,
-  CheckCircle2,
-  AlertTriangle,
+  RefreshCw,
+  PauseCircle,
+  PlayCircle,
+  UserX,
+  Trash2,
+  AlertCircle,
+  Package,
 } from "lucide-react";
-import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/api";
 import { inr, fmtDateTime } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,14 +38,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import DataTablePagination from "@/components/ui/DataTablePagination";
 
-interface UserItem {
+interface CustomerItem {
   id: string;
   supabase_auth_id?: string;
   name?: string;
   email?: string;
   phone?: string;
-  role?: string;
+  roles?: string[];
+  account_status?: "ACTIVE" | "ON_HOLD" | "DEACTIVATED";
   is_active: boolean;
   created_at: string;
   updated_at?: string;
@@ -72,42 +75,53 @@ interface UserItem {
   }>;
 }
 
-interface UsersApiResponse {
+interface CustomersApiResponse {
   metrics: {
     total_signups: number;
     today_signups: number;
     new_customers_30d: number;
     total_customers: number;
   };
-  users: UserItem[];
+  users: CustomerItem[];
   total: number;
+  page: number;
+  limit: number;
 }
 
-type DatePreset = "ALL" | "TODAY" | "YESTERDAY" | "LAST_7_DAYS" | "LAST_30_DAYS" | "THIS_MONTH" | "LAST_MONTH" | "CUSTOM";
+type DatePreset =
+  | "ALL"
+  | "TODAY"
+  | "YESTERDAY"
+  | "LAST_7_DAYS"
+  | "LAST_30_DAYS"
+  | "THIS_MONTH"
+  | "LAST_MONTH"
+  | "CUSTOM";
 
 export default function UserManagementHub() {
   const qc = useQueryClient();
 
-  // Search & Filter state
+  // Search, Status, & Pagination state
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("ALL");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "ON_HOLD" | "DEACTIVATED">("ALL");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  // Date Filters
   const [datePreset, setDatePreset] = useState<DatePreset>("ALL");
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
 
   // Modals state
-  const [viewingUser, setViewingUser] = useState<UserItem | null>(null);
+  const [viewingCustomer, setViewingCustomer] = useState<CustomerItem | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<UserItem | null>(null);
+  const [editingCustomer, setEditingCustomer] = useState<CustomerItem | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  // Form State
+  // Customer Form State (Permitted details only: name, email, phone)
   const [formName, setFormName] = useState("");
   const [formEmail, setFormEmail] = useState("");
   const [formPhone, setFormPhone] = useState("");
-  const [formRole, setFormRole] = useState("customer");
-  const [formIsActive, setFormIsActive] = useState(true);
 
   // Calculate Date Range based on Preset
   const { startDate, endDate } = useMemo(() => {
@@ -151,20 +165,23 @@ export default function UserManagementHub() {
     }
   }, [datePreset, customStartDate, customEndDate]);
 
-  // Query Users with Real Supabase Data
-  const { data, isLoading } = useQuery<UsersApiResponse>({
-    queryKey: ["admin-users", startDate, endDate, search, roleFilter],
+  // Query Customers with Real Supabase Data (Customers only, server-side pagination & filters)
+  const { data, isLoading, isFetching, refetch } = useQuery<CustomersApiResponse>({
+    queryKey: ["admin-users", startDate, endDate, search, statusFilter, page, pageSize],
     queryFn: () => {
       const p = new URLSearchParams();
       if (startDate) p.set("start_date", startDate);
       if (endDate) p.set("end_date", endDate);
-      if (search) p.set("search", search);
-      if (roleFilter !== "ALL") p.set("role", roleFilter);
-      return apiGet<UsersApiResponse>(`/admin/users?${p.toString()}`);
+      if (search.trim()) p.set("search", search.trim());
+      if (statusFilter !== "ALL") p.set("status", statusFilter);
+      p.set("page", String(page));
+      p.set("limit", String(pageSize));
+      return apiGet<CustomersApiResponse>(`/admin/users?${p.toString()}`);
     },
   });
 
-  const users = data?.users || [];
+  const customers = data?.users || [];
+  const totalCount = data?.total || 0;
   const metrics = data?.metrics || {
     total_signups: 0,
     today_signups: 0,
@@ -172,73 +189,47 @@ export default function UserManagementHub() {
     total_customers: 0,
   };
 
-  // Filter users by client-side status (active/inactive)
-  const filteredUsers = useMemo(() => {
-    return users.filter((u) => {
-      if (statusFilter === "ACTIVE" && !u.is_active) return false;
-      if (statusFilter === "INACTIVE" && u.is_active) return false;
-      return true;
-    });
-  }, [users, statusFilter]);
+  // Actions mutation (edit, hold, deactivate, reactivate, safe delete)
+  const customerActionMutation = useMutation({
+    mutationFn: async ({
+      userId,
+      action,
+      payload,
+    }: {
+      userId: string;
+      action: "edit" | "hold" | "deactivate" | "reactivate" | "delete";
+      payload?: any;
+    }) => {
+      return apiPost(`/admin/users/${userId}/action`, { action, payload });
+    },
+    onSuccess: (res: any) => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      toast.success(res?.message || "Customer updated successfully");
+      setIsEditModalOpen(false);
+      setEditingCustomer(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to execute customer action");
+    },
+  });
 
-  // Mutations
+  // Create customer mutation (customer role only)
   const createMutation = useMutation({
     mutationFn: async () => {
       const payload = {
         name: formName.trim(),
         email: formEmail.trim() || null,
         phone: formPhone.trim() || null,
-        role: formRole,
       };
       return apiPost("/admin/users", payload);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
-      toast.success("User created successfully");
+      toast.success("Customer account registered successfully");
       setIsCreateModalOpen(false);
     },
     onError: (err: any) => {
-      toast.error(err.message || "Failed to create user");
-    },
-  });
-
-  const editMutation = useMutation({
-    mutationFn: async () => {
-      if (!editingUser) return;
-      const payload = {
-        name: formName.trim(),
-        email: formEmail.trim() || null,
-        phone: formPhone.trim() || null,
-        role: formRole,
-        is_active: formIsActive,
-      };
-      return apiPut(`/admin/users/${editingUser.id}`, payload);
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["admin-users"] });
-      toast.success("User updated successfully");
-      setIsEditModalOpen(false);
-    },
-    onError: (err: any) => {
-      toast.error(err.message || "Failed to update user");
-    },
-  });
-
-  const toggleActiveMutation = useMutation({
-    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      if (!is_active) {
-        // Safe soft-deactivate (protects financial history)
-        return apiDelete(`/admin/users/${id}`);
-      } else {
-        return apiPut(`/admin/users/${id}`, { is_active: true });
-      }
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["admin-users"] });
-      toast.success("User status updated successfully");
-    },
-    onError: (err: any) => {
-      toast.error(err.message || "Failed to update status");
+      toast.error(err.message || "Failed to create customer");
     },
   });
 
@@ -246,19 +237,55 @@ export default function UserManagementHub() {
     setFormName("");
     setFormEmail("");
     setFormPhone("");
-    setFormRole("customer");
-    setFormIsActive(true);
     setIsCreateModalOpen(true);
   };
 
-  const openEditModal = (u: UserItem) => {
-    setEditingUser(u);
-    setFormName(u.name || "");
-    setFormEmail(u.email || "");
-    setFormPhone(u.phone || "");
-    setFormRole(u.role || "customer");
-    setFormIsActive(u.is_active);
+  const openEditModal = (c: CustomerItem) => {
+    setEditingCustomer(c);
+    setFormName(c.name || "");
+    setFormEmail(c.email || "");
+    setFormPhone(c.phone || "");
     setIsEditModalOpen(true);
+  };
+
+  const handleAction = (
+    c: CustomerItem,
+    action: "hold" | "deactivate" | "reactivate" | "delete"
+  ) => {
+    if (action === "delete") {
+      const hasOrders = (c.orders_count || 0) > 0;
+      const confirmMsg = hasOrders
+        ? `Customer "${c.name || c.id}" has ${c.orders_count} past orders. To preserve financial audit trails, this account will be safely deactivated instead of deleted. Proceed?`
+        : `Are you sure you want to permanently delete customer "${c.name || c.id}"?`;
+      if (!window.confirm(confirmMsg)) return;
+    }
+    customerActionMutation.mutate({ userId: c.id, action });
+  };
+
+  const renderStatusBadge = (status?: string, isActive?: boolean) => {
+    const effStatus = status || (isActive ? "ACTIVE" : "DEACTIVATED");
+    if (effStatus === "ACTIVE") {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          Active
+        </span>
+      );
+    }
+    if (effStatus === "ON_HOLD") {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+          On Hold
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+        Deactivated
+      </span>
+    );
   };
 
   return (
@@ -266,18 +293,31 @@ export default function UserManagementHub() {
       {/* Top Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#11291F]">Customer & User Directory</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#11291F]">Customer Directory</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Real Supabase user records, signup velocity, purchase metrics, and profile governance.
+            Authoritative customer accounts, verified orders, and customer account governance.
           </p>
         </div>
-        <Button
-          onClick={openCreateModal}
-          className="bg-[#11291F] hover:bg-[#1E3A2C] text-white font-medium flex items-center gap-2 shadow-xs"
-        >
-          <UserPlus size={16} />
-          <span>Add User</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="flex items-center gap-1.5 text-xs h-9"
+            title="Refresh customer data"
+          >
+            <RefreshCw size={14} className={isFetching ? "animate-spin" : ""} />
+            <span>Refresh</span>
+          </Button>
+          <Button
+            onClick={openCreateModal}
+            className="bg-[#11291F] hover:bg-[#1E3A2C] text-white font-medium flex items-center gap-2 shadow-xs text-xs h-9"
+          >
+            <UserPlus size={15} />
+            <span>Add Customer</span>
+          </Button>
+        </div>
       </div>
 
       {/* Metrics Cards */}
@@ -285,10 +325,10 @@ export default function UserManagementHub() {
         <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
           <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium">
             <Users size={15} className="text-[#11291F]" />
-            <span>Total Sign-ups</span>
+            <span>Total Customers</span>
           </div>
           <p className="mt-2 text-2xl font-bold text-foreground">{metrics.total_signups}</p>
-          <p className="text-[11px] text-muted-foreground mt-1">All registered accounts</p>
+          <p className="text-[11px] text-muted-foreground mt-1">All registered customer accounts</p>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
@@ -306,7 +346,7 @@ export default function UserManagementHub() {
             <span>New Customers (30d)</span>
           </div>
           <p className="mt-2 text-2xl font-bold text-foreground">{metrics.new_customers_30d}</p>
-          <p className="text-[11px] text-muted-foreground mt-1">Recent acquisition rate</p>
+          <p className="text-[11px] text-muted-foreground mt-1">Acquired in last 30 days</p>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
@@ -315,7 +355,7 @@ export default function UserManagementHub() {
             <span>Transacting Customers</span>
           </div>
           <p className="mt-2 text-2xl font-bold text-foreground">{metrics.total_customers}</p>
-          <p className="text-[11px] text-muted-foreground mt-1">Users with ≥ 1 placed order</p>
+          <p className="text-[11px] text-muted-foreground mt-1">Customers with ≥ 1 placed order</p>
         </div>
       </div>
 
@@ -338,7 +378,10 @@ export default function UserManagementHub() {
         ).map(([preset, label]) => (
           <button
             key={preset}
-            onClick={() => setDatePreset(preset)}
+            onClick={() => {
+              setDatePreset(preset);
+              setPage(1);
+            }}
             className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
               datePreset === preset
                 ? "bg-[#11291F] text-white shadow-xs"
@@ -354,123 +397,113 @@ export default function UserManagementHub() {
             <Input
               type="date"
               value={customStartDate}
-              onChange={(e) => setCustomStartDate(e.target.value)}
+              onChange={(e) => {
+                setCustomStartDate(e.target.value);
+                setPage(1);
+              }}
               className="h-8 text-xs w-36"
             />
             <span className="text-muted-foreground">to</span>
             <Input
               type="date"
               value={customEndDate}
-              onChange={(e) => setCustomEndDate(e.target.value)}
+              onChange={(e) => {
+                setCustomEndDate(e.target.value);
+                setPage(1);
+              }}
               className="h-8 text-xs w-36"
             />
           </div>
         )}
       </div>
 
-      {/* Search & Role / Status Controls */}
+      {/* Search & Status Filter Controls */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-card p-3 rounded-xl border border-border">
         <div className="relative flex-1 max-w-sm">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by name, email, or phone..."
+            placeholder="Search by customer name, email, or phone..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="pl-9 h-9 text-xs"
           />
         </div>
         <div className="flex items-center gap-2">
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="h-9 rounded-md border border-input bg-background px-3 text-xs"
-          >
-            <option value="ALL">All Roles</option>
-            <option value="customer">Customers</option>
-            <option value="dealer">Dealers</option>
-            <option value="staff">Staff</option>
-            <option value="admin">Admins</option>
-          </select>
+          <span className="text-xs text-muted-foreground font-medium">Status:</span>
           <select
             value={statusFilter}
-            onChange={(e: any) => setStatusFilter(e.target.value)}
-            className="h-9 rounded-md border border-input bg-background px-3 text-xs"
+            onChange={(e: any) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
+            className="h-9 rounded-md border border-input bg-background px-3 text-xs font-medium"
           >
-            <option value="ALL">All Status</option>
+            <option value="ALL">All Account Statuses</option>
             <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Deactivated</option>
+            <option value="ON_HOLD">On Hold</option>
+            <option value="DEACTIVATED">Deactivated</option>
           </select>
         </div>
       </div>
 
-      {/* Users Table */}
+      {/* Customers Table */}
       <div className="rounded-xl border border-border bg-card overflow-hidden shadow-xs">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/40">
-              <TableHead className="font-semibold text-xs">Customer / User</TableHead>
+              <TableHead className="font-semibold text-xs">Customer</TableHead>
               <TableHead className="font-semibold text-xs">Contact</TableHead>
-              <TableHead className="font-semibold text-xs">Role</TableHead>
               <TableHead className="font-semibold text-xs">Joined</TableHead>
               <TableHead className="font-semibold text-xs">Orders & Spend</TableHead>
-              <TableHead className="font-semibold text-xs">Status</TableHead>
+              <TableHead className="font-semibold text-xs">Account Status</TableHead>
               <TableHead className="font-semibold text-xs text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-12 text-sm text-muted-foreground">
-                  Loading users directory from Supabase...
+                <TableCell colSpan={6} className="text-center py-12 text-sm text-muted-foreground">
+                  Loading customers directory from Supabase...
                 </TableCell>
               </TableRow>
-            ) : filteredUsers.length === 0 ? (
+            ) : customers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-12 text-sm text-muted-foreground">
-                  No users found matching your search or filters.
+                <TableCell colSpan={6} className="text-center py-12 text-sm text-muted-foreground">
+                  No customer records found matching your query.
                 </TableCell>
               </TableRow>
             ) : (
-              filteredUsers.map((u) => {
-                const ordersCount = u.orders_count || 0;
-                const spendRupees = (u.total_purchase_paise || 0) / 100;
+              customers.map((c) => {
+                const ordersCount = c.orders_count || 0;
+                const spendRupees = (c.total_purchase_paise || 0) / 100;
+                const effStatus = c.account_status || (c.is_active ? "ACTIVE" : "DEACTIVATED");
+
                 return (
-                  <TableRow key={u.id}>
+                  <TableRow key={c.id}>
                     <TableCell>
                       <div className="font-semibold text-xs text-foreground">
-                        {u.name || "Unnamed User"}
+                        {c.name || "Customer Account"}
                       </div>
                       <div className="text-[11px] font-mono text-muted-foreground truncate max-w-[140px]">
-                        ID: {u.id.substring(0, 8)}...
+                        ID: {c.id.substring(0, 8)}...
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="text-xs text-foreground flex items-center gap-1.5">
                         <Mail size={12} className="text-muted-foreground" />
-                        <span>{u.email || "No email"}</span>
+                        <span>{c.email || "—"}</span>
                       </div>
                       <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
                         <Phone size={12} className="text-muted-foreground" />
-                        <span>{u.phone || "No phone"}</span>
+                        <span>{c.phone || "—"}</span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={`text-[11px] uppercase font-semibold tracking-wider ${
-                          u.role === "owner" || u.role === "admin"
-                            ? "bg-purple-50 text-purple-700 border-purple-200"
-                            : u.role === "dealer"
-                            ? "bg-amber-50 text-amber-700 border-amber-200"
-                            : "bg-slate-50 text-slate-700 border-slate-200"
-                        }`}
-                      >
-                        {u.role || "customer"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
                       <div className="text-xs text-foreground">
-                        {fmtDateTime(u.created_at)}
+                        {fmtDateTime(c.created_at)}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -483,21 +516,7 @@ export default function UserManagementHub() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <button
-                        onClick={() => toggleActiveMutation.mutate({ id: u.id, is_active: !u.is_active })}
-                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold cursor-pointer transition-colors ${
-                          u.is_active
-                            ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
-                            : "bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200"
-                        }`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            u.is_active ? "bg-emerald-600" : "bg-rose-500"
-                          }`}
-                        />
-                        {u.is_active ? "Active" : "Deactivated"}
-                      </button>
+                      {renderStatusBadge(c.account_status, c.is_active)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
@@ -505,8 +524,8 @@ export default function UserManagementHub() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                          title="View Details"
-                          onClick={() => setViewingUser(u)}
+                          title="View Customer Details & History"
+                          onClick={() => setViewingCustomer(c)}
                         >
                           <Eye size={14} />
                         </Button>
@@ -514,10 +533,79 @@ export default function UserManagementHub() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                          title="Edit User"
-                          onClick={() => openEditModal(u)}
+                          title="Edit Customer Profile"
+                          onClick={() => openEditModal(c)}
                         >
                           <Edit3 size={14} />
+                        </Button>
+
+                        {/* Status Change Buttons */}
+                        {effStatus === "ACTIVE" && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                              title="Put On Hold"
+                              onClick={() => handleAction(c, "hold")}
+                            >
+                              <PauseCircle size={14} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                              title="Deactivate Account"
+                              onClick={() => handleAction(c, "deactivate")}
+                            >
+                              <UserX size={14} />
+                            </Button>
+                          </>
+                        )}
+
+                        {effStatus === "ON_HOLD" && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                              title="Reactivate Account"
+                              onClick={() => handleAction(c, "reactivate")}
+                            >
+                              <PlayCircle size={14} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                              title="Deactivate Account"
+                              onClick={() => handleAction(c, "deactivate")}
+                            >
+                              <UserX size={14} />
+                            </Button>
+                          </>
+                        )}
+
+                        {effStatus === "DEACTIVATED" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                            title="Reactivate Account"
+                            onClick={() => handleAction(c, "reactivate")}
+                          >
+                            <PlayCircle size={14} />
+                          </Button>
+                        )}
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-rose-600 hover:bg-rose-50"
+                          title="Delete Customer"
+                          onClick={() => handleAction(c, "delete")}
+                        >
+                          <Trash2 size={14} />
                         </Button>
                       </div>
                     </TableCell>
@@ -527,144 +615,142 @@ export default function UserManagementHub() {
             )}
           </TableBody>
         </Table>
+
+        {/* Reusable Server-Side Pagination */}
+        <div className="border-t border-border px-4 bg-muted/10">
+          <DataTablePagination
+            totalItems={totalCount}
+            currentPage={page}
+            pageSize={pageSize}
+            onPageChange={(p) => setPage(p)}
+            onPageSizeChange={(sz) => {
+              setPageSize(sz);
+              setPage(1);
+            }}
+            pageSizeOptions={[10, 25, 50, 100]}
+          />
+        </div>
       </div>
 
-      {/* View User Modal */}
-      {viewingUser && (
+      {/* View Customer Details Modal */}
+      {viewingCustomer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto">
           <div className="relative w-full max-w-2xl rounded-2xl bg-card p-6 shadow-xl border border-border my-8 max-h-[90vh] overflow-y-auto space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-border">
               <div>
                 <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
-                  <span>{viewingUser.name || "Customer Details"}</span>
-                  <Badge variant="outline" className="text-[11px] uppercase">
-                    {viewingUser.role || "customer"}
-                  </Badge>
+                  <span>{viewingCustomer.name || "Customer Details"}</span>
+                  {renderStatusBadge(viewingCustomer.account_status, viewingCustomer.is_active)}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  ID: <span className="font-mono">{viewingUser.id}</span>
+                  Customer ID: <span className="font-mono">{viewingCustomer.id}</span>
                 </p>
               </div>
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 rounded-full"
-                onClick={() => setViewingUser(null)}
+                onClick={() => setViewingCustomer(null)}
               >
                 <X size={16} />
               </Button>
             </div>
 
-            {/* User Overview Stats */}
+            {/* Customer Overview Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                <span className="text-[11px] text-muted-foreground">Status</span>
+                <span className="text-[11px] text-muted-foreground">Account Status</span>
                 <p className="font-semibold text-xs mt-1">
-                  {viewingUser.is_active ? "Active" : "Deactivated"}
+                  {viewingCustomer.account_status || (viewingCustomer.is_active ? "Active" : "Deactivated")}
                 </p>
               </div>
               <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                <span className="text-[11px] text-muted-foreground">Signed Up</span>
-                <p className="font-semibold text-xs mt-1">{fmtDateTime(viewingUser.created_at)}</p>
+                <span className="text-[11px] text-muted-foreground">Joined Date</span>
+                <p className="font-semibold text-xs mt-1">{fmtDateTime(viewingCustomer.created_at)}</p>
               </div>
               <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                <span className="text-[11px] text-muted-foreground">Total Orders</span>
-                <p className="font-semibold text-xs mt-1">{viewingUser.orders_count || 0}</p>
+                <span className="text-[11px] text-muted-foreground">Historical Orders</span>
+                <p className="font-semibold text-xs mt-1">{viewingCustomer.orders_count || 0}</p>
               </div>
               <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                <span className="text-[11px] text-muted-foreground">Total Spend</span>
+                <span className="text-[11px] text-muted-foreground">Authoritative Spend</span>
                 <p className="font-semibold text-xs mt-1 text-emerald-700">
-                  {inr((viewingUser.total_purchase_paise || 0) / 100)}
+                  {inr((viewingCustomer.total_purchase_paise || 0) / 100)}
                 </p>
               </div>
             </div>
 
-            {/* Contact Details */}
-            <div className="p-4 rounded-xl border border-border bg-card space-y-2">
-              <h4 className="text-xs font-bold text-foreground">Contact Information</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div>
-                  <span className="text-muted-foreground">Email: </span>
-                  <span className="font-medium text-foreground">{viewingUser.email || "Not specified"}</span>
+            {/* Contact Information */}
+            <div className="p-4 rounded-xl bg-muted/20 border border-border space-y-2">
+              <h4 className="text-xs font-bold text-foreground">Contact & Identity</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <Mail size={13} className="text-muted-foreground" />
+                  <span className="text-foreground">{viewingCustomer.email || "No email on record"}</span>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Phone: </span>
-                  <span className="font-medium text-foreground">{viewingUser.phone || "Not specified"}</span>
+                <div className="flex items-center gap-2">
+                  <Phone size={13} className="text-muted-foreground" />
+                  <span className="text-foreground">{viewingCustomer.phone || "No phone on record"}</span>
                 </div>
               </div>
             </div>
 
-            {/* Saved Addresses */}
-            <div className="space-y-3">
+            {/* Saved Delivery Addresses */}
+            <div className="space-y-2">
               <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                <MapPin size={14} className="text-[#11291F]" /> Saved Delivery Addresses (
-                {viewingUser.addresses?.length || 0})
+                <MapPin size={13} /> Saved Delivery Addresses ({viewingCustomer.addresses?.length || 0})
               </h4>
-              {(!viewingUser.addresses || viewingUser.addresses.length === 0) ? (
-                <p className="text-xs text-muted-foreground italic p-3 bg-muted/20 rounded-lg">
-                  No saved addresses on file for this user.
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {viewingUser.addresses.map((addr) => (
+              {viewingCustomer.addresses && viewingCustomer.addresses.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {viewingCustomer.addresses.map((addr) => (
                     <div
                       key={addr.id}
-                      className="p-3 rounded-lg border border-border bg-card text-xs space-y-1 relative"
+                      className="p-3 rounded-xl border border-border bg-card text-xs space-y-1"
                     >
-                      {addr.is_default && (
-                        <Badge variant="secondary" className="text-[10px] absolute top-2 right-2">
-                          Default
-                        </Badge>
-                      )}
-                      <div className="font-semibold text-foreground">{addr.label || "Home"}</div>
-                      <div className="text-muted-foreground">{addr.line1}</div>
-                      {addr.line2 && <div className="text-muted-foreground">{addr.line2}</div>}
-                      {addr.landmark && (
-                        <div className="text-muted-foreground text-[11px]">Landmark: {addr.landmark}</div>
-                      )}
-                      <div className="font-medium text-foreground">
-                        {addr.city}, {addr.state} — {addr.pincode}
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold">{addr.label || "Address"}</span>
+                        {addr.is_default && (
+                          <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700">
+                            Default
+                          </Badge>
+                        )}
                       </div>
+                      <p className="text-muted-foreground">{addr.line1}</p>
+                      {addr.line2 && <p className="text-muted-foreground">{addr.line2}</p>}
+                      <p className="font-medium text-foreground">
+                        {addr.city}, {addr.state} — {addr.pincode}
+                      </p>
                     </div>
                   ))}
                 </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">No addresses saved yet.</p>
               )}
             </div>
 
-            {/* Order History */}
-            <div className="space-y-3">
+            {/* Historical Orders */}
+            <div className="space-y-2">
               <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                <ShoppingBag size={14} className="text-[#11291F]" /> Order History (
-                {viewingUser.orders?.length || 0})
+                <Package size={13} /> Placed Orders & Invoices ({viewingCustomer.orders?.length || 0})
               </h4>
-              {(!viewingUser.orders || viewingUser.orders.length === 0) ? (
-                <p className="text-xs text-muted-foreground italic p-3 bg-muted/20 rounded-lg">
-                  No orders placed yet.
-                </p>
-              ) : (
-                <div className="rounded-lg border border-border overflow-hidden text-xs">
+              {viewingCustomer.orders && viewingCustomer.orders.length > 0 ? (
+                <div className="border border-border rounded-xl overflow-hidden">
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-muted/40">
-                        <TableHead className="text-xs font-semibold">Order</TableHead>
-                        <TableHead className="text-xs font-semibold">Date</TableHead>
-                        <TableHead className="text-xs font-semibold">Status</TableHead>
-                        <TableHead className="text-xs font-semibold text-right">Amount</TableHead>
+                      <TableRow className="bg-muted/30">
+                        <TableHead className="text-[11px] h-8 font-semibold">Order #</TableHead>
+                        <TableHead className="text-[11px] h-8 font-semibold">Date</TableHead>
+                        <TableHead className="text-[11px] h-8 font-semibold">Status</TableHead>
+                        <TableHead className="text-[11px] h-8 font-semibold text-right">Amount</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {viewingUser.orders.map((ord) => (
-                        <TableRow key={ord.id}>
-                          <TableCell className="font-mono font-medium">
-                            {ord.order_number || ord.id.substring(0, 8)}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {fmtDateTime(ord.created_at)}
-                          </TableCell>
+                      {viewingCustomer.orders.map((ord) => (
+                        <TableRow key={ord.id} className="text-xs">
+                          <TableCell className="font-mono font-medium">{ord.order_number || ord.id.slice(0, 8)}</TableCell>
+                          <TableCell className="text-muted-foreground">{fmtDateTime(ord.created_at)}</TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="text-[10px] capitalize">
-                              {ord.order_status || "confirmed"}
-                            </Badge>
+                            <span className="capitalize">{ord.order_status || "confirmed"}</span>
                           </TableCell>
                           <TableCell className="text-right font-semibold">
                             {inr((ord.payable_amount_paise || 0) / 100)}
@@ -674,11 +760,13 @@ export default function UserManagementHub() {
                     </TableBody>
                   </Table>
                 </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">No historical orders found.</p>
               )}
             </div>
 
-            <div className="pt-3 border-t border-border flex justify-end">
-              <Button variant="outline" onClick={() => setViewingUser(null)}>
+            <div className="flex justify-end pt-3 border-t border-border">
+              <Button variant="outline" onClick={() => setViewingCustomer(null)}>
                 Close
               </Button>
             </div>
@@ -686,12 +774,15 @@ export default function UserManagementHub() {
         </div>
       )}
 
-      {/* Edit User Modal */}
-      {isEditModalOpen && editingUser && (
+      {/* Edit Customer Modal (Permitted Details Only: Name, Email, Phone) */}
+      {isEditModalOpen && editingCustomer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
           <div className="relative w-full max-w-md rounded-2xl bg-card p-6 shadow-xl border border-border">
             <div className="flex items-center justify-between pb-3 border-b border-border">
-              <h3 className="font-bold text-base text-foreground">Edit User Profile</h3>
+              <div>
+                <h3 className="font-bold text-base text-foreground">Edit Customer Details</h3>
+                <p className="text-xs text-muted-foreground">ID: {editingCustomer.id.slice(0, 8)}...</p>
+              </div>
               <Button
                 variant="ghost"
                 size="icon"
@@ -705,12 +796,20 @@ export default function UserManagementHub() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                editMutation.mutate();
+                customerActionMutation.mutate({
+                  userId: editingCustomer.id,
+                  action: "edit",
+                  payload: {
+                    name: formName.trim(),
+                    email: formEmail.trim() || null,
+                    phone: formPhone.trim() || null,
+                  },
+                });
               }}
               className="mt-4 space-y-4"
             >
               <div>
-                <Label className="text-xs font-semibold">Full Name *</Label>
+                <Label className="text-xs font-semibold">Customer Full Name *</Label>
                 <Input
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
@@ -739,45 +838,26 @@ export default function UserManagementHub() {
                 />
               </div>
 
-              <div>
-                <Label className="text-xs font-semibold">System Role</Label>
-                <select
-                  value={formRole}
-                  onChange={(e) => setFormRole(e.target.value)}
-                  className="mt-1 w-full h-10 rounded-md border border-input bg-background px-3 text-xs"
-                >
-                  <option value="customer">Customer</option>
-                  <option value="dealer">Dealer</option>
-                  <option value="staff">Staff</option>
-                  <option value="admin">Admin</option>
-                </select>
+              <div className="p-3 bg-muted/40 rounded-xl border border-border text-[11px] text-muted-foreground">
+                <p className="font-semibold text-foreground mb-0.5">Customer Directory Policy</p>
+                Staff or administrative role assignment is prohibited in the Customer Directory to protect system boundaries.
               </div>
-
-              <label className="flex items-center gap-2 text-xs font-medium cursor-pointer pt-2">
-                <input
-                  type="checkbox"
-                  checked={formIsActive}
-                  onChange={(e) => setFormIsActive(e.target.checked)}
-                  className="accent-[#11291F] rounded"
-                />
-                <span>Account is Active</span>
-              </label>
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setIsEditModalOpen(false)}
-                  disabled={editMutation.isPending}
+                  disabled={customerActionMutation.isPending}
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  disabled={editMutation.isPending}
+                  disabled={customerActionMutation.isPending}
                   className="bg-[#11291F] hover:bg-[#1E3A2C] text-white"
                 >
-                  {editMutation.isPending ? "Saving..." : "Save Changes"}
+                  {customerActionMutation.isPending ? "Saving..." : "Save Customer Details"}
                 </Button>
               </div>
             </form>
@@ -785,12 +865,12 @@ export default function UserManagementHub() {
         </div>
       )}
 
-      {/* Create User Modal */}
+      {/* Create Customer Modal */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
           <div className="relative w-full max-w-md rounded-2xl bg-card p-6 shadow-xl border border-border">
             <div className="flex items-center justify-between pb-3 border-b border-border">
-              <h3 className="font-bold text-base text-foreground">Add New User</h3>
+              <h3 className="font-bold text-base text-foreground">Add New Customer Account</h3>
               <Button
                 variant="ghost"
                 size="icon"
@@ -841,20 +921,6 @@ export default function UserManagementHub() {
                 />
               </div>
 
-              <div>
-                <Label className="text-xs font-semibold">Role</Label>
-                <select
-                  value={formRole}
-                  onChange={(e) => setFormRole(e.target.value)}
-                  className="mt-1 w-full h-10 rounded-md border border-input bg-background px-3 text-xs"
-                >
-                  <option value="customer">Customer</option>
-                  <option value="dealer">Dealer</option>
-                  <option value="staff">Staff</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
                 <Button
                   type="button"
@@ -869,7 +935,7 @@ export default function UserManagementHub() {
                   disabled={createMutation.isPending}
                   className="bg-[#11291F] hover:bg-[#1E3A2C] text-white"
                 >
-                  {createMutation.isPending ? "Creating..." : "Create User"}
+                  {createMutation.isPending ? "Registering..." : "Register Customer"}
                 </Button>
               </div>
             </form>

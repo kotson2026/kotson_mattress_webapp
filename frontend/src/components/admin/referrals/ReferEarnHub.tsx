@@ -34,6 +34,7 @@ import {
   Layers,
   Trash,
   Sliders,
+  RefreshCw,
 } from "lucide-react";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api";
 import { exportToCsv } from "@/lib/csvExport";
@@ -574,6 +575,20 @@ export default function ReferEarnHub() {
           >
             <FileSpreadsheet className="h-3.5 w-3.5 text-blue-600" /> Export Payouts
           </button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              qc.invalidateQueries({ queryKey: ["referral-rules"] });
+              qc.invalidateQueries({ queryKey: ["referral-overview"] });
+              qc.invalidateQueries({ queryKey: ["admin-referrers"] });
+              toast.success("Referral data refreshed");
+            }}
+            className="text-xs gap-1.5"
+            title="Refresh referral data"
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+          </Button>
           <Button
             variant="outline"
             onClick={() => setIsSettingsModalOpen(true)}
@@ -1729,6 +1744,18 @@ export default function ReferEarnHub() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  qc.invalidateQueries({ queryKey: ["referral-rules"] });
+                  toast.success("Rules refreshed");
+                }}
+                className="text-xs gap-1.5"
+                title="Refresh commission rules"
+              >
+                <RefreshCw className="h-3.5 w-3.5" /> Refresh
+              </Button>
               <Button
                 variant="outline"
                 size="sm"

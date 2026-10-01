@@ -580,44 +580,56 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
     if (error) throw new ApiError(500, error);
     const view = typeof rawView === "string" ? JSON.parse(rawView) : rawView;
 
-    const items = (view?.items || []).map((item: any) => ({
-      variant_id: item.variant_id,
-      product_id: item.product_id || item.variant_id,
-      product_slug: item.product_slug || "",
-      product_name: item.product_name || item.name || "Kotson Mattress",
-      sku: item.sku || "",
-      size: item.title || item.size || "Standard",
-      length: null,
-      width: null,
-      thickness: null,
-      firmness: null,
-      qty: item.qty || item.quantity || 1,
-      unit_price: item.sale_price_paise || item.price_paise,
-      line_total: item.line_total_paise || ((item.sale_price_paise || item.price_paise) * (item.qty || item.quantity || 1)),
-      mrp: item.mrp_paise || Math.round(((item.sale_price_paise || item.price_paise) / 0.60) / 100) * 100,
-      stock: item.stock || 20,
-      free_stock: item.available || 20,
-      is_active: item.is_active !== false,
-      image: item.image || null,
-      referral_discount: item.referral_discount_paise || 0,
-      coupon_discount: item.coupon_discount_paise || 0,
-    }));
+    const items = (view?.items || []).map((item: any) => {
+      const qty = Number(item.quantity || item.qty || 1);
+      const unitPrice = Number(item.sale_price_paise || item.price_paise || 0);
+      const lineTotal = unitPrice * qty;
+      const mrp = Number(item.mrp_paise || Math.round((unitPrice / 0.60) / 100) * 100);
+      return {
+        variant_id: item.variant_id,
+        product_id: item.product_id || item.variant_id,
+        product_slug: item.product_slug || "",
+        product_name: item.product_name || item.name || "Kotson Mattress",
+        sku: item.sku || "",
+        size: item.title || item.size || "Standard",
+        length: null,
+        width: null,
+        thickness: null,
+        firmness: null,
+        qty,
+        unit_price: unitPrice,
+        line_total: lineTotal,
+        mrp,
+        stock: item.stock || 20,
+        free_stock: item.available !== undefined ? item.available : (item.stock || 20),
+        is_active: item.is_active !== false,
+        image: item.image || null,
+        referral_discount: item.referral_discount_paise || 0,
+        coupon_discount: item.coupon_discount_paise || 0,
+      };
+    });
+
+    const calculatedSubtotal = items.reduce((acc: number, cur: any) => acc + cur.line_total, 0);
+    const subtotal = view?.subtotal_sale_paise ? Math.max(view.subtotal_sale_paise, calculatedSubtotal) : calculatedSubtotal;
+    const refDiscount = view?.total_referral_discount_paise || 0;
+    const couponDiscount = view?.total_coupon_discount_paise || 0;
+    const finalTotal = Math.max(0, subtotal - refDiscount - couponDiscount);
 
     return {
       items,
       item_count: items.reduce((acc: number, cur: any) => acc + cur.qty, 0),
-      subtotal: view?.subtotal_sale_paise || 0,
-      total_mrp: view?.subtotal_mrp_paise || 0,
-      total_discount: (view?.subtotal_mrp_paise || 0) - (view?.final_total_paise || view?.subtotal_sale_paise || 0),
+      subtotal,
+      total_mrp: view?.subtotal_mrp_paise || Math.round(subtotal * 1.4),
+      total_discount: (view?.subtotal_mrp_paise || Math.round(subtotal * 1.4)) - finalTotal,
       referred_code: view?.referral_code || null,
       referral_status: view?.referral_status || "none",
-      referral_discount: view?.total_referral_discount_paise || 0,
+      referral_discount: refDiscount,
       referral_note: "",
       coupon_code: view?.coupon_code || null,
       coupon_status: view?.coupon_status || "none",
-      coupon_discount: view?.total_coupon_discount_paise || 0,
+      coupon_discount: couponDiscount,
       coupon_message: view?.coupon_message || "",
-      final_total: view?.final_total_paise !== undefined ? view.final_total_paise : (view?.subtotal_sale_paise || 0),
+      final_total: finalTotal,
     };
   }
 
@@ -680,10 +692,49 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
   if (pathname === "/cart/coupon" && (method === "POST" || method === "PUT")) {
     const token = getGuestCartToken();
     const cartId = await getCartId(token, authCtx.userId);
+    const code = (body.code || "").trim().toUpperCase();
+
+    // Check if code matches an active admin coupon
+    const { data: couponMatch } = await supabase
+      .from("coupons")
+      .select("id, code, is_active")
+      .ilike("code", code)
+      .maybeSingle();
+
+    if (couponMatch) {
+      const { error } = await supabase.rpc("kotson_cart_apply_coupon", {
+        p_cart_id: cartId,
+        p_token: token,
+        p_coupon_code: code,
+        p_user_id: authCtx.userId,
+      });
+      if (error) throw new ApiError(400, { detail: error.message });
+      return handleRequest("GET", "/cart");
+    }
+
+    // Check if code matches a referral profile
+    const { data: refMatch } = await supabase
+      .from("referral_profiles")
+      .select("id, referral_code")
+      .ilike("referral_code", code)
+      .maybeSingle();
+
+    if (refMatch) {
+      const { error } = await supabase.rpc("kotson_cart_apply_referral", {
+        p_cart_id: cartId,
+        p_token: token,
+        p_referral_code: code,
+        p_user_id: authCtx.userId,
+      });
+      if (error) throw new ApiError(400, { detail: error.message });
+      return handleRequest("GET", "/cart");
+    }
+
+    // Fallback: apply as coupon to allow RPC to evaluate and return authoritative validation
     const { error } = await supabase.rpc("kotson_cart_apply_coupon", {
       p_cart_id: cartId,
       p_token: token,
-      p_coupon_code: (body.code || "").trim(),
+      p_coupon_code: code,
       p_user_id: authCtx.userId,
     });
     if (error) throw new ApiError(400, { detail: error.message });
@@ -703,13 +754,26 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
     return handleRequest("GET", "/cart");
   }
 
-  if (pathname === "/cart/referral" && method === "POST") {
+  if (pathname === "/cart/referral" && (method === "POST" || method === "PUT")) {
     const token = getGuestCartToken();
     const cartId = await getCartId(token, authCtx.userId);
     const { error } = await supabase.rpc("kotson_cart_apply_referral", {
       p_cart_id: cartId,
       p_token: token,
       p_referral_code: body.code,
+      p_user_id: authCtx.userId,
+    });
+    if (error) throw new ApiError(400, { detail: error.message });
+    return handleRequest("GET", "/cart");
+  }
+
+  if (pathname === "/cart/referral" && method === "DELETE") {
+    const token = getGuestCartToken();
+    const cartId = await getCartId(token, authCtx.userId);
+    const { error } = await supabase.rpc("kotson_cart_apply_referral", {
+      p_cart_id: cartId,
+      p_token: token,
+      p_referral_code: "",
       p_user_id: authCtx.userId,
     });
     if (error) throw new ApiError(400, { detail: error.message });
@@ -1469,10 +1533,83 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
   }
 
   if (pathname === "/admin/orders") {
-    const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+    const page = Math.max(1, parseInt(params.get("page") || "1", 10));
+    const limit = Math.max(1, parseInt(params.get("limit") || params.get("page_size") || "25", 10));
+    const offset = (page - 1) * limit;
+
+    const q = params.get("q")?.trim() || "";
+    const status = params.get("status")?.trim() || "";
+    const payment = params.get("payment")?.trim() || "";
+    const state = params.get("state")?.trim() || "";
+    const district = params.get("district")?.trim() || "";
+    const dateFrom = params.get("date_from")?.trim() || "";
+    const dateTo = params.get("date_to")?.trim() || "";
+
+    let query = supabase.from("orders").select("*", { count: "exact" });
+
+    if (q) {
+      query = query.or(`order_number.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%`);
+    }
+
+    if (status && status !== "all") {
+      query = query.or(`status.ilike.%${status}%,fulfilment_status.ilike.%${status}%`);
+    }
+
+    if (payment && payment !== "all") {
+      query = query.ilike("payment_status", `%${payment}%`);
+    }
+
+    if (state && state !== "all") {
+      query = query.filter("shipping_address->>state", "ilike", `%${state}%`);
+    }
+
+    if (district && district !== "all") {
+      query = query.filter("shipping_address->>city", "ilike", `%${district}%`);
+    }
+
+    if (dateFrom && dateFrom !== "all") {
+      if (dateFrom === "today") {
+        query = query.gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
+      } else if (dateFrom === "yesterday") {
+        const yStart = new Date(Date.now() - 86400000);
+        yStart.setHours(0, 0, 0, 0);
+        query = query.gte("created_at", yStart.toISOString());
+      } else if (dateFrom === "last_7") {
+        query = query.gte("created_at", new Date(Date.now() - 7 * 86400000).toISOString());
+      } else if (dateFrom === "last_30") {
+        query = query.gte("created_at", new Date(Date.now() - 30 * 86400000).toISOString());
+      } else if (dateFrom === "this_month") {
+        const d = new Date();
+        query = query.gte("created_at", new Date(d.getFullYear(), d.getMonth(), 1).toISOString());
+      } else {
+        query = query.gte("created_at", dateFrom);
+      }
+    }
+
+    if (dateTo && dateTo !== "all") {
+      query = query.lte("created_at", dateTo.includes("T") ? dateTo : `${dateTo}T23:59:59.999Z`);
+    }
+
+    query = query.order("created_at", { ascending: false }).range(offset, offset + limit - 1);
+
+    const { data, count, error } = await query;
     if (error) throw new ApiError(500, error);
-    const list = data || [];
-    return { total: list.length, orders: list, items: list, rows: list };
+
+    const rows = (data || []).map((o: any) => ({
+      ...o,
+      items: typeof o.items === "string" ? JSON.parse(o.items) : (o.items || []),
+      amounts: typeof o.amounts === "string" ? JSON.parse(o.amounts) : (o.amounts || {}),
+      shipping_address: typeof o.shipping_address === "string" ? JSON.parse(o.shipping_address) : (o.shipping_address || {}),
+    }));
+
+    return {
+      total: count !== null ? count : rows.length,
+      orders: rows,
+      items: rows,
+      rows: rows,
+      page,
+      limit,
+    };
   }
 
   if (pathname === "/admin/custom-requests") {
@@ -1597,16 +1734,22 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
       const endDate = params.get("end_date") || null;
       const search = params.get("search") || null;
       const role = params.get("role") || null;
+      const page = parseInt(params.get("page") || "1", 10);
+      const limit = parseInt(params.get("limit") || "10", 10);
+      const status = params.get("status") || "ALL";
 
       const { data, error } = await supabase.rpc("kotson_admin_get_users", {
         p_start_date: startDate,
         p_end_date: endDate,
         p_search: search,
         p_role: role,
+        p_page: page,
+        p_limit: limit,
+        p_status: status,
       });
       if (error) throw new ApiError(500, error);
       const parsed = typeof data === "string" ? JSON.parse(data) : data;
-      return parsed || { metrics: {}, users: [], total: 0 };
+      return parsed || { metrics: {}, users: [], total: 0, page: 1, limit: 10 };
     }
 
     if (method === "POST") {
@@ -1621,10 +1764,26 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
   }
 
   if (pathname.startsWith("/admin/users/")) {
-    const userId = pathname.replace("/admin/users/", "");
-    if (method === "PUT" || method === "PATCH") {
+    const cleanPath = pathname.replace("/admin/users/", "");
+    const parts = cleanPath.split("/");
+    const userId = parts[0];
+    const subAction = parts[1];
+
+    if (subAction === "action" && method === "POST") {
       const { data, error } = await supabase.rpc("kotson_admin_user_action", {
-        p_action: "edit",
+        p_action: body.action,
+        p_user_id: userId,
+        p_payload: body.payload || {},
+        p_actor_id: authCtx.userId,
+      });
+      if (error) throw new ApiError(400, { detail: error.message });
+      return data;
+    }
+
+    if (method === "PUT" || method === "PATCH") {
+      const action = body.action || "edit";
+      const { data, error } = await supabase.rpc("kotson_admin_user_action", {
+        p_action: action,
         p_user_id: userId,
         p_payload: body,
         p_actor_id: authCtx.userId,
@@ -2247,7 +2406,119 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
   }
 
   if (pathname === "/admin/referrals/rules") {
-    return [];
+    if (method === "GET") {
+      const { data, error } = await supabase
+        .from("referral_rules")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw new ApiError(500, error);
+      const rows = (data || []).map((r: any) => ({
+        id: r.id,
+        rule_name: r.name,
+        name: r.name,
+        commission_type: (r.commission_type || "PERCENTAGE").toUpperCase(),
+        commission_value: Number(r.commission_value) || 0,
+        commission_basis: r.commission_basis || "selling_price",
+        discount_type: (r.customer_discount_type || "PERCENTAGE").toUpperCase(),
+        discount_value: Number(r.customer_discount_value) || 0,
+        customer_discount_type: (r.customer_discount_type || "PERCENTAGE").toUpperCase(),
+        customer_discount_value: Number(r.customer_discount_value) || 0,
+        is_active: r.is_active !== false,
+        product_ids: Array.isArray(r.applicable_product_ids) ? r.applicable_product_ids : [],
+        applicable_product_ids: r.applicable_product_ids || [],
+        effective_from: r.effective_from || null,
+        effective_until: r.effective_until || null,
+        notes: r.notes || null,
+        created_at: r.created_at,
+        updated_at: r.updated_at || r.created_at,
+      }));
+      return rows;
+    }
+
+    if (method === "POST") {
+      const ruleId = `rule_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const commType = (body.commission_type || "PERCENTAGE").toUpperCase();
+      const discType = (body.discount_type || body.customer_discount_type || "PERCENTAGE").toUpperCase();
+      const insertData = {
+        id: body.id || ruleId,
+        name: (body.rule_name || body.name || "Referral Rule").trim(),
+        commission_type: commType === "FLAT" || commType === "FIXED" ? "FIXED" : "PERCENTAGE",
+        commission_value: Number(body.commission_value) || 0,
+        commission_basis: body.commission_basis || "selling_price",
+        customer_discount_type: discType === "FLAT" || discType === "FIXED" ? "FIXED" : "PERCENTAGE",
+        customer_discount_value: Number(body.discount_value || body.customer_discount_value) || 0,
+        is_active: body.is_active !== false,
+        applicable_product_ids: body.product_ids || body.applicable_product_ids || [],
+        effective_from: body.effective_from || null,
+        effective_until: body.effective_until || null,
+        notes: body.notes || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      const { data, error } = await supabase.from("referral_rules").insert(insertData).select().single();
+      if (error) throw new ApiError(400, { detail: error.message });
+      return data;
+    }
+  }
+
+  if (pathname.startsWith("/admin/referrals/rules/")) {
+    const ruleId = pathname.replace("/admin/referrals/rules/", "");
+    if (ruleId === "bulk" && method === "POST") {
+      const { rule_ids, action } = body || {};
+      if (Array.isArray(rule_ids) && rule_ids.length > 0) {
+        if (action === "activate") {
+          await supabase.from("referral_rules").update({ is_active: true, updated_at: new Date().toISOString() }).in("id", rule_ids);
+        } else if (action === "deactivate") {
+          await supabase.from("referral_rules").update({ is_active: false, updated_at: new Date().toISOString() }).in("id", rule_ids);
+        } else if (action === "delete") {
+          await supabase.from("referral_rules").delete().in("id", rule_ids);
+        }
+      }
+      return { ok: true, message: `Bulk ${action} completed successfully` };
+    }
+
+    if (method === "PUT" || method === "PATCH") {
+      const updateData: any = { updated_at: new Date().toISOString() };
+      if (body.rule_name !== undefined || body.name !== undefined) {
+        updateData.name = (body.rule_name || body.name).trim();
+      }
+      if (body.commission_type !== undefined) {
+        const cType = body.commission_type.toUpperCase();
+        updateData.commission_type = cType === "FLAT" || cType === "FIXED" ? "FIXED" : "PERCENTAGE";
+      }
+      if (body.commission_value !== undefined) {
+        updateData.commission_value = Number(body.commission_value) || 0;
+      }
+      if (body.commission_basis !== undefined) {
+        updateData.commission_basis = body.commission_basis;
+      }
+      if (body.discount_type !== undefined || body.customer_discount_type !== undefined) {
+        const dType = (body.discount_type || body.customer_discount_type).toUpperCase();
+        updateData.customer_discount_type = dType === "FLAT" || dType === "FIXED" ? "FIXED" : "PERCENTAGE";
+      }
+      if (body.discount_value !== undefined || body.customer_discount_value !== undefined) {
+        updateData.customer_discount_value = Number(body.discount_value || body.customer_discount_value) || 0;
+      }
+      if (body.is_active !== undefined) {
+        updateData.is_active = Boolean(body.is_active);
+      }
+      if (body.product_ids !== undefined || body.applicable_product_ids !== undefined) {
+        updateData.applicable_product_ids = body.product_ids || body.applicable_product_ids || [];
+      }
+      if (body.effective_from !== undefined) updateData.effective_from = body.effective_from;
+      if (body.effective_until !== undefined) updateData.effective_until = body.effective_until;
+      if (body.notes !== undefined) updateData.notes = body.notes;
+
+      const { data, error } = await supabase.from("referral_rules").update(updateData).eq("id", ruleId).select().single();
+      if (error) throw new ApiError(400, { detail: error.message });
+      return data;
+    }
+
+    if (method === "DELETE") {
+      const { error } = await supabase.from("referral_rules").delete().eq("id", ruleId);
+      if (error) throw new ApiError(400, { detail: error.message });
+      return { ok: true };
+    }
   }
 
   if (pathname === "/admin/referrals/products-catalog") {
@@ -2420,19 +2691,38 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
 
   if (pathname === "/admin/catalog/products" && method === "POST") {
     const { variants, ...productBody } = body || {};
-    const { data: prod, error } = await supabase.from("products").insert({
+    const insertProd: any = {
       name: productBody.name,
       slug: productBody.slug,
       category_slug: productBody.category_slug,
-      brand: productBody.brand,
-      tagline: productBody.tagline,
-      short_description: productBody.short_description,
-      description: productBody.description,
-      primary_image: productBody.primary_image,
-      images: productBody.images,
-      is_active: true,
-    }).select().maybeSingle();
+      description: productBody.description || "",
+      image_url: productBody.primary_image || productBody.image_url || null,
+      is_active: productBody.status === "ACTIVE" || productBody.is_active !== false,
+      storytelling: productBody.storytelling || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    let lowestPrice: number | null = null;
+    let lowestMrp: number | null = null;
+    if (variants?.length) {
+      for (const v of variants) {
+        const pricePaise = toPaise(v.price);
+        const mrpPaise = v.mrp ? toPaise(v.mrp) : Math.round(pricePaise / 0.60);
+        if (lowestPrice === null || pricePaise < lowestPrice) {
+          lowestPrice = pricePaise;
+          lowestMrp = mrpPaise;
+        }
+      }
+    }
+    if (lowestPrice !== null) {
+      insertProd.price_paise = lowestPrice;
+      insertProd.mrp_paise = lowestMrp;
+    }
+
+    const { data: prod, error } = await supabase.from("products").insert(insertProd).select().maybeSingle();
     if (error) throw new ApiError(400, { detail: error.message });
+
     if (prod && variants?.length) {
       await supabase.from("product_variants").insert(
         variants.map((v: any) => {
@@ -2441,10 +2731,11 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
           return {
             product_id: prod.id,
             sku: v.sku,
-            title: v.size,
+            title: v.size || v.title || "Standard",
             price_paise: pricePaise,
             mrp_paise: mrpPaise,
-            stock: v.stock || 0,
+            stock: v.stock !== undefined ? v.stock : 25,
+            is_active: true,
           };
         })
       );
@@ -2455,47 +2746,63 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
   if (pathname.match(/^\/admin\/catalog\/products\/[^/]+$/) && method === "PUT") {
     const pid = pathname.split("/").pop()!;
     const { variants, ...productBody } = body || {};
-    const { error } = await supabase.from("products").update({
-      name: productBody.name,
-      slug: productBody.slug,
-      category_slug: productBody.category_slug,
-      brand: productBody.brand,
-      tagline: productBody.tagline,
-      short_description: productBody.short_description,
-      description: productBody.description,
-      primary_image: productBody.primary_image,
-      images: productBody.images,
-      cta_button_name: productBody.cta_button_name,
-      is_featured: productBody.is_featured,
-      is_new_arrival: productBody.is_new_arrival,
-      is_best_seller: productBody.is_best_seller,
-    }).eq("id", pid);
-    if (error) throw new ApiError(400, { detail: error.message });
+
+    const updateProd: any = {
+      updated_at: new Date().toISOString(),
+    };
+    if (productBody.name !== undefined) updateProd.name = productBody.name;
+    if (productBody.slug !== undefined) updateProd.slug = productBody.slug;
+    if (productBody.category_slug !== undefined) updateProd.category_slug = productBody.category_slug;
+    if (productBody.description !== undefined) updateProd.description = productBody.description;
+    if (productBody.primary_image !== undefined || productBody.image_url !== undefined) {
+      updateProd.image_url = productBody.primary_image || productBody.image_url;
+    }
+    if (productBody.storytelling !== undefined) updateProd.storytelling = productBody.storytelling;
+    if (productBody.status !== undefined || productBody.is_active !== undefined) {
+      updateProd.is_active = productBody.status === "ACTIVE" || productBody.is_active === true;
+    }
+
     // Upsert variants
+    let lowestVariantPrice: number | null = null;
+    let lowestVariantMrp: number | null = null;
     if (variants?.length) {
       for (const v of variants) {
         const pricePaise = toPaise(v.price);
         const mrpPaise = v.mrp ? toPaise(v.mrp) : Math.round(pricePaise / 0.60);
-        if (v.id && !v.id.startsWith("v_")) {
+        if (lowestVariantPrice === null || pricePaise < lowestVariantPrice) {
+          lowestVariantPrice = pricePaise;
+          lowestVariantMrp = mrpPaise;
+        }
+
+        if (v.id && !v.id.startsWith("v_") && !v.id.startsWith("v1") && !v.id.startsWith("v2")) {
           await supabase.from("product_variants").update({
             sku: v.sku,
-            title: v.size,
+            title: v.size || v.title,
             price_paise: pricePaise,
             mrp_paise: mrpPaise,
-            stock: v.stock,
+            stock: v.stock !== undefined ? v.stock : 25,
+            is_active: v.is_active !== false,
           }).eq("id", v.id);
         } else {
           await supabase.from("product_variants").insert({
             product_id: pid,
             sku: v.sku,
-            title: v.size,
+            title: v.size || v.title,
             price_paise: pricePaise,
             mrp_paise: mrpPaise,
-            stock: v.stock || 0,
+            stock: v.stock !== undefined ? v.stock : 25,
+            is_active: true,
           });
         }
       }
     }
+    if (lowestVariantPrice !== null) {
+      updateProd.price_paise = lowestVariantPrice;
+      updateProd.mrp_paise = lowestVariantMrp;
+    }
+
+    const { error } = await supabase.from("products").update(updateProd).eq("id", pid);
+    if (error) throw new ApiError(400, { detail: error.message });
     return { ok: true };
   }
 
@@ -2507,8 +2814,17 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
     const pricePaise = toPaise(rawPrice);
     const rawMrp = body?.mrp_paise ?? body?.mrp;
     const mrpPaise = rawMrp ? toPaise(rawMrp) : Math.round(pricePaise / 0.60);
-    const { error } = await supabase.from("product_variants").update({ price_paise: pricePaise, mrp_paise: mrpPaise }).eq("id", vid);
+    const { data: vRow, error } = await supabase.from("product_variants").update({ price_paise: pricePaise, mrp_paise: mrpPaise }).eq("id", vid).select("product_id").single();
     if (error) throw new ApiError(400, { detail: error.message });
+
+    if (vRow?.product_id) {
+      await supabase.from("products").update({
+        price_paise: pricePaise,
+        mrp_paise: mrpPaise,
+        updated_at: new Date().toISOString(),
+      }).eq("id", vRow.product_id);
+    }
+
     return { ok: true, variant_id: vid, price: Math.round(pricePaise / 100), mrp: Math.round(mrpPaise / 100) };
   }
 

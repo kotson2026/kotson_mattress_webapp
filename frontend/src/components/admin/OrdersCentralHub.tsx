@@ -552,7 +552,7 @@ export default function OrdersCentralHub() {
         </Table>
 
         {/* Server-Side Pagination */}
-        {total > 10 && (
+        {total > 0 && (
           <div className="border-t border-border p-4">
             <DataTablePagination
               currentPage={page}

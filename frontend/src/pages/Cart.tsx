@@ -15,17 +15,11 @@ import { useCheckoutDrawer } from "@/components/checkout/CheckoutDrawer";
 
 export default function Cart() {
   const qc = useQueryClient();
-  const [refInput, setRefInput] = useState(() => {
+  const [promoInput, setPromoInput] = useState(() => {
     return sessionStorage.getItem("kotson_ref") || localStorage.getItem("kotson_ref") || "";
   });
   const { openDrawer } = useCheckoutDrawer();
   const { data: cart, isLoading } = useQuery({ queryKey: ["cart"], queryFn: () => apiGet<CartView>("/cart") });
-
-  useEffect(() => {
-    if (cart?.referred_code && !refInput) {
-      setRefInput(cart.referred_code);
-    }
-  }, [cart?.referred_code]);
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["cart"] });
 
@@ -43,13 +37,40 @@ export default function Cart() {
     onSuccess: refresh,
   });
 
-  const applyRef = useMutation({
-    mutationFn: (code: string | null) => apiPost("/cart/referral", { code }),
-    onSuccess: () => {
+  const applyPromo = useMutation({
+    mutationFn: (code: string) => apiPost<CartView>("/cart/coupon", { code }),
+    onSuccess: (updated) => {
       refresh();
-      toast.success("Referral code updated");
+      if (updated.coupon_status === "valid" || (updated.referred_code && updated.referral_status === "valid")) {
+        toast.success(updated.coupon_message || "Code applied successfully!");
+        setPromoInput("");
+      } else {
+        toast.error(updated.coupon_message || "Invalid or ineligible code");
+      }
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Could not apply code"),
+  });
+
+  const removeCoupon = useMutation({
+    mutationFn: () => apiDelete("/cart/coupon"),
+    onSuccess: () => {
+      refresh();
+      toast.success("Coupon removed");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not remove coupon"),
+  });
+
+  const removeRef = useMutation({
+    mutationFn: () => apiDelete("/cart/referral"),
+    onSuccess: () => {
+      refresh();
+      try {
+        sessionStorage.removeItem("kotson_ref");
+        localStorage.removeItem("kotson_ref");
+      } catch {}
+      toast.success("Referral removed");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not remove referral"),
   });
 
   return (
@@ -197,6 +218,76 @@ export default function Cart() {
             </Table>
 
             <aside className="h-fit rounded-2xl border border-border bg-card p-6">
+              {/* 1. Coupon / Referral Code */}
+              <div className="mb-6">
+                <p className="mb-2 text-sm font-bold text-foreground">Coupon / Referral Code</p>
+
+                {/* Applied referral banner */}
+                {cart.referred_code && cart.referral_status === "valid" && (
+                  <div className="mb-3 flex items-center justify-between rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-800">
+                    <div>
+                      <span className="font-bold">Referral: </span>
+                      <span className="font-mono font-bold">{cart.referred_code}</span>
+                      <p className="text-[11px] text-emerald-700">−{inr(cart.referral_discount || 0)} applied</p>
+                    </div>
+                    <button
+                      onClick={() => removeRef.mutate()}
+                      className="text-xs text-rose-600 hover:underline font-semibold"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+
+                {/* Applied coupon banner */}
+                {cart.coupon_code && (cart.coupon_discount || 0) > 0 && (
+                  <div className="mb-3 flex items-center justify-between rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-800">
+                    <div>
+                      <span className="font-bold">Coupon: </span>
+                      <span className="font-mono font-bold">{cart.coupon_code}</span>
+                      <p className="text-[11px] text-emerald-700">−{inr(cart.coupon_discount || 0)} applied</p>
+                    </div>
+                    <button
+                      onClick={() => removeCoupon.mutate()}
+                      className="text-xs text-rose-600 hover:underline font-semibold"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Input
+                    value={promoInput}
+                    onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                    placeholder="Enter code"
+                    className="font-mono uppercase min-h-10 text-xs tracking-wider"
+                    data-testid="cart-coupon-input"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && promoInput.trim()) {
+                        applyPromo.mutate(promoInput.trim());
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => applyPromo.mutate(promoInput.trim())}
+                    disabled={!promoInput.trim() || applyPromo.isPending}
+                    data-testid="cart-coupon-apply"
+                    className="min-h-10 text-xs font-semibold px-4"
+                  >
+                    {applyPromo.isPending ? "Applying…" : "Apply"}
+                  </Button>
+                </div>
+                {cart.coupon_message && cart.coupon_status !== "valid" && cart.coupon_status !== "none" && (
+                  <p className="mt-2 text-xs text-destructive font-medium">{cart.coupon_message}</p>
+                )}
+                {cart.referral_status !== "none" && cart.referral_status !== "valid" && cart.referral_note && (
+                  <p className="mt-2 text-xs text-muted-foreground">{cart.referral_note}</p>
+                )}
+              </div>
+
+              {/* 2. Subtotal, Discount & Final Total */}
               <h2 className="font-heading text-lg font-bold mb-4">Price Summary</h2>
               {(() => {
                 const totalMrp = cart.total_mrp && cart.total_mrp > cart.subtotal ? cart.total_mrp : Math.round(cart.subtotal * 1.4);
@@ -219,7 +310,7 @@ export default function Cart() {
                       </div>
                     )}
                     <div className="flex justify-between font-semibold border-t border-dashed border-border/70 pt-2 text-foreground">
-                      <span>Selling Price</span>
+                      <span>Subtotal (Selling Price)</span>
                       <span className="tabular-nums">{inr(sellingPrice)}</span>
                     </div>
                     {refDiscount > 0 && (
@@ -251,46 +342,7 @@ export default function Cart() {
               })()}
               <p className="mt-3 text-xs text-muted-foreground">GST, shipping and discounts are recalculated server-side at checkout.</p>
 
-
-              <div className="mt-6">
-                <p className="mb-2 text-sm font-semibold">Referral code</p>
-                {cart.referred_code ? (
-                  <div className="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-800">
-                    <span className="font-mono font-bold">{cart.referred_code} ✓ Applied</span>
-                    <button
-                      onClick={() => {
-                        setRefInput("");
-                        try {
-                          sessionStorage.removeItem("kotson_ref");
-                          localStorage.removeItem("kotson_ref");
-                        } catch {}
-                        applyRef.mutate(null);
-                      }}
-                      className="text-xs text-rose-600 hover:underline font-semibold"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <Input
-                      value={refInput}
-                      onChange={(e) => setRefInput(e.target.value.toUpperCase())}
-                      placeholder="Enter referral code"
-                      data-testid="cart-referral-input"
-                    />
-                    <Button variant="outline" onClick={() => applyRef.mutate(refInput || null)} disabled={applyRef.isPending} data-testid="cart-referral-apply">
-                      Apply
-                    </Button>
-                  </div>
-                )}
-                {cart.referral_status !== "none" && (
-                  <p className={`mt-2 text-xs ${cart.referral_status === "valid" ? "text-emerald-700 font-medium" : "text-muted-foreground"}`} data-testid="cart-referral-note">
-                    {cart.referral_note}
-                  </p>
-                )}
-              </div>
-
+              {/* 3. Proceed to Checkout */}
               <button
                 onClick={openDrawer}
                 className={buttonVariants({ size: "lg" }) + " mt-6 flex w-full min-h-12"}

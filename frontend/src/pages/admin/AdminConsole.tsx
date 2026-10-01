@@ -838,13 +838,7 @@ export default function AdminConsole() {
     !me.roles.includes("owner") &&
     !me.roles.includes("admin");
 
-  const baseNav = isOwner
-    ? [
-        ...NAV.slice(0, NAV.length - 1),
-        { to: "/admin/test-data", label: "Test Data" },
-        NAV[NAV.length - 1],
-      ]
-    : NAV;
+  const baseNav = NAV;
 
   const effectiveNav = isCrmMasterOnly
     ? [
@@ -898,7 +892,6 @@ export default function AdminConsole() {
                 <Route path="dealers" element={<DealerManagementHub />} />
                 <Route path="staff" element={<StaffAccessHub />} />
                 <Route path="audit" element={<AuditLogView />} />
-                <Route path="test-data" element={<TestDataManager />} />
                 <Route path="settings" element={<SettingsView />} />
               </>
             )}
