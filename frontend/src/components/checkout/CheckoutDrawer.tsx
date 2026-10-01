@@ -754,11 +754,11 @@ function CouponSection({ cart, onCartUpdate }: {
     try {
       const updated = await apiPost<CartView>("/cart/coupon", { code: c });
       onCartUpdate();
-      if (updated.coupon_status === "valid") {
-        toast.success(updated.coupon_message || "Coupon applied successfully!");
+      if (updated.coupon_status === "valid" || (updated.referred_code && updated.referral_status === "valid")) {
+        toast.success(updated.coupon_message || (updated.referred_code ? "Referral code applied!" : "Code applied successfully!"));
         setInput("");
       } else {
-        toast.error(updated.coupon_message || "Invalid or ineligible coupon code");
+        toast.error(updated.coupon_message || "Invalid or ineligible code");
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not apply coupon");

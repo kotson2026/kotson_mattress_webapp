@@ -16,6 +16,7 @@ import {
   verifyMsg91Otp,
   retryMsg91Otp,
 } from "@/services/msg91Otp";
+import { restorePendingCartItem } from "@/lib/pendingCart";
 
 const REF_KEY = "kotson_ref";
 
@@ -302,8 +303,18 @@ export default function Register() {
         msg91_request_id: reqId,
       });
     },
-    onSuccess: (out) => {
+    onSuccess: async (out) => {
       qc.clear();
+
+      // Check and restore any pending product from logged-out Add to Cart
+      const pendingRes = await restorePendingCartItem();
+      if (pendingRes.restored) {
+        toast.success(`Account created — ${pendingRes.item?.product_name || "item"} added to your cart`);
+        qc.invalidateQueries({ queryKey: ["cart"] });
+        navigate("/cart");
+        return;
+      }
+
       toast.success(
         out.guest_cart_merged > 0
           ? `Account created — ${out.guest_cart_merged} cart item(s) merged`
@@ -359,6 +370,17 @@ export default function Register() {
       hasError = true;
     } else {
       setConsentError("");
+    }
+
+    // Validate Referral Code if entered
+    if (refCode.trim()) {
+      if (referralStatus === "invalid") {
+        toast.error(referralMessage || "Referral code is invalid or unavailable.");
+        hasError = true;
+      } else if (referralStatus === "checking") {
+        toast.info("Please wait while we verify your referral code.");
+        hasError = true;
+      }
     }
 
     if (hasError) return;

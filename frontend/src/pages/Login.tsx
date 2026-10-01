@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { login } from "@/lib/session";
+import { restorePendingCartItem } from "@/lib/pendingCart";
 import AuthBrandPanel from "@/components/auth/AuthBrandPanel";
 import LogoMark from "@/components/layout/LogoMark";
 import { Button } from "@/components/ui/button";
@@ -25,8 +26,18 @@ export default function Login() {
 
   const mutation = useMutation({
     mutationFn: () => login(identifier.trim(), password),
-    onSuccess: (out) => {
+    onSuccess: async (out) => {
       qc.clear();
+
+      // Check and restore any pending product from logged-out Add to Cart
+      const pendingRes = await restorePendingCartItem();
+      if (pendingRes.restored) {
+        toast.success(`Signed in — ${pendingRes.item?.product_name || "item"} added to your cart`);
+        qc.invalidateQueries({ queryKey: ["cart"] });
+        navigate("/cart");
+        return;
+      }
+
       if (out.guest_cart_merged > 0) {
         toast.success(`Signed in — ${out.guest_cart_merged} cart item(s) merged`);
       } else {

@@ -10,6 +10,9 @@ import TopperVariantSelector from "./TopperVariantSelector";
 import PriceDisplay from "./PriceDisplay";
 import ProductSupportAssistance from "./ProductSupportAssistance";
 import { useCheckoutDrawer } from "@/components/checkout/CheckoutDrawer";
+import { useMe } from "@/lib/session";
+import { savePendingCartItem } from "@/lib/pendingCart";
+import AuthPromptModal from "@/components/auth/AuthPromptModal";
 
 interface VariantSelectorProps {
   product: Product;
@@ -19,6 +22,8 @@ interface VariantSelectorProps {
 export default function VariantSelector({ product, onVariantChange }: VariantSelectorProps) {
   const qc = useQueryClient();
   const { openDrawer } = useCheckoutDrawer();
+  const { data: me } = useMe();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   
   // Default variant for pillows or products with 1 variant
   const defaultVariant = product.variants.length === 1 ? product.variants[0] : null;
@@ -42,13 +47,27 @@ export default function VariantSelector({ product, onVariantChange }: VariantSel
 
   const handleAddToCart = useCallback(() => {
     if (!selectedVariant) return;
+
+    if (!me) {
+      savePendingCartItem({
+        product_id: product.id,
+        variant_id: selectedVariant.id,
+        product_name: product.name,
+        product_slug: product.slug,
+        size: selectedVariant.size || "Standard",
+        quantity: 1,
+      });
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     mutation.mutate(selectedVariant.id, {
       onSuccess: () => {
         toast.success("Added to cart");
         openDrawer();
       },
     });
-  }, [selectedVariant, mutation, openDrawer]);
+  }, [selectedVariant, me, product, mutation, openDrawer]);
 
   return (
     <div className="flex flex-col gap-6" data-testid="unified-variant-selector">
@@ -130,6 +149,14 @@ export default function VariantSelector({ product, onVariantChange }: VariantSel
            <span>Free Shipping</span>
         </div>
       </div>
+
+      <AuthPromptModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        productName={product.name}
+        size={selectedVariant?.size || "Standard"}
+        quantity={1}
+      />
     </div>
   );
 }

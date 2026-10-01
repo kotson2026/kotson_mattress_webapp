@@ -8,6 +8,9 @@ import { apiPost } from "@/lib/api";
 import type { Product, Variant } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import PriceDisplay from "./PriceDisplay";
+import { useMe } from "@/lib/session";
+import { savePendingCartItem } from "@/lib/pendingCart";
+import AuthPromptModal from "@/components/auth/AuthPromptModal";
 
 interface StickyMobileBarProps {
   product: Product;
@@ -17,7 +20,9 @@ interface StickyMobileBarProps {
 export default function StickyMobileBar({ product, selectedVariant }: StickyMobileBarProps) {
   const qc = useQueryClient();
   const { openDrawer } = useCheckoutDrawer();
+  const { data: me } = useMe();
   const [isVisible, setIsVisible] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   useEffect(() => {
     // Show the bar when scrolling past 400px (typically past the main hero/gallery)
@@ -42,6 +47,20 @@ export default function StickyMobileBar({ product, selectedVariant }: StickyMobi
 
   const handleAddToCart = () => {
     if (!selectedVariant) return;
+
+    if (!me) {
+      savePendingCartItem({
+        product_id: product.id,
+        variant_id: selectedVariant.id,
+        product_name: product.name,
+        product_slug: product.slug,
+        size: selectedVariant.size || "Standard",
+        quantity: 1,
+      });
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     mutation.mutate(selectedVariant.id, {
       onSuccess: () => {
         toast.success("Added to cart");
@@ -81,6 +100,14 @@ export default function StickyMobileBar({ product, selectedVariant }: StickyMobi
       >
         {mutation.isPending ? "Processing..." : "Add to Cart"}
       </Button>
+
+      <AuthPromptModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        productName={product.name}
+        size={selectedVariant?.size || "Standard"}
+        quantity={1}
+      />
     </div>
   );
 }

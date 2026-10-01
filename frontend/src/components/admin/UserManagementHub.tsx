@@ -23,9 +23,11 @@ import {
   Trash2,
   AlertCircle,
   Package,
+  Download,
 } from "lucide-react";
 import { apiGet, apiPost } from "@/lib/api";
 import { inr, fmtDateTime } from "@/lib/format";
+import { exportToCsv } from "@/lib/csvExport";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -288,6 +290,51 @@ export default function UserManagementHub() {
     );
   };
 
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportUsers = async () => {
+    try {
+      setIsExporting(true);
+      const p = new URLSearchParams();
+      if (startDate) p.set("start_date", startDate);
+      if (endDate) p.set("end_date", endDate);
+      if (search.trim()) p.set("search", search.trim());
+      if (statusFilter !== "ALL") p.set("status", statusFilter);
+      p.set("page", "1");
+      p.set("limit", "1000");
+
+      const res = await apiGet<CustomersApiResponse>(`/admin/users?${p.toString()}`);
+      const exportItems = res?.users && res.users.length > 0 ? res.users : customers;
+
+      const headers = [
+        "Name",
+        "Email",
+        "Phone Number",
+        "Signup Date",
+        "Status",
+        "Orders",
+        "Total Purchase Value",
+      ];
+
+      const rows = exportItems.map((u) => [
+        u.name || "",
+        u.email || "",
+        u.phone || "",
+        fmtDateTime(u.created_at),
+        u.account_status || (u.is_active ? "ACTIVE" : "DEACTIVATED"),
+        u.orders_count || 0,
+        ((u.total_purchase_paise || 0) / 100).toFixed(2),
+      ]);
+
+      exportToCsv(`kotson_users_${new Date().toISOString().slice(0, 10)}`, headers, rows);
+      toast.success(`Exported ${rows.length} customers to CSV`);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to export customer directory");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Header */}
@@ -299,6 +346,17 @@ export default function UserManagementHub() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportUsers}
+            disabled={isExporting || isLoading}
+            className="flex items-center gap-1.5 text-xs h-9"
+            title="Export customers to CSV"
+          >
+            <Download size={14} className={isExporting ? "animate-pulse" : ""} />
+            <span>{isExporting ? "Exporting..." : "Export CSV"}</span>
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -454,24 +512,26 @@ export default function UserManagementHub() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/40">
-              <TableHead className="font-semibold text-xs">Customer</TableHead>
-              <TableHead className="font-semibold text-xs">Contact</TableHead>
-              <TableHead className="font-semibold text-xs">Joined</TableHead>
-              <TableHead className="font-semibold text-xs">Orders & Spend</TableHead>
-              <TableHead className="font-semibold text-xs">Account Status</TableHead>
+              <TableHead className="font-semibold text-xs">Name</TableHead>
+              <TableHead className="font-semibold text-xs">Email</TableHead>
+              <TableHead className="font-semibold text-xs">Phone Number</TableHead>
+              <TableHead className="font-semibold text-xs">Signup Date</TableHead>
+              <TableHead className="font-semibold text-xs">Status</TableHead>
+              <TableHead className="font-semibold text-xs">Orders</TableHead>
+              <TableHead className="font-semibold text-xs">Total Purchase Value</TableHead>
               <TableHead className="font-semibold text-xs text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-12 text-sm text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-12 text-sm text-muted-foreground">
                   Loading customers directory from Supabase...
                 </TableCell>
               </TableRow>
             ) : customers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-12 text-sm text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-12 text-sm text-muted-foreground">
                   No customer records found matching your query.
                 </TableCell>
               </TableRow>
@@ -483,6 +543,7 @@ export default function UserManagementHub() {
 
                 return (
                   <TableRow key={c.id}>
+                    {/* 1. Name */}
                     <TableCell>
                       <div className="font-semibold text-xs text-foreground">
                         {c.name || "Customer Account"}
@@ -491,33 +552,47 @@ export default function UserManagementHub() {
                         ID: {c.id.substring(0, 8)}...
                       </div>
                     </TableCell>
+
+                    {/* 2. Email */}
                     <TableCell>
                       <div className="text-xs text-foreground flex items-center gap-1.5">
-                        <Mail size={12} className="text-muted-foreground" />
-                        <span>{c.email || "—"}</span>
+                        <Mail size={12} className="text-muted-foreground shrink-0" />
+                        <span className="truncate max-w-[170px]">{c.email || "—"}</span>
                       </div>
-                      <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                        <Phone size={12} className="text-muted-foreground" />
+                    </TableCell>
+
+                    {/* 3. Phone Number */}
+                    <TableCell>
+                      <div className="text-xs text-foreground font-mono flex items-center gap-1.5">
+                        <Phone size={12} className="text-muted-foreground shrink-0" />
                         <span>{c.phone || "—"}</span>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="text-xs text-foreground">
-                        {fmtDateTime(c.created_at)}
-                      </div>
+
+                    {/* 4. Signup Date */}
+                    <TableCell className="whitespace-nowrap text-xs text-foreground">
+                      {fmtDateTime(c.created_at)}
                     </TableCell>
+
+                    {/* 5. Status */}
                     <TableCell>
+                      {renderStatusBadge(c.account_status, c.is_active)}
+                    </TableCell>
+
+                    {/* 6. Orders */}
+                    <TableCell className="text-xs font-semibold text-foreground">
+                      {ordersCount}
+                    </TableCell>
+
+                    {/* 7. Total Purchase Value */}
+                    <TableCell className="whitespace-nowrap">
                       <div className="flex items-center gap-1 text-xs font-semibold text-foreground">
                         <IndianRupee size={12} className="text-emerald-700" />
                         <span>{inr(spendRupees)}</span>
                       </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {ordersCount} {ordersCount === 1 ? "order" : "orders"}
-                      </div>
                     </TableCell>
-                    <TableCell>
-                      {renderStatusBadge(c.account_status, c.is_active)}
-                    </TableCell>
+
+                    {/* 8. Actions */}
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button

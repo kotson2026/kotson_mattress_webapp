@@ -267,10 +267,17 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
   }
 
   if (pathname === "/auth/validate-referral") {
-    const code = params.get("code")?.trim().toUpperCase();
-    if (!code) return { valid: false };
-    const { data } = await supabase.from("users").select("referral_code").eq("referral_code", code).maybeSingle();
-    return { valid: !!data, code };
+    const code = (params.get("code") || body?.code || "").trim();
+    if (!code) return { valid: false, message: "Referral code cannot be empty" };
+    const { data, error } = await supabase.rpc("kotson_validate_referral_code", {
+      p_code: code,
+      p_user_id: authCtx.userId || null,
+    });
+    if (error) {
+      return { valid: false, message: "Could not validate referral code" };
+    }
+    const res = typeof data === "string" ? JSON.parse(data) : data;
+    return res || { valid: false, message: "Referral code is invalid or unavailable." };
   }
 
   if (pathname === "/auth/otp/send" && method === "POST") {
@@ -694,7 +701,33 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
     const cartId = await getCartId(token, authCtx.userId);
     const code = (body.code || "").trim().toUpperCase();
 
-    // Check if code matches an active admin coupon
+    if (!code) {
+      throw new ApiError(400, { detail: "Please enter a coupon or referral code" });
+    }
+
+    // 1. Authoritative check: Is it a valid referral code?
+    const { data: refVal } = await supabase.rpc("kotson_validate_referral_code", {
+      p_code: code,
+      p_user_id: authCtx.userId || null,
+    });
+    const parsedRef = typeof refVal === "string" ? JSON.parse(refVal) : refVal;
+
+    if (parsedRef?.valid) {
+      const { error } = await supabase.rpc("kotson_cart_apply_referral", {
+        p_cart_id: cartId,
+        p_token: token,
+        p_referral_code: parsedRef.code,
+        p_user_id: authCtx.userId,
+      });
+      if (error) throw new ApiError(400, { detail: error.message });
+      return handleRequest("GET", "/cart");
+    }
+
+    if (parsedRef && !parsedRef.valid && parsedRef.reason === "self_referral") {
+      throw new ApiError(400, { detail: parsedRef.message || "You cannot use your own referral code" });
+    }
+
+    // 2. Authoritative check: Is it a valid company coupon?
     const { data: couponMatch } = await supabase
       .from("coupons")
       .select("id, code, is_active")
@@ -705,40 +738,15 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
       const { error } = await supabase.rpc("kotson_cart_apply_coupon", {
         p_cart_id: cartId,
         p_token: token,
-        p_coupon_code: code,
+        p_coupon_code: couponMatch.code,
         p_user_id: authCtx.userId,
       });
       if (error) throw new ApiError(400, { detail: error.message });
       return handleRequest("GET", "/cart");
     }
 
-    // Check if code matches a referral profile
-    const { data: refMatch } = await supabase
-      .from("referral_profiles")
-      .select("id, referral_code")
-      .ilike("referral_code", code)
-      .maybeSingle();
-
-    if (refMatch) {
-      const { error } = await supabase.rpc("kotson_cart_apply_referral", {
-        p_cart_id: cartId,
-        p_token: token,
-        p_referral_code: code,
-        p_user_id: authCtx.userId,
-      });
-      if (error) throw new ApiError(400, { detail: error.message });
-      return handleRequest("GET", "/cart");
-    }
-
-    // Fallback: apply as coupon to allow RPC to evaluate and return authoritative validation
-    const { error } = await supabase.rpc("kotson_cart_apply_coupon", {
-      p_cart_id: cartId,
-      p_token: token,
-      p_coupon_code: code,
-      p_user_id: authCtx.userId,
-    });
-    if (error) throw new ApiError(400, { detail: error.message });
-    return handleRequest("GET", "/cart");
+    // Neither a valid referral code nor an active company coupon
+    throw new ApiError(400, { detail: "Invalid code. Please enter an active coupon or referral code." });
   }
 
   if (pathname === "/cart/coupon" && method === "DELETE") {
