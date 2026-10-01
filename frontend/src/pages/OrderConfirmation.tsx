@@ -1,17 +1,21 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { CheckCircle2, Clock, TriangleAlert } from "lucide-react";
+import { CheckCircle2, Clock, TriangleAlert, Star } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import type { Order } from "@/lib/types";
 import { fmtDateTime, inr } from "@/lib/format";
 import StorefrontHeader from "@/components/layout/StorefrontHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import ReviewModal, { type ReviewTargetItem } from "@/components/account/ReviewModal";
 
 export default function OrderConfirmation() {
   const { id } = useParams();
   const [params] = useSearchParams();
   const token = params.get("t");
+  const [reviewTarget, setReviewTarget] = useState<ReviewTargetItem | null>(null);
 
   // Polls while payment is still pending so a webhook-confirmed payment appears without a reload.
   const { data: order, isLoading, isError } = useQuery({
@@ -86,14 +90,41 @@ export default function OrderConfirmation() {
 
               <ul className="mt-6 divide-y divide-border" data-testid="confirmation-items">
                 {order.items.map((i) => (
-                  <li key={i.variant_id} className="flex justify-between gap-4 py-3 text-sm">
+                  <li key={i.variant_id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-3 text-sm">
                     <div>
                       <p className="font-medium">{i.product_name}</p>
                       <p className="text-xs text-muted-foreground">
                         {[i.size, i.thickness, i.firmness].filter(Boolean).join(" · ")} · SKU {i.sku} · Qty {i.qty}
                       </p>
                     </div>
-                    <span className="tabular-nums">{inr(i.line_total)}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="tabular-nums font-semibold">{inr(i.line_total)}</span>
+                      {order.payment_status === "paid" &&
+                        order.status !== "CANCELLED" &&
+                        (order.fulfilment_status?.toLowerCase() === "delivered" ||
+                          order.fulfilment_status?.toLowerCase() === "completed") && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() =>
+                              setReviewTarget({
+                                orderId: order.id,
+                                orderNumber: order.order_number,
+                                orderItemId: i.variant_id || i.sku || i.product_id,
+                                productId: i.product_id,
+                                variantId: i.variant_id,
+                                productName: i.product_name,
+                                variantTitle: [i.size, i.thickness, i.firmness].filter(Boolean).join(" · "),
+                              })
+                            }
+                            className="h-8 bg-brand-forest hover:bg-brand-deep text-white text-xs font-semibold"
+                            data-testid={`btn-review-${i.product_id}`}
+                          >
+                            <Star className="mr-1 h-3 w-3 fill-amber-300 text-amber-300" />
+                            Rate &amp; Review
+                          </Button>
+                        )}
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -134,6 +165,11 @@ export default function OrderConfirmation() {
             <Link to="/collections" className="mt-6 inline-block text-brand-deep underline" data-testid="confirmation-continue-link">
               Continue shopping
             </Link>
+            <ReviewModal
+              isOpen={Boolean(reviewTarget)}
+              onClose={() => setReviewTarget(null)}
+              target={reviewTarget}
+            />
           </>
         )}
       </main>

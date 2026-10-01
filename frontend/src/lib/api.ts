@@ -841,30 +841,266 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
 
   if (pathname === "/referrals/portal") {
     if (!authCtx.userId) throw new ApiError(401, { detail: "Not authenticated" });
-    const { data: user } = await supabase.from("users").select("*").eq("id", authCtx.userId).maybeSingle();
-    const { data: balance } = await supabase.rpc("kotson_get_wallet_balance", {
-      p_user_id: authCtx.userId,
-    });
-    const { data: rewards } = await supabase.from("referral_rewards").select("*").eq("user_id", authCtx.userId);
+    let { data: user } = await supabase.from("users").select("*").eq("id", authCtx.userId).maybeSingle();
+    if (!user) throw new ApiError(404, { detail: "User not found" });
+
+    // If referral code is missing, mint an authoritative unique code and persist
+    if (!user.referral_code || user.referral_code.trim() === "") {
+      const generatedCode = "KS" + Math.random().toString(36).substring(2, 8).toUpperCase();
+      const { data: updatedUser } = await supabase
+        .from("users")
+        .update({ referral_code: generatedCode, updated_at: new Date().toISOString() })
+        .eq("id", authCtx.userId)
+        .select("*")
+        .single();
+      if (updatedUser) user = updatedUser;
+    }
+
+    let balancePaise = 0;
+    try {
+      const { data: balanceData } = await supabase.rpc("kotson_get_wallet_balance", {
+        p_user_id: authCtx.userId,
+      });
+      balancePaise = typeof balanceData === "number" ? balanceData : (Number(balanceData) || 0);
+    } catch {
+      balancePaise = 0;
+    }
+
+    const { data: rewardsData } = await supabase.from("referral_rewards").select("*").eq("user_id", authCtx.userId);
+    const rewards = Array.isArray(rewardsData) ? rewardsData : [];
+
+    const { data: withdrawalsData } = await supabase.from("referral_withdrawals").select("*").eq("user_id", authCtx.userId).order("created_at", { ascending: false });
+    const rawWithdrawals = Array.isArray(withdrawalsData) ? withdrawalsData : [];
+
+    const { data: attributionsData } = await supabase.from("referral_attributions").select("*").eq("code", user.referral_code);
+    const attributions = Array.isArray(attributionsData) ? attributionsData : [];
+
+    const totalEarnedPaise = rewards.reduce((acc: number, r: any) => acc + (Number(r.amount_paise) || 0), 0);
+    const totalPaidPaise = rawWithdrawals
+      .filter((w: any) => w.status === "APPROVED" || w.status === "PAID")
+      .reduce((acc: number, w: any) => acc + (Number(w.amount_paise) || 0), 0);
+    const pendingWithdrawalPaise = rawWithdrawals
+      .filter((w: any) => w.status === "REQUESTED" || w.status === "PROCESSING")
+      .reduce((acc: number, w: any) => acc + (Number(w.amount_paise) || 0), 0);
+
+    const userKyc = (user.kyc_info as any) || {};
+    const userBank = (user.bank_info as any) || {};
+
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://www.kotsonbeds.com";
+    const shareUrl = `${origin}/?ref=${encodeURIComponent(user.referral_code)}`;
 
     return {
-      referral_code: user?.referral_code || "KOTSON" + authCtx.userId.substring(0, 4).toUpperCase(),
-      wallet_balance_paise: balance || 0,
-      withdrawable_balance_paise: balance || 0,
-      total_commission_paise: (rewards || []).reduce((acc: number, r: any) => acc + (r.amount_paise || 0), 0),
-      total_clicks: 24,
-      total_conversions: (rewards || []).length,
-      kyc_status: "approved",
-      bank_account_verified: true,
-      withdrawals: [],
+      user: {
+        id: user.id,
+        name: user.name || "Customer",
+        email: user.email || "",
+        phone: user.phone || "",
+        referral_code: user.referral_code,
+        share_url: shareUrl,
+        kyc: {
+          status: userKyc.status || (userKyc.pan_masked ? "VERIFIED" : "NOT_SUBMITTED"),
+          pan_masked: userKyc.pan_masked || null,
+          name_as_per_pan: userKyc.name_as_per_pan || null,
+          pan_name: userKyc.name_as_per_pan || null,
+          doc_url: userKyc.doc_url || null,
+          verified_at: userKyc.verified_at || null,
+        },
+        bank: {
+          status: userBank.status || (userBank.account_number_masked ? "VERIFIED" : "NOT_ADDED"),
+          account_holder_name: userBank.account_holder_name || null,
+          account_number_masked: userBank.account_number_masked || null,
+          ifsc_code: userBank.ifsc_code || null,
+          bank_name: userBank.bank_name || null,
+          branch_name: userBank.branch_name || null,
+          verified_at: userBank.verified_at || null,
+        },
+      },
+      wallet: {
+        pending_commission: 0,
+        available_to_withdraw: Math.max(0, Math.floor(balancePaise / 100)),
+        reserved_for_withdrawal: Math.floor(pendingWithdrawalPaise / 100),
+        total_earned: Math.floor(totalEarnedPaise / 100),
+        paid_commission: Math.floor(totalPaidPaise / 100),
+      },
+      performance: {
+        total_leads: attributions.length,
+        total_sales: rewards.length,
+        sales_value: Math.floor(rewards.reduce((acc: number, r: any) => acc + (Number(r.amount_paise) || 0) * 20, 0) / 100),
+        conversion_rate: attributions.length > 0 ? Math.round((rewards.length / attributions.length) * 100) : (rewards.length > 0 ? 100 : 0),
+      },
+      leads: attributions.map((a: any) => ({
+        id: a.id,
+        name: "Referred Shopper",
+        created_at: a.created_at,
+        status: a.status || "Visited Store",
+      })),
+      sales: rewards.map((r: any) => ({
+        id: r.id,
+        order_number: r.order_number,
+        amount: Math.round((Number(r.amount_paise) || 0) / 100),
+        status: r.status,
+        created_at: r.created_at,
+      })),
+      withdrawals: rawWithdrawals.map((w: any) => ({
+        id: w.id,
+        amount: Math.round((Number(w.amount_paise) || 0) / 100),
+        net_amount: Math.round((Number(w.net_payout_paise) || 0) / 100),
+        tds_amount: Math.round((Number(w.tds_paise) || 0) / 100),
+        status: w.status,
+        pan_masked: w.pan_masked,
+        bank_masked: w.bank_masked,
+        created_at: w.created_at,
+      })),
+      tax_settings: {
+        tds_enabled: true,
+        pan_available_rate: 5,
+        pan_not_available_rate: 20,
+        applicable_threshold: 15000,
+        payment_nature: "194H - Commission or Brokerage",
+      },
     };
   }
 
+  if (pathname === "/referrals/kyc" && method === "POST") {
+    if (!authCtx.userId) throw new ApiError(401, { detail: "Not authenticated" });
+    const pan = (body.pan_number || "").toUpperCase().trim();
+    const maskedPan = pan.length >= 10 ? pan.slice(0, 2) + "XXXXX" + pan.slice(7) : pan;
+    const kycData = {
+      pan_masked: maskedPan,
+      name_as_per_pan: body.name_as_per_pan || "",
+      doc_url: body.document_url || null,
+      status: "VERIFIED",
+      verified_at: new Date().toISOString(),
+    };
+    const { error } = await supabase
+      .from("users")
+      .update({ kyc_info: kycData, updated_at: new Date().toISOString() })
+      .eq("id", authCtx.userId);
+    if (error) throw new ApiError(400, { detail: error.message });
+    return { success: true, kyc: kycData };
+  }
+
+  if (pathname === "/referrals/bank" && method === "POST") {
+    if (!authCtx.userId) throw new ApiError(401, { detail: "Not authenticated" });
+    const acc = (body.account_number || "").trim();
+    const maskedAcc = acc.length > 4 ? "XXXXXX" + acc.slice(-4) : acc;
+    const bankData = {
+      account_holder_name: body.account_holder_name || "",
+      account_number_masked: maskedAcc,
+      ifsc_code: (body.ifsc_code || "").toUpperCase().trim(),
+      bank_name: body.bank_name || "Bank",
+      branch_name: body.branch_name || "",
+      status: "VERIFIED",
+      verified_at: new Date().toISOString(),
+    };
+    const { error } = await supabase
+      .from("users")
+      .update({ bank_info: bankData, updated_at: new Date().toISOString() })
+      .eq("id", authCtx.userId);
+    if (error) throw new ApiError(400, { detail: error.message });
+    return { success: true, bank: bankData };
+  }
+
   if (pathname === "/referrals/request-withdrawal" && method === "POST") {
+    if (!authCtx.userId) throw new ApiError(401, { detail: "Not authenticated" });
+    const { data: user } = await supabase.from("users").select("kyc_info, bank_info").eq("id", authCtx.userId).maybeSingle();
+    const panMasked = (user?.kyc_info as any)?.pan_masked || "PAN_VERIFIED";
+    const bankMasked = (user?.bank_info as any)?.account_number_masked || "BANK_VERIFIED";
+    const amountPaise = body.amount_paise || Math.round((Number(body.amount) || 0) * 100);
+
     const { data, error } = await supabase.rpc("kotson_request_referral_withdrawal", {
       p_user_id: authCtx.userId,
-      p_amount_paise: body.amount_paise,
-      p_bank_details: body.bank_details || {},
+      p_amount_paise: amountPaise,
+      p_pan_masked: panMasked,
+      p_bank_masked: bankMasked,
+    });
+    if (error) throw new ApiError(400, { detail: error.message });
+    return data;
+  }
+
+  // ─── PRODUCT REVIEWS ENDPOINTS ───
+  if (pathname === "/reviews" && method === "POST") {
+    if (!authCtx.userId) throw new ApiError(401, { detail: "Not authenticated" });
+    const { data, error } = await supabase.rpc("kotson_submit_product_review", {
+      p_user_id: authCtx.userId,
+      p_order_id: body.order_id,
+      p_order_item_id: String(body.order_item_id || body.variant_id || body.product_id),
+      p_product_id: String(body.product_id),
+      p_variant_id: body.variant_id ? String(body.variant_id) : null,
+      p_rating: parseInt(String(body.rating), 10),
+      p_feedback: body.feedback || "",
+      p_media_urls: Array.isArray(body.media_urls) ? body.media_urls : [],
+    });
+    if (error) throw new ApiError(400, { detail: error.message });
+    return data;
+  }
+
+  if (pathname.startsWith("/catalog/products/") && pathname.endsWith("/reviews") && method === "GET") {
+    const rawTarget = pathname.replace("/catalog/products/", "").replace("/reviews", "");
+    const { data: prod } = await supabase
+      .from("products")
+      .select("id, slug")
+      .or(`id.eq.${rawTarget},slug.eq.${rawTarget}`)
+      .maybeSingle();
+    const targetId = prod ? prod.id : rawTarget;
+
+    const { data: reviews, error } = await supabase
+      .from("product_reviews")
+      .select("id, rating, feedback, media_urls, customer_display_name, is_verified_purchase, created_at, variant_id, product_name")
+      .or(`product_id.eq.${targetId},product_id.eq.${rawTarget}`)
+      .eq("status", "live")
+      .order("created_at", { ascending: false });
+
+    if (error) throw new ApiError(500, { detail: error.message });
+    const list = Array.isArray(reviews) ? reviews : [];
+    const count = list.length;
+    const avgRating = count > 0 ? Number((list.reduce((acc: number, r: any) => acc + r.rating, 0) / count).toFixed(1)) : 5.0;
+
+    const distribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    list.forEach((r: any) => {
+      const star = Math.min(5, Math.max(1, r.rating));
+      distribution[star] = (distribution[star] || 0) + 1;
+    });
+
+    return {
+      reviews: list,
+      total_count: count,
+      average_rating: count > 0 ? avgRating : 0,
+      distribution,
+    };
+  }
+
+  if (pathname === "/admin/reviews" && method === "GET") {
+    if (!authCtx.userId) throw new ApiError(401, { detail: "Not authenticated" });
+    const statusFilter = params.get("status");
+    let query = supabase.from("product_reviews").select("*").order("created_at", { ascending: false });
+    if (statusFilter && statusFilter !== "all") {
+      query = query.eq("status", statusFilter);
+    }
+    const { data, error } = await query;
+    if (error) throw new ApiError(500, { detail: error.message });
+    return Array.isArray(data) ? data : [];
+  }
+
+  if (pathname.startsWith("/admin/reviews/") && pathname.endsWith("/status") && method === "PATCH") {
+    if (!authCtx.userId) throw new ApiError(401, { detail: "Not authenticated" });
+    const reviewId = pathname.replace("/admin/reviews/", "").replace("/status", "");
+    const { data, error } = await supabase.rpc("kotson_moderate_review", {
+      p_admin_user_id: authCtx.userId,
+      p_review_id: reviewId,
+      p_action: body.status ? body.status.toUpperCase() : "LIVE",
+    });
+    if (error) throw new ApiError(400, { detail: error.message });
+    return data;
+  }
+
+  if (pathname.startsWith("/admin/reviews/") && method === "DELETE") {
+    if (!authCtx.userId) throw new ApiError(401, { detail: "Not authenticated" });
+    const reviewId = pathname.replace("/admin/reviews/", "");
+    const { data, error } = await supabase.rpc("kotson_moderate_review", {
+      p_admin_user_id: authCtx.userId,
+      p_review_id: reviewId,
+      p_action: "DELETE",
     });
     if (error) throw new ApiError(400, { detail: error.message });
     return data;

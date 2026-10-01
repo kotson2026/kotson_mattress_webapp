@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Package, AlertCircle } from "lucide-react";
 import type { Order } from "@/lib/types";
@@ -6,6 +6,7 @@ import { fmtDate, inr } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import EmptyOrdersIllustration from "./EmptyOrdersIllustration";
+import OrderDetailModal from "./OrderDetailModal";
 
 interface OrdersPanelProps {
   orders: Order[] | undefined;
@@ -20,6 +21,7 @@ export default function OrdersPanel({
   isError,
   onRetry,
 }: OrdersPanelProps) {
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   // Loading State
   if (isLoading) {
     return (
@@ -126,12 +128,14 @@ export default function OrdersPanel({
                 className="transition-colors hover:bg-[#F9FAF8]"
               >
                 <td className="py-4 px-5 font-semibold text-[#2D2D2D]">
-                  <Link
-                    to={`/order/confirmation/${o.id}`}
-                    className="hover:text-[#467065] hover:underline"
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOrder(o)}
+                    className="hover:text-[#467065] hover:underline font-semibold text-left"
+                    data-testid={`link-order-${o.order_number}`}
                   >
                     {o.order_number}
-                  </Link>
+                  </button>
                 </td>
                 <td className="py-4 px-4 text-sm text-[#666666]">
                   {fmtDate(o.created_at)}
@@ -155,13 +159,15 @@ export default function OrdersPanel({
                   {inr(o.amounts.total)}
                 </td>
                 <td className="py-4 px-5 text-right">
-                  <Link
-                    to={`/order/confirmation/${o.id}`}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOrder(o)}
                     className="inline-flex items-center gap-1 text-xs font-semibold text-[#467065] hover:underline"
+                    data-testid={`btn-view-details-${o.order_number}`}
                   >
                     <span>View details</span>
                     <ArrowRight className="h-3 w-3" />
-                  </Link>
+                  </button>
                 </td>
               </tr>
             ))}
@@ -178,9 +184,13 @@ export default function OrdersPanel({
             className="rounded-xl border border-[#E9EFE7] bg-[#FAFAF8] p-4 space-y-3"
           >
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-[#2D2D2D]">
+              <button
+                type="button"
+                onClick={() => setSelectedOrder(o)}
+                className="font-semibold text-[#2D2D2D] hover:underline text-left"
+              >
                 #{o.order_number}
-              </span>
+              </button>
               <span className="text-xs text-[#777777]">
                 {fmtDate(o.created_at)}
               </span>
@@ -206,17 +216,27 @@ export default function OrdersPanel({
               <span className="font-bold text-[#2D2D2D] tabular-nums text-sm">
                 {inr(o.amounts.total)}
               </span>
-              <Link
-                to={`/order/confirmation/${o.id}`}
+              <button
+                type="button"
+                onClick={() => setSelectedOrder(o)}
                 className="inline-flex items-center gap-1 text-xs font-semibold text-[#467065]"
+                data-testid={`btn-view-details-mobile-${o.order_number}`}
               >
                 <span>View details</span>
                 <ArrowRight className="h-3 w-3" />
-              </Link>
+              </button>
             </div>
           </div>
         ))}
       </div>
+
+      {/* Full Order Detail Modal with Tracking Flow & Review CTA */}
+      <OrderDetailModal
+        isOpen={Boolean(selectedOrder)}
+        onClose={() => setSelectedOrder(null)}
+        order={selectedOrder}
+        onReviewSubmitted={onRetry}
+      />
     </div>
   );
 }

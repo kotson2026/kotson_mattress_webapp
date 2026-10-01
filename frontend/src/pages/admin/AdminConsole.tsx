@@ -27,6 +27,7 @@ const StaffAccessHub = lazy(() => import("@/components/admin/staff/StaffAccessHu
 const BlogHub = lazy(() => import("@/components/admin/blogs/BlogHub"));
 const StockPointHub = lazy(() => import("@/components/admin/stock_point/StockPointHub"));
 const CustomRequestsHub = lazy(() => import("@/components/admin/custom_requests/CustomRequestsHub"));
+const ReviewModerationHub = lazy(() => import("@/components/admin/ReviewModerationHub"));
 import DataTablePagination from "@/components/ui/DataTablePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +76,7 @@ const NAV = [
   { to: "/admin/stock-point", label: "Stock Point" },
   { to: "/admin/dispatch", label: "Dispatch & Returns" },
   { to: "/admin/catalog", label: "Catalog" },
+  { to: "/admin/reviews", label: "Reviews" },
   { to: "/admin/blogs", label: "Blogs" },
   { to: "/admin/website-edit", label: "Website Edit" },
   { to: "/admin/claims", label: "Claims & Trust" },
@@ -880,6 +882,7 @@ export default function AdminConsole() {
             {!isCrmMasterOnly && (
               <>
                 <Route path="catalog" element={<CatalogCentralHub />} />
+                <Route path="reviews" element={<ReviewModerationHub />} />
                 <Route path="blogs/*" element={<BlogHub />} />
                 <Route path="website-edit" element={<WebsiteEditStudio />} />
                 <Route path="cms" element={<WebsiteEditStudio />} />

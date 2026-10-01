@@ -3,10 +3,12 @@ import { Link } from "react-router-dom";
 import type { Product, Variant } from "@/lib/types";
 import { inr } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
+import { Star } from "lucide-react";
 import ProductGallery from "@/components/product/ProductGallery";
 import VariantSelector from "@/components/product/VariantSelector";
 import ProductCarousel from "@/components/product/ProductCarousel";
 import StickyMobileBar from "@/components/product/StickyMobileBar";
+import ProductReviewsSection from "../ProductReviewsSection";
 
 // Storytelling sections
 import ProductStoryIntro from "./ProductStoryIntro";
@@ -71,6 +73,26 @@ export default function StorytellingProductDetailView({
             >
               {product.name}
             </h1>
+
+            {/* Live Rating & Reviews Indicator */}
+            <a
+              href="#customer-reviews-section"
+              className="mt-2.5 inline-flex items-center gap-2 text-xs font-semibold text-brand-forest hover:text-brand-deep transition-colors"
+              data-testid="pdp-rating-badge"
+            >
+              <div className="flex items-center text-amber-400">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <Star key={s} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                ))}
+              </div>
+              <span className="text-foreground font-bold">
+                {product.rating ? product.rating.toFixed(1) : "5.0"}
+              </span>
+              <span className="text-muted-foreground">·</span>
+              <span className="underline">
+                {product.review_count ? `${product.review_count} Verified Reviews` : "Customer Reviews"}
+              </span>
+            </a>
 
             {product.tagline && (
               <p className="mt-4 text-xl text-muted-foreground leading-relaxed" data-testid="product-tagline">
@@ -142,7 +164,10 @@ export default function StorytellingProductDetailView({
         {/* SECTION 7 — PRODUCT INFORMATION ACCORDIONS */}
         <ProductInformationAccordion product={product} />
 
-        {/* SECTION 8 — YOU MAY ALSO LIKE (Authoritative Recommendation Engine) */}
+        {/* SECTION 8 — VERIFIED CUSTOMER REVIEWS */}
+        <ProductReviewsSection productId={product.id} productName={product.name} />
+
+        {/* SECTION 9 — YOU MAY ALSO LIKE (Authoritative Recommendation Engine) */}
         {filteredRelated.length > 0 && (
           <section className="mt-24 border-t border-border pt-16 pb-8" aria-label="Related products">
             <div className="flex flex-col items-center text-center mb-10">

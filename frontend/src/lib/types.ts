@@ -307,6 +307,7 @@ export interface OrderItem {
   qty: number;
   unit_price: number;
   line_total: number;
+  title?: string;
 }
 
 export interface OrderEvent {
@@ -338,6 +339,7 @@ export interface Order {
   amounts: OrderAmounts;
   payment_status: "pending" | "paid" | "failed" | "refunded";
   fulfilment_status: "awaiting_payment" | "processing" | "shipped" | "delivered" | "cancelled";
+  status?: string;
   reservation_status: string;
   referral_code: string | null;
   stock_exception?: boolean;

@@ -56,7 +56,7 @@ export default function CustomerReferralPortal() {
   const [bankBranch, setBankBranch] = useState("");
 
   // Fetch portal data
-  const { data: portal, isLoading, refetch } = useQuery<ReferralPortalData>({
+  const { data: portal, isLoading, isError, refetch } = useQuery<ReferralPortalData>({
     queryKey: ["referral-portal-data"],
     queryFn: () => apiGet<ReferralPortalData>("/referrals/portal"),
   });
@@ -104,15 +104,63 @@ export default function CustomerReferralPortal() {
     onError: (e: any) => toast.error(e.message || "Withdrawal request failed"),
   });
 
-  if (isLoading || !portal) {
+  if (isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#467065] border-t-transparent" />
+      <div className="flex h-64 items-center justify-center rounded-2xl border border-[#E5E0D8] bg-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#467065] border-t-transparent" />
+          <p className="text-xs text-[#6B716C]">Loading referral portal...</p>
+        </div>
       </div>
     );
   }
 
-  const { user, wallet, performance, leads, sales, withdrawals, tax_settings } = portal;
+  if (isError || !portal || !portal.user) {
+    return (
+      <div className="rounded-2xl border border-[#E5E0D8] bg-white p-8 text-center" data-testid="referral-portal-error">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-700">
+          <ShieldAlert className="h-6 w-6" />
+        </div>
+        <h3 className="mt-4 font-heading text-lg font-bold text-[#11291F]">Unable to load Refer &amp; Earn</h3>
+        <p className="mt-1 text-sm text-[#6B716C]">
+          We could not load your referral dashboard at this time. Please try refreshing.
+        </p>
+        <Button
+          onClick={() => refetch()}
+          variant="outline"
+          className="mt-4 border-[#CBD6C7] text-xs font-semibold"
+        >
+          Try Again
+        </Button>
+      </div>
+    );
+  }
+
+  const user = portal.user;
+  const wallet = portal.wallet || {
+    pending_commission: 0,
+    available_to_withdraw: 0,
+    reserved_for_withdrawal: 0,
+    total_earned: 0,
+    paid_commission: 0,
+  };
+  const performance = portal.performance || {
+    total_leads: 0,
+    total_sales: 0,
+    sales_value: 0,
+    conversion_rate: 0,
+  };
+  const leads = Array.isArray(portal.leads) ? portal.leads : [];
+  const sales = Array.isArray(portal.sales) ? portal.sales : [];
+  const withdrawals = Array.isArray(portal.withdrawals) ? portal.withdrawals : [];
+  const tax_settings = portal.tax_settings || {
+    tds_enabled: true,
+    pan_available_rate: 5,
+    pan_not_available_rate: 20,
+    applicable_threshold: 15000,
+    payment_nature: "194H",
+  };
+
   const isKycVerified = user.kyc?.status === "VERIFIED";
   const isBankVerified = user.bank?.status === "VERIFIED";
   const isSetupComplete = isKycVerified && isBankVerified;
