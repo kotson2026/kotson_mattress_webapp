@@ -13,6 +13,7 @@ const LEGACY_URL_MAP: Record<string, string> = {
   "fdcc5d89-9660-48c9-8356-3c13ea2156c8": "/categories/customizable-products.png",
   "becf1398-8387-4f2c-a4bd-729072937fdf": "/seven-zones/seven-zones-hero.webp",
   "af7dc6e9-091c-496e-ad79-c5638c2915e1": "/stores/kotson-store.jpg",
+  "9f5ec4ef-9138-4f5d-be95-0d75fe94217f": "/stores/kotson-store.jpg",
 };
 
 export function resolveMediaUrl(url: string | null | undefined): string {
