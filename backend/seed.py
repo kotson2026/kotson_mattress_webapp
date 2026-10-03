@@ -75,7 +75,7 @@ PRODUCTS = [
         "Standard Flex Pillow",
         "pillows",
         2199,
-        "https://cdn.phototourl.com/free/2026-09-22-fa7082d3-1ea4-408a-8105-0f5cdeafaf44.png",
+        "https://cdn.phototourl.com/member/2026-09-22-d076aa68-00a8-46f3-ae97-22a703352de1.png",
     ),
     (
         "standard-dudlis-pillow",
