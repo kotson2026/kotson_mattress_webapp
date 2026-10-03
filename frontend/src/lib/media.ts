@@ -32,7 +32,7 @@ export function resolveMediaUrl(url: string | null | undefined): string {
         return replacement;
       }
     }
-    return "/stores/kotson-store.jpg";
+    return trimmed;
   }
 
   // Already a Supabase Storage public URL

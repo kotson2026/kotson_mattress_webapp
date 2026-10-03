@@ -151,6 +151,7 @@ registerWebsiteSection({
     eyebrow: "REAL STORIES",
     heading: "Customer Testimonials",
     subheading: "Hear what our customers have to say about their Kotson sleep experience.",
+    background_url: "https://cdn.phototourl.com/member/2026-10-03-f51b7e28-ee52-44f3-b8c8-8752be11c335.png",
     testimonials: DEFAULT_TESTIMONIALS,
   },
   rendererComponent: ({ config }: { config?: any }) => <CustomerTestimonials config={config} />,

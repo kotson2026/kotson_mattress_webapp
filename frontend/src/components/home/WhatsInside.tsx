@@ -263,7 +263,7 @@ export default function WhatsInside() {
               background: SAND,
             }}>
               <img
-                src={resolveMediaUrl("https://cdn.phototourl.com/free/2026-09-22-8f77abc6-0f41-42df-8b46-df110ccc137c.png")}
+                src={resolveMediaUrl("https://cdn.phototourl.com/member/2026-10-03-3d103a45-ae31-404d-b191-f103cbcc74da.png")}
                 alt="Kotson 3-Layer Mattress Construction: 100% Pure Bamboo Cover, Thin Cotton Zip Cover, and GOLS-Certified 100% Organic Latex Core"
                 draggable={false}
                 style={{

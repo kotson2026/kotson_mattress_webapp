@@ -744,7 +744,7 @@ export default function ExploreStores() {
                 }}
               >
                 <img
-                  src={resolveMediaUrl("https://cdn.phototourl.com/free/2026-09-22-5f3360d1-de72-4db6-b87b-fd03e0286836.png")}
+                  src={resolveMediaUrl("https://cdn.phototourl.com/member/2026-10-03-9f5ec4ef-9138-4f5d-be95-0d75fe94217f.png")}
                   alt="Kotson store interior featuring natural latex mattresses, pillows and product displays"
                   draggable={false}
                   style={{

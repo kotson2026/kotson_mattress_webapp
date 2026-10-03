@@ -221,7 +221,7 @@ export default function CustomerTestimonials({ config }: CustomerTestimonialsPro
       id="testimonials"
       className="testimonials-section relative w-full overflow-hidden bg-[#FAF7F0] bg-cover bg-no-repeat transition-colors select-none flex flex-col justify-center"
       style={{
-        backgroundImage: `url('${resolveMediaUrl(config?.background_url)}')`,
+        backgroundImage: `url('${resolveMediaUrl(config?.background_url || "https://cdn.phototourl.com/member/2026-10-03-f51b7e28-ee52-44f3-b8c8-8752be11c335.png")}')`,
         backgroundPosition: "center center",
       }}
       aria-label="Customer Testimonials"
