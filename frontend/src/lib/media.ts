@@ -18,10 +18,10 @@ const LEGACY_URL_MAP: Record<string, string> = {
 };
 
 export function resolveMediaUrl(url: string | null | undefined): string {
-  if (!url || typeof url !== "string") return "/stores/kotson-store.jpg";
+  if (!url || typeof url !== "string") return "";
 
   const trimmed = url.trim();
-  if (!trimmed) return "/stores/kotson-store.jpg";
+  if (!trimmed) return "";
 
   // Normalize legacy phototourl URLs
   if (trimmed.includes("phototourl.com")) {
