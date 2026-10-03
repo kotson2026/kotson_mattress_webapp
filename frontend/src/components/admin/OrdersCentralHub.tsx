@@ -47,6 +47,71 @@ interface CascadeLocation {
   cities: Record<string, string[]>;
 }
 
+export function getUnifiedOrderStatusBadge(o: any) {
+  const p = (o.payment_status || "").toLowerCase();
+  const f = (o.fulfilment_status || "").toLowerCase();
+  const s = (o.status || "").toLowerCase();
+
+  if (p === "failed" || s === "failed") {
+    return {
+      label: "Payment Failed",
+      className: "bg-red-50 text-red-700 border-red-200 font-semibold",
+    };
+  }
+  if (p === "refunded" || f === "refunded" || s === "refunded") {
+    return {
+      label: "Refunded",
+      className: "bg-purple-50 text-purple-700 border-purple-200 font-medium",
+    };
+  }
+  if (f === "cancelled" || s === "cancelled") {
+    return {
+      label: "Cancelled",
+      className: "bg-gray-100 text-gray-700 border-gray-300 font-medium",
+    };
+  }
+  if (f === "delivered" || s === "delivered") {
+    return {
+      label: "Delivered",
+      className: "bg-emerald-100 text-emerald-900 border-emerald-300 font-semibold",
+    };
+  }
+  if (f === "out_for_delivery" || s === "out_for_delivery") {
+    return {
+      label: "Out for Delivery",
+      className: "bg-cyan-50 text-cyan-800 border-cyan-200 font-medium",
+    };
+  }
+  if (f === "shipped" || s === "shipped") {
+    return {
+      label: "Shipped",
+      className: "bg-indigo-50 text-indigo-800 border-indigo-200 font-medium",
+    };
+  }
+  if (f === "processing" || s === "processing") {
+    return {
+      label: "Processing",
+      className: "bg-blue-50 text-blue-800 border-blue-200 font-medium",
+    };
+  }
+  if (p === "paid" || s === "paid") {
+    return {
+      label: "Confirmed",
+      className: "bg-emerald-50 text-emerald-800 border-emerald-200 font-semibold",
+    };
+  }
+  if (p === "pending" || f === "awaiting_payment" || s === "pending_payment" || !p) {
+    return {
+      label: "Awaiting Payment",
+      className: "bg-amber-50 text-amber-800 border-amber-300 font-medium",
+    };
+  }
+  return {
+    label: (f || s || "Processing").replace(/_/g, " "),
+    className: "bg-muted text-foreground border-border font-medium",
+  };
+}
+
 export default function OrdersCentralHub() {
   const qc = useQueryClient();
 
@@ -409,7 +474,6 @@ export default function OrdersCentralHub() {
               <TableHead className="text-xs font-semibold">Time</TableHead>
               <TableHead className="text-xs font-semibold">Customer</TableHead>
               <TableHead className="text-right text-xs font-semibold">Amount</TableHead>
-              <TableHead className="text-center text-xs font-semibold">Payment</TableHead>
               <TableHead className="text-center text-xs font-semibold">Status</TableHead>
               <TableHead className="text-right text-xs font-semibold">Actions</TableHead>
             </TableRow>
@@ -417,13 +481,13 @@ export default function OrdersCentralHub() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-12 text-center text-xs text-muted-foreground">
+                <TableCell colSpan={7} className="py-12 text-center text-xs text-muted-foreground">
                   Loading orders...
                 </TableCell>
               </TableRow>
             ) : orders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-12 text-center text-xs text-muted-foreground">
+                <TableCell colSpan={7} className="py-12 text-center text-xs text-muted-foreground">
                   No orders match the selected filters.
                 </TableCell>
               </TableRow>
@@ -434,6 +498,7 @@ export default function OrdersCentralHub() {
                 const customerName = addr.full_name || ord.customer_name || ord.email || "Customer";
                 const customerPhone = addr.phone || ord.customer_phone || ord.phone || "";
                 const dt = ord.sale_date || ord.created_at;
+                const statusBadge = getUnifiedOrderStatusBadge(ord);
 
                 return (
                   <TableRow key={ord.id} className="hover:bg-muted/30" data-testid={`order-row-${ord.order_number || ord.id}`}>
@@ -489,30 +554,14 @@ export default function OrdersCentralHub() {
                       )}
                     </TableCell>
 
-                    {/* 6. Payment */}
+                    {/* 6. Unified Status */}
                     <TableCell className="text-center">
-                      <Badge
-                        variant={
-                          o.payment_status === "paid"
-                            ? "default"
-                            : o.payment_status === "failed"
-                            ? "destructive"
-                            : "outline"
-                        }
-                        className="text-[10px] uppercase font-mono"
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] border ${statusBadge.className}`}
+                        data-testid={`order-status-${ord.order_number || ord.id}`}
                       >
-                        {o.payment_status || "PENDING"}
-                      </Badge>
-                      <p className="text-[9px] text-muted-foreground mt-0.5">
-                        {o.payment_verification_source === "ADMIN_RECORDED" ? "Recorded" : "Gateway"}
-                      </p>
-                    </TableCell>
-
-                    {/* 7. Status */}
-                    <TableCell className="text-center">
-                      <Badge variant="outline" className="text-[10px] capitalize">
-                        {(o.fulfilment_status || o.status || "processing").replace(/_/g, " ")}
-                      </Badge>
+                        {statusBadge.label}
+                      </span>
                       {o.order_channel && (
                         <p className="text-[9px] text-muted-foreground mt-0.5 uppercase">
                           {o.order_channel}
@@ -520,7 +569,7 @@ export default function OrdersCentralHub() {
                       )}
                     </TableCell>
 
-                    {/* 8. Actions */}
+                    {/* 7. Actions */}
                     <TableCell className="text-right">
                       <Button
                         size="sm"
@@ -736,8 +785,11 @@ function OrderDetailsDrawer({
             </div>
           </div>
 
-          {/* Financials & Amounts */}
-          <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-1.5">
+          {/* Financials & Payment Summary */}
+          <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-2">
+            <h4 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              <CreditCard className="h-3.5 w-3.5 text-brand-deep" /> Payment & Financial Summary
+            </h4>
             <div className="flex justify-between text-muted-foreground">
               <span>Subtotal:</span>
               <span className="font-mono">{inr(order.amounts?.subtotal || 0)}</span>
@@ -752,11 +804,38 @@ function OrderDetailsDrawer({
               <span>Shipping:</span>
               <span className="font-mono">{inr(order.amounts?.shipping || 0)}</span>
             </div>
-            <div className="flex justify-between border-t border-border pt-2 text-sm font-bold text-foreground">
+            <div className="flex justify-between border-t border-border pt-1.5 text-sm font-bold text-foreground">
               <span>Grand Total:</span>
               <span className="font-mono text-brand-deep text-base">
                 {inr(order.amounts?.total || 0)}
               </span>
+            </div>
+
+            <div className="pt-2 border-t border-border/60 space-y-1 text-[11px]">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Payment Status:</span>
+                <span className="font-semibold uppercase font-mono text-foreground">
+                  {order.payment_status || "PENDING"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Amount Paid:</span>
+                <span className="font-mono font-bold text-foreground">
+                  {order.payment_status === "paid" ? inr(order.amounts?.total || 0) : "₹0"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Payment Method / Gateway:</span>
+                <span className="font-semibold text-foreground">
+                  {order.payment_verification_source === "ADMIN_RECORDED" ? "Recorded Manually" : "Razorpay Gateway"}
+                </span>
+              </div>
+              {(order as any).razorpay_payment_id && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Razorpay Payment ID:</span>
+                  <span className="font-mono text-brand-deep">{(order as any).razorpay_payment_id}</span>
+                </div>
+              )}
             </div>
           </div>
 
