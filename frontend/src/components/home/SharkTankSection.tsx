@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from "react";
+import { resolveMediaUrl } from "@/lib/media";
 
 /* ─────────────────────────────────────────────────────────────────────────
    KOTSON × SHARK TANK INDIA
@@ -165,12 +166,12 @@ export default function SharkTankSection({ config }: SharkTankProps) {
           <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-3 md:gap-3.5 lg:gap-4 w-full items-stretch">
             {/* ── LEFT: Shark Tank Square Artwork ──────────────────────── */}
             <div
-              className="w-full aspect-square h-full rounded-xl overflow-hidden relative border border-black/[0.04] bg-[#16241C]/5 shadow-xs"
+              className="w-full aspect-square h-full rounded-xl overflow-hidden relative border border-black/[0.04] bg-transparent shadow-xs"
               data-testid="shark-tank-artwork-container"
             >
               <img
                 key={currentPoster}
-                src={currentPoster}
+                src={resolveMediaUrl(currentPoster)}
                 alt="Kotson Mattress featured on Shark Tank India Season 5"
                 loading="eager"
                 decoding="async"
@@ -193,7 +194,7 @@ export default function SharkTankSection({ config }: SharkTankProps) {
 
             {/* ── RIGHT: Direct Responsive YouTube Video Embed ──────────── */}
             <div
-              className="w-full aspect-video md:aspect-auto h-full rounded-xl overflow-hidden bg-[#16241C] shadow-xs relative"
+              className="w-full aspect-video md:aspect-auto h-full rounded-xl overflow-hidden bg-transparent shadow-xs relative"
               data-testid="shark-tank-player-container"
             >
               <iframe
