@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { resolveMediaUrl } from "@/lib/media";
 
 /* ─────────────────────────────────────────────────────────────────────────
    EXPLORE OUR STORES — Section after Certifications
@@ -743,7 +744,7 @@ export default function ExploreStores() {
                 }}
               >
                 <img
-                  src="https://cdn.phototourl.com/free/2026-09-22-5f3360d1-de72-4db6-b87b-fd03e0286836.png"
+                  src={resolveMediaUrl("https://cdn.phototourl.com/free/2026-09-22-5f3360d1-de72-4db6-b87b-fd03e0286836.png")}
                   alt="Kotson store interior featuring natural latex mattresses, pillows and product displays"
                   draggable={false}
                   style={{

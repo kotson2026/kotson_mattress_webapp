@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
+import { resolveMediaUrl } from "@/lib/media";
 
 /* ─────────────────────────────────────────────────────────────────────────
    EXPLORE OUR CATEGORIES — 5 Kotson Categories
@@ -94,7 +95,7 @@ const FAMILIES: ProductFamily[] = [
     route: "/customizable-products",
     type: "customizable",
     action: null,
-    image: "https://cdn.phototourl.com/member/2026-09-25-fdcc5d89-9660-48c9-8356-3c13ea2156c8.png",
+    image: resolveMediaUrl("https://cdn.phototourl.com/member/2026-09-25-fdcc5d89-9660-48c9-8356-3c13ea2156c8.png"),
     fallbackImage: "/categories/customizable-products.png",
     alt: "Kotson Customizable Products — Custom size, feel, and mattress tailoring",
     motionMultiplier: { x: 0.6, y: 0.5 },

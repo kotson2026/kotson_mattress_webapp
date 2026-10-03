@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from "react";
+import { resolveMediaUrl } from "@/lib/media";
 
 /* ─────────────────────────────────────────────────────────────────────────
    WHAT'S INSIDE THE MATTRESS? — Section 4
@@ -262,7 +263,7 @@ export default function WhatsInside() {
               background: SAND,
             }}>
               <img
-                src="https://cdn.phototourl.com/free/2026-09-22-8f77abc6-0f41-42df-8b46-df110ccc137c.png"
+                src={resolveMediaUrl("https://cdn.phototourl.com/free/2026-09-22-8f77abc6-0f41-42df-8b46-df110ccc137c.png")}
                 alt="Kotson 3-Layer Mattress Construction: 100% Pure Bamboo Cover, Thin Cotton Zip Cover, and GOLS-Certified 100% Organic Latex Core"
                 draggable={false}
                 style={{

@@ -13,6 +13,7 @@ import {
   supabaseSubmitPasswordReset,
 } from "./supabaseClient";
 import { CANONICAL_CERTIFICATIONS } from "./storytellingDefaults";
+export { resolveMediaUrl } from "./media";
 
 /**
  * Normalizes price values into paise (integer).

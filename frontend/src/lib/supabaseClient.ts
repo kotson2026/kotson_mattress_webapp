@@ -3,7 +3,7 @@ import type { AuthOut, User } from "./types";
 
 // Public browser configuration ONLY — never expose service_role or backend secrets!
 const _supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://buodzslvzkungwufdkca.supabase.co";
-const _supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+const _supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_dev_key";
 
 if (!import.meta.env.VITE_SUPABASE_ANON_KEY) {
   if (import.meta.env.DEV) {

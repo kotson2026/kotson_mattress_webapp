@@ -1,4 +1,5 @@
 import BenefitsStrip from "./BenefitsStrip";
+import { resolveMediaUrl } from "@/lib/media";
 
 /* ─── Kotson design tokens ───────────────────────────────────────
    brand-leaf    #7C9C59
@@ -43,7 +44,7 @@ export default function SevenZonesSection() {
         {/* 7-Zone image */}
         <div className="w-full rounded-2xl sm:rounded-3xl overflow-hidden border border-[#E8E3D8]/80 shadow-xs bg-[#FAF9F5]">
           <img
-            src="https://cdn.phototourl.com/member/2026-09-22-feb051a4-db5e-4b7e-95ff-81f431f54595.png"
+            src={resolveMediaUrl("https://cdn.phototourl.com/member/2026-09-22-feb051a4-db5e-4b7e-95ff-81f431f54595.png")}
             alt="7-Zone Organic Mattress Body Support: Head & Neck, Back & Shoulders, Lower Back, Hips & Thighs, Knees, Lower Legs, Feet"
             width={2006}
             height={784}
