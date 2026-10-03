@@ -106,11 +106,24 @@ function ScrollToTop() {
   return null;
 }
 
+import { trackPageAttribution, syncCustomerAttribution } from "@/lib/attribution";
+
+function MarketingAttributionTracker() {
+  const location = useLocation();
+
+  useEffect(() => {
+    trackPageAttribution();
+  }, [location.search, location.pathname]);
+
+  return null;
+}
+
 // One <Route> per page in src/pages; BrowserRouter already wraps this in main.tsx.
 export default function App() {
   return (
     <CheckoutDrawerProvider>
       <ReferralTracker />
+      <MarketingAttributionTracker />
       <ScrollToTop />
       <Suspense fallback={<ConsoleLoading />}>
         <Routes>

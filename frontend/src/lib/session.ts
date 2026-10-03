@@ -60,8 +60,14 @@ export function useMe() {
   });
 }
 
+import { syncCustomerAttribution } from "./attribution";
+
 export const login = async (identifier: string, password: string): Promise<AuthOut> => {
-  return await supabaseLogin(identifier, password);
+  const res = await supabaseLogin(identifier, password);
+  if (res?.user?.id) {
+    syncCustomerAttribution(res.user.id).catch(() => {});
+  }
+  return res;
 };
 
 export const signup = async (body: {
@@ -74,7 +80,11 @@ export const signup = async (body: {
   msg91_verification_token?: string | null;
   msg91_request_id?: string | null;
 }): Promise<AuthOut> => {
-  return await supabaseSignup(body);
+  const res = await supabaseSignup(body);
+  if (res?.user?.id) {
+    syncCustomerAttribution(res.user.id).catch(() => {});
+  }
+  return res;
 };
 
 export const logout = async (): Promise<{ ok: boolean }> => {

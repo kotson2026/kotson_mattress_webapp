@@ -30,6 +30,7 @@ const CustomRequestsHub = lazy(() => import("@/components/admin/custom_requests/
 const ReviewModerationHub = lazy(() => import("@/components/admin/ReviewModerationHub"));
 const CouponManagementHub = lazy(() => import("@/components/admin/CouponManagementHub"));
 const UserManagementHub = lazy(() => import("@/components/admin/UserManagementHub"));
+const MarketingCampaignsHub = lazy(() => import("@/components/admin/marketing/MarketingCampaignsHub"));
 import DataTablePagination from "@/components/ui/DataTablePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,6 +73,7 @@ class AdminErrorBoundary extends Component<{ children: ReactNode }, { error: Err
 
 const NAV = [
   { to: "/admin", label: "Dashboard" },
+  { to: "/admin/marketing", label: "Marketing Campaigns" },
   { to: "/admin/sales", label: "Sales & Revenue" },
   { to: "/admin/orders", label: "Orders" },
   { to: "/admin/coupons", label: "Coupons" },
@@ -872,6 +874,7 @@ export default function AdminConsole() {
         >
           <Routes>
             <Route index element={isCrmMasterOnly ? <SalesRevenueDashboard /> : <OwnerDashboard />} />
+            <Route path="marketing/*" element={<MarketingCampaignsHub />} />
             <Route path="sales" element={<SalesRevenueDashboard />} />
             <Route path="orders" element={<OrdersCentralHub />} />
             <Route path="custom-requests" element={<CustomRequestsHub />} />
