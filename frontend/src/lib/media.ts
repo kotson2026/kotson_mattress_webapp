@@ -17,6 +17,9 @@ const LEGACY_URL_MAP: Record<string, string> = {
   "c10cfc86-8ffe-4b1c-9e20-dc91bd8f0238": "/navbar/baby-kids.png",
   "becf1398-8387-4f2c-a4bd-729072937fdf": "/seven-zones/seven-zones-hero.webp",
   "af7dc6e9-091c-496e-ad79-c5638c2915e1": "/stores/kotson-store.jpg",
+  "9f5ec4ef-9138-4f5d-be95-0d75fe94217f": "/stores/kotson-store.jpg",
+  "3d103a45-ae31-404d-b191-f103cbcc74da": "/mattress-layers/mattress-construction.webp",
+  "f51b7e28-ee52-44f3-b8c8-8752be11c335": "/seven-zones/seven-zones-hero.webp",
 };
 
 export function resolveMediaUrl(url: string | null | undefined): string {

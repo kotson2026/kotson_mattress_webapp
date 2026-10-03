@@ -203,6 +203,1173 @@ function makeListResult<T>(items: T[], extra: Record<string, any> = {}): T[] & R
 // CORE ROUTER: DIRECT SUPABASE HANDLER
 // -----------------------------------------------------------------------------
 
+const AUTHORITATIVE_PRODUCTS: any[] = [
+  {
+    "id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+    "slug": "ortho-therapy-mattress",
+    "name": "Ortho Therapy Mattress",
+    "category_slug": "mattresses",
+    "price_paise": 7500000,
+    "mrp_paise": 12333300,
+    "image_url": "https://cdn.phototourl.com/member/2026-09-23-58e2ca4e-ebff-4af3-be34-e3e84717dbb8.jpg",
+    "description": "",
+    "is_active": true,
+    "is_seed": false,
+    "sort_order": 1,
+    "created_at": "2026-09-30T06:27:02.301136+00:00",
+    "updated_at": "2026-09-30T06:28:20.565107+00:00",
+    "storytelling": null,
+    "product_variants": [
+      {
+        "id": "aff2dbd3-3b7c-435d-84b7-ac0d8678b808",
+        "product_id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+        "sku": "KS-ORTHOTHERA-Q-72-60-6",
+        "title": "Queen 72\u00d760 6\" thick",
+        "price_paise": 7500000,
+        "mrp_paise": 12333333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "75e0636d-eab4-41be-a718-1be24278de07",
+        "product_id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+        "sku": "KS-ORTHOTHERA-Q-72-60-8",
+        "title": "Queen 72\u00d760 8\" thick",
+        "price_paise": 8050000,
+        "mrp_paise": 13416667,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "a21b7ee6-63f5-45ae-a6fe-9a28fb375338",
+        "product_id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+        "sku": "KS-ORTHOTHERA-Q-72-60-10",
+        "title": "Queen 72\u00d760 10\" thick",
+        "price_paise": 8700000,
+        "mrp_paise": 14500000,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "2b329d5b-8435-4fa6-bf50-5a428bec9f61",
+        "product_id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+        "sku": "KS-ORTHOTHERA-Q-75-60-6",
+        "title": "Queen 75\u00d760 6\" thick",
+        "price_paise": 7800000,
+        "mrp_paise": 13000000,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "2a2728e6-9a93-4189-9ac0-2ab8be870494",
+        "product_id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+        "sku": "KS-ORTHOTHERA-Q-75-60-8",
+        "title": "Queen 75\u00d760 8\" thick",
+        "price_paise": 8450000,
+        "mrp_paise": 14083333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "08e49496-47d7-43a7-8264-a45b7ce96db0",
+        "product_id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+        "sku": "KS-ORTHOTHERA-Q-75-60-10",
+        "title": "Queen 75\u00d760 10\" thick",
+        "price_paise": 9100000,
+        "mrp_paise": 15166667,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "7f2a293c-304e-4b97-af5f-b86e066068fa",
+        "product_id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+        "sku": "KS-ORTHOTHERA-Q-78-60-6",
+        "title": "Queen 78\u00d760 6\" thick",
+        "price_paise": 8200000,
+        "mrp_paise": 13666667,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "d508993d-1466-4980-8f7b-22daea7d0deb",
+        "product_id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+        "sku": "KS-ORTHOTHERA-Q-78-60-8",
+        "title": "Queen 78\u00d760 8\" thick",
+        "price_paise": 8850000,
+        "mrp_paise": 14750000,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "f1af26a5-af6d-4e77-8733-75d292aa14ec",
+        "product_id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+        "sku": "KS-ORTHOTHERA-Q-78-60-10",
+        "title": "Queen 78\u00d760 10\" thick",
+        "price_paise": 9500000,
+        "mrp_paise": 15833333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "35aa525f-333e-406c-8bc7-a28cce2ad86c",
+        "product_id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+        "sku": "KS-ORTHOTHERA-K-72-72-6",
+        "title": "King 72\u00d772 6\" thick",
+        "price_paise": 8000000,
+        "mrp_paise": 13333333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "631172f9-d4cb-4f9c-8e4b-ea423fda9f36",
+        "product_id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+        "sku": "KS-ORTHOTHERA-K-72-72-8",
+        "title": "King 72\u00d772 8\" thick",
+        "price_paise": 8650000,
+        "mrp_paise": 14416667,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "cbba7302-bb6b-4379-a7fb-00cfe9ce8883",
+        "product_id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+        "sku": "KS-ORTHOTHERA-K-72-72-10",
+        "title": "King 72\u00d772 10\" thick",
+        "price_paise": 9300000,
+        "mrp_paise": 15500000,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "3dc5a5cd-19e7-42ce-bc56-1f85da36f053",
+        "product_id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+        "sku": "KS-ORTHOTHERA-K-75-72-6",
+        "title": "King 75\u00d772 6\" thick",
+        "price_paise": 8350000,
+        "mrp_paise": 13916667,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "e6741c7b-6085-4af1-ae21-2258f8bc9252",
+        "product_id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+        "sku": "KS-ORTHOTHERA-K-75-72-8",
+        "title": "King 75\u00d772 8\" thick",
+        "price_paise": 9000000,
+        "mrp_paise": 15000000,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "3b67dd04-ce5a-4a5a-849a-a4e3e6e1c9f4",
+        "product_id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+        "sku": "KS-ORTHOTHERA-K-75-72-10",
+        "title": "King 75\u00d772 10\" thick",
+        "price_paise": 9650000,
+        "mrp_paise": 16083333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "9ad81c28-a214-40ec-9a06-49876eb691d8",
+        "product_id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+        "sku": "KS-ORTHOTHERA-K-78-72-6",
+        "title": "King 78\u00d772 6\" thick",
+        "price_paise": 8500000,
+        "mrp_paise": 14166667,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "98b9d9d2-d595-4093-86eb-9eeb83a4fb55",
+        "product_id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+        "sku": "KS-ORTHOTHERA-K-78-72-8",
+        "title": "King 78\u00d772 8\" thick",
+        "price_paise": 9150000,
+        "mrp_paise": 15250000,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "ea38312b-9e4f-411f-9865-ec30eb822612",
+        "product_id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+        "sku": "KS-ORTHOTHERA-K-78-72-10",
+        "title": "King 78\u00d772 10\" thick",
+        "price_paise": 9800000,
+        "mrp_paise": 16333333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "ac7464c8-23ab-47a3-aed9-92be9a8d7ce4",
+        "product_id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+        "sku": "KS-ORTHOTHERA-K-84-72-6",
+        "title": "King 84\u00d772 6\" thick",
+        "price_paise": 9050000,
+        "mrp_paise": 15083333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "9e11b191-5f97-4560-8a2e-1e639cf61219",
+        "product_id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+        "sku": "KS-ORTHOTHERA-K-84-72-8",
+        "title": "King 84\u00d772 8\" thick",
+        "price_paise": 9750000,
+        "mrp_paise": 16250000,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "7eca3637-7bbf-4f4a-a3be-207193897705",
+        "product_id": "20a182d4-016c-4bd3-8b07-bdbaa550dde5",
+        "sku": "KS-ORTHOTHERA-K-84-72-10",
+        "title": "King 84\u00d772 10\" thick",
+        "price_paise": 10450000,
+        "mrp_paise": 17416667,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      }
+    ]
+  },
+  {
+    "id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+    "slug": "spine-balance-mattress",
+    "name": "Spine Balance Mattress",
+    "category_slug": "mattresses",
+    "price_paise": 7200000,
+    "mrp_paise": 12000000,
+    "image_url": "https://cdn.phototourl.com/member/2026-09-23-cdee954b-8e07-4331-b0a8-26696b4dad71.png",
+    "description": "",
+    "is_active": true,
+    "is_seed": false,
+    "sort_order": 2,
+    "created_at": "2026-09-30T06:27:02.301136+00:00",
+    "updated_at": "2026-09-30T06:28:20.565107+00:00",
+    "storytelling": null,
+    "product_variants": [
+      {
+        "id": "8c6c94c4-e978-4526-adcf-fd3d476db992",
+        "product_id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+        "sku": "KS-SPINEBALAN-Q-72-60-6",
+        "title": "Queen 72\u00d760 6\" thick",
+        "price_paise": 7200000,
+        "mrp_paise": 12000000,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "5127ce3d-0063-4714-b619-4c2b24d6da39",
+        "product_id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+        "sku": "KS-SPINEBALAN-Q-72-60-8",
+        "title": "Queen 72\u00d760 8\" thick",
+        "price_paise": 7850000,
+        "mrp_paise": 13083333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "4aca8499-b1b8-433a-bd33-a7c383d099aa",
+        "product_id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+        "sku": "KS-SPINEBALAN-Q-72-60-10",
+        "title": "Queen 72\u00d760 10\" thick",
+        "price_paise": 8500000,
+        "mrp_paise": 14166667,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "46ec1219-d7b6-4fc1-9c4c-a019b600d8b5",
+        "product_id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+        "sku": "KS-SPINEBALAN-Q-75-60-6",
+        "title": "Queen 75\u00d760 6\" thick",
+        "price_paise": 7600000,
+        "mrp_paise": 12666667,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "978c5025-e788-4b20-a01d-67bbd57d19ad",
+        "product_id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+        "sku": "KS-SPINEBALAN-Q-75-60-8",
+        "title": "Queen 75\u00d760 8\" thick",
+        "price_paise": 8250000,
+        "mrp_paise": 13750000,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "9837d2a8-e252-4208-9fe9-4d6b543490ea",
+        "product_id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+        "sku": "KS-SPINEBALAN-Q-75-60-10",
+        "title": "Queen 75\u00d760 10\" thick",
+        "price_paise": 8900000,
+        "mrp_paise": 14833333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "55b616c0-34e8-4c49-850e-2d2cfd179e87",
+        "product_id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+        "sku": "KS-SPINEBALAN-Q-78-60-6",
+        "title": "Queen 78\u00d760 6\" thick",
+        "price_paise": 8000000,
+        "mrp_paise": 13333333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "dc09ffca-9d85-4276-a5f9-436c7c314d75",
+        "product_id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+        "sku": "KS-SPINEBALAN-Q-78-60-8",
+        "title": "Queen 78\u00d760 8\" thick",
+        "price_paise": 8650000,
+        "mrp_paise": 14416667,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "ed1358db-6407-4b7a-b92d-baa10eade28c",
+        "product_id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+        "sku": "KS-SPINEBALAN-Q-78-60-10",
+        "title": "Queen 78\u00d760 10\" thick",
+        "price_paise": 9300000,
+        "mrp_paise": 15500000,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "27fb13f4-bdc6-4fcd-beca-9d74af3e5d11",
+        "product_id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+        "sku": "KS-SPINEBALAN-K-72-72-6",
+        "title": "King 72\u00d772 6\" thick",
+        "price_paise": 7800000,
+        "mrp_paise": 13000000,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "9413dab9-7c4b-400c-a845-d684cf64134a",
+        "product_id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+        "sku": "KS-SPINEBALAN-K-72-72-8",
+        "title": "King 72\u00d772 8\" thick",
+        "price_paise": 8450000,
+        "mrp_paise": 14083333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "90b617ca-b103-43a9-bf74-fa84703e15d1",
+        "product_id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+        "sku": "KS-SPINEBALAN-K-72-72-10",
+        "title": "King 72\u00d772 10\" thick",
+        "price_paise": 9100000,
+        "mrp_paise": 15166667,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "f3dcb4a1-90a6-4600-8293-e3fdb4c123c7",
+        "product_id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+        "sku": "KS-SPINEBALAN-K-75-72-6",
+        "title": "King 75\u00d772 6\" thick",
+        "price_paise": 8450000,
+        "mrp_paise": 14083333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "31b3f12b-9091-4164-925c-a4c20640135d",
+        "product_id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+        "sku": "KS-SPINEBALAN-K-75-72-8",
+        "title": "King 75\u00d772 8\" thick",
+        "price_paise": 8800000,
+        "mrp_paise": 14666667,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "59d45051-9da0-483d-b00f-5da3033bedca",
+        "product_id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+        "sku": "KS-SPINEBALAN-K-75-72-10",
+        "title": "King 75\u00d772 10\" thick",
+        "price_paise": 9450000,
+        "mrp_paise": 15750000,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "86f9616d-3317-4b54-86f0-7e77c0e0bd36",
+        "product_id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+        "sku": "KS-SPINEBALAN-K-78-72-6",
+        "title": "King 78\u00d772 6\" thick",
+        "price_paise": 8300000,
+        "mrp_paise": 13833333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "1b6160c7-57e6-42cf-9b0f-8cd6631f0223",
+        "product_id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+        "sku": "KS-SPINEBALAN-K-78-72-8",
+        "title": "King 78\u00d772 8\" thick",
+        "price_paise": 8950000,
+        "mrp_paise": 14916667,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "e2fc6b63-1ad5-4997-a10f-4a05eaec8413",
+        "product_id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+        "sku": "KS-SPINEBALAN-K-78-72-10",
+        "title": "King 78\u00d772 10\" thick",
+        "price_paise": 9600000,
+        "mrp_paise": 16000000,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "b6bb2443-57b5-440c-892d-1422a80a8c59",
+        "product_id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+        "sku": "KS-SPINEBALAN-K-84-72-6",
+        "title": "King 84\u00d772 6\" thick",
+        "price_paise": 8850000,
+        "mrp_paise": 14750000,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "9853f35e-11fe-4f71-8e30-1364444ad28c",
+        "product_id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+        "sku": "KS-SPINEBALAN-K-84-72-8",
+        "title": "King 84\u00d772 8\" thick",
+        "price_paise": 9550000,
+        "mrp_paise": 15916667,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "c9a16a84-9279-418f-93e2-d0cf7968e186",
+        "product_id": "55e94e9a-de57-4e65-86f2-bc1d842b7d17",
+        "sku": "KS-SPINEBALAN-K-84-72-10",
+        "title": "King 84\u00d772 10\" thick",
+        "price_paise": 10250000,
+        "mrp_paise": 17083333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      }
+    ]
+  },
+  {
+    "id": "abee3d90-3951-4bdf-acbe-0b910f3c9c18",
+    "slug": "ortho-core-max-mattress",
+    "name": "Ortho Core Max",
+    "category_slug": "mattresses",
+    "price_paise": 5000000,
+    "mrp_paise": 8333300,
+    "image_url": "https://cdn.phototourl.com/member/2026-09-23-12dd140c-f528-41fa-b568-15b06c82205d.png",
+    "description": "",
+    "is_active": true,
+    "is_seed": false,
+    "sort_order": 3,
+    "created_at": "2026-09-30T06:27:02.301136+00:00",
+    "updated_at": "2026-09-30T06:28:20.565107+00:00",
+    "storytelling": null,
+    "product_variants": [
+      {
+        "id": "3efda023-ffff-43e1-ac57-7d9d5577bc2e",
+        "product_id": "abee3d90-3951-4bdf-acbe-0b910f3c9c18",
+        "sku": "KS-ORTHOCOREM-Q-78-60-6",
+        "title": "Queen 78\u00d760 6\" thick",
+        "price_paise": 5300000,
+        "mrp_paise": 8833333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "54a8d7f9-d3af-4f09-91ba-c205dcca006c",
+        "product_id": "abee3d90-3951-4bdf-acbe-0b910f3c9c18",
+        "sku": "KS-ORTHOCOREM-Q-78-60-8",
+        "title": "Queen 78\u00d760 8\" thick",
+        "price_paise": 5900000,
+        "mrp_paise": 9833333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "f62f38dc-aada-41db-8a6d-769858cca731",
+        "product_id": "abee3d90-3951-4bdf-acbe-0b910f3c9c18",
+        "sku": "KS-ORTHOCOREM-Q-78-60-10",
+        "title": "Queen 78\u00d760 10\" thick",
+        "price_paise": 6500000,
+        "mrp_paise": 10833333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "e9b304ee-8087-48ec-97ec-eadee97e63a9",
+        "product_id": "abee3d90-3951-4bdf-acbe-0b910f3c9c18",
+        "sku": "KS-ORTHOCOREM-Q-78-60-12",
+        "title": "Queen 78\u00d760 12\" thick",
+        "price_paise": 7100000,
+        "mrp_paise": 11833333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "bf521a8f-d193-4d68-b5c7-b2fd3c8189da",
+        "product_id": "abee3d90-3951-4bdf-acbe-0b910f3c9c18",
+        "sku": "KS-ORTHOCOREM-K-78-72-6",
+        "title": "King 78\u00d772 6\" thick",
+        "price_paise": 5000000,
+        "mrp_paise": 8333333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "c98ccac4-7aed-45f9-9d0a-e4887512c07a",
+        "product_id": "abee3d90-3951-4bdf-acbe-0b910f3c9c18",
+        "sku": "KS-ORTHOCOREM-K-78-72-8",
+        "title": "King 78\u00d772 8\" thick",
+        "price_paise": 5600000,
+        "mrp_paise": 9333333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "0c1d802b-778e-4fdd-be4b-066acd07aa85",
+        "product_id": "abee3d90-3951-4bdf-acbe-0b910f3c9c18",
+        "sku": "KS-ORTHOCOREM-K-78-72-10",
+        "title": "King 78\u00d772 10\" thick",
+        "price_paise": 6200000,
+        "mrp_paise": 10333333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "32f21be0-7b83-479b-872a-495b2b5f333e",
+        "product_id": "abee3d90-3951-4bdf-acbe-0b910f3c9c18",
+        "sku": "KS-ORTHOCOREM-K-78-72-12",
+        "title": "King 78\u00d772 12\" thick",
+        "price_paise": 6800000,
+        "mrp_paise": 11333333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      }
+    ]
+  },
+  {
+    "id": "8e497b86-228f-498d-981d-64a47f33a6d0",
+    "slug": "standard-classic-pillow",
+    "name": "Standard Classic Pillow",
+    "category_slug": "pillows",
+    "price_paise": 289900,
+    "mrp_paise": 483200,
+    "image_url": "https://cdn.phototourl.com/member/2026-09-22-d076aa68-00a8-46f3-ae97-22a703352de1.png",
+    "description": "",
+    "is_active": true,
+    "is_seed": false,
+    "sort_order": 4,
+    "created_at": "2026-09-30T06:27:02.301136+00:00",
+    "updated_at": "2026-09-30T06:28:20.565107+00:00",
+    "storytelling": null,
+    "product_variants": [
+      {
+        "id": "ef2df227-ce8f-4161-bff4-bb9ac4c11670",
+        "product_id": "8e497b86-228f-498d-981d-64a47f33a6d0",
+        "sku": "KS-STANDARDCLASSI-1",
+        "title": "Standard \u2014 60\u00d740\u00d713 cm",
+        "price_paise": 289900,
+        "mrp_paise": 483167,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.470679+00:00"
+      }
+    ]
+  },
+  {
+    "id": "393ded8a-e310-4cd4-9fb1-fab53438e5a8",
+    "slug": "standard-linea-pillow",
+    "name": "Standard Linea Pillow",
+    "category_slug": "pillows",
+    "price_paise": 309900,
+    "mrp_paise": 516500,
+    "image_url": "https://cdn.phototourl.com/member/2026-09-22-c2f502d1-519b-4174-b2f1-946201979c86.png",
+    "description": "",
+    "is_active": true,
+    "is_seed": false,
+    "sort_order": 5,
+    "created_at": "2026-09-30T06:27:02.301136+00:00",
+    "updated_at": "2026-09-30T06:28:20.565107+00:00",
+    "storytelling": null,
+    "product_variants": [
+      {
+        "id": "eb122042-3606-4053-8278-66ec50149017",
+        "product_id": "393ded8a-e310-4cd4-9fb1-fab53438e5a8",
+        "sku": "KS-STANDARDLINEAP-1",
+        "title": "Standard \u2014 70\u00d740\u00d711 cm",
+        "price_paise": 309900,
+        "mrp_paise": 516500,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.470679+00:00"
+      }
+    ]
+  },
+  {
+    "id": "48ac5229-0f9e-4e9b-b435-2b2f1561b9b0",
+    "slug": "standard-flex-pillow",
+    "name": "Standard Flex Pillow",
+    "category_slug": "pillows",
+    "price_paise": 219900,
+    "mrp_paise": 366500,
+    "image_url": "https://cdn.phototourl.com/free/2026-09-22-fa7082d3-1ea4-408a-8105-0f5cdeafaf44.png",
+    "description": "",
+    "is_active": true,
+    "is_seed": false,
+    "sort_order": 6,
+    "created_at": "2026-09-30T06:27:02.301136+00:00",
+    "updated_at": "2026-09-30T06:28:20.565107+00:00",
+    "storytelling": null,
+    "product_variants": [
+      {
+        "id": "da575888-d940-4441-af8e-f26f0df74733",
+        "product_id": "48ac5229-0f9e-4e9b-b435-2b2f1561b9b0",
+        "sku": "KS-STANDARDFLEXPI-1",
+        "title": "Standard \u2014 60\u00d740\u00d715 cm",
+        "price_paise": 219900,
+        "mrp_paise": 366500,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.470679+00:00"
+      }
+    ]
+  },
+  {
+    "id": "f9ebd977-4f16-4095-a982-6d613620e403",
+    "slug": "standard-dudlis-pillow",
+    "name": "Standard Dualis Pillow",
+    "category_slug": "pillows",
+    "price_paise": 429900,
+    "mrp_paise": 716500,
+    "image_url": "https://cdn.phototourl.com/member/2026-09-22-3f612e8e-1da2-42ca-ad3d-4c94a1b160bf.jpg",
+    "description": "",
+    "is_active": true,
+    "is_seed": false,
+    "sort_order": 7,
+    "created_at": "2026-09-30T06:27:02.301136+00:00",
+    "updated_at": "2026-09-30T06:28:20.565107+00:00",
+    "storytelling": null,
+    "product_variants": [
+      {
+        "id": "cfd49b4f-188a-4de5-b789-cdf842d3639f",
+        "product_id": "f9ebd977-4f16-4095-a982-6d613620e403",
+        "sku": "KS-STANDARDDUDLIS-1",
+        "title": "Standard \u2014 60\u00d740 cm",
+        "price_paise": 429900,
+        "mrp_paise": 716500,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.470679+00:00"
+      }
+    ]
+  },
+  {
+    "id": "5de6eea7-31d8-42f1-8be2-1300a68b6c68",
+    "slug": "ortho-wave-classic-pillow",
+    "name": "Ortho Wave Classic Pillow",
+    "category_slug": "pillows",
+    "price_paise": 329900,
+    "mrp_paise": 549800,
+    "image_url": "https://cdn.phototourl.com/member/2026-09-22-7e00e34c-49f6-408e-85d9-515088ea248b.png",
+    "description": "",
+    "is_active": true,
+    "is_seed": false,
+    "sort_order": 8,
+    "created_at": "2026-09-30T06:27:02.301136+00:00",
+    "updated_at": "2026-09-30T06:28:20.565107+00:00",
+    "storytelling": null,
+    "product_variants": [
+      {
+        "id": "ec024c8d-7775-45ae-819e-71e85f767892",
+        "product_id": "5de6eea7-31d8-42f1-8be2-1300a68b6c68",
+        "sku": "KS-ORTHOWAVECLASS-1",
+        "title": "Standard \u2014 60\u00d740\u00d710/8 cm",
+        "price_paise": 329900,
+        "mrp_paise": 549833,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.470679+00:00"
+      }
+    ]
+  },
+  {
+    "id": "68f24174-1da3-44d9-bf3c-ce48bf30ceb9",
+    "slug": "ortho-wave-linea-pillow",
+    "name": "Ortho Wave Linea Pillow",
+    "category_slug": "pillows",
+    "price_paise": 329900,
+    "mrp_paise": 549800,
+    "image_url": "https://cdn.phototourl.com/member/2026-09-22-26c4ef83-1435-4cf3-8721-2caaea6f005a.png",
+    "description": "",
+    "is_active": true,
+    "is_seed": false,
+    "sort_order": 9,
+    "created_at": "2026-09-30T06:27:02.301136+00:00",
+    "updated_at": "2026-09-30T06:28:20.565107+00:00",
+    "storytelling": null,
+    "product_variants": [
+      {
+        "id": "5ec5d898-e903-417e-9194-7e8bec21d86e",
+        "product_id": "68f24174-1da3-44d9-bf3c-ce48bf30ceb9",
+        "sku": "KS-ORTHOWAVELINEA-1",
+        "title": "Standard \u2014 70\u00d740\u00d710/8 cm",
+        "price_paise": 329900,
+        "mrp_paise": 549833,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.470679+00:00"
+      }
+    ]
+  },
+  {
+    "id": "dbaddf0c-87df-4010-9a3f-19f539ea2cb4",
+    "slug": "ortho-wave-support-plus-pillow",
+    "name": "Ortho Wave Support+ Pillow",
+    "category_slug": "pillows",
+    "price_paise": 329900,
+    "mrp_paise": 549800,
+    "image_url": "https://cdn.phototourl.com/member/2026-09-22-26c4ef83-1435-4cf3-8721-2caaea6f005a.png",
+    "description": "",
+    "is_active": true,
+    "is_seed": false,
+    "sort_order": 10,
+    "created_at": "2026-09-30T06:27:02.301136+00:00",
+    "updated_at": "2026-09-30T06:28:20.565107+00:00",
+    "storytelling": null,
+    "product_variants": [
+      {
+        "id": "0a5bb75d-d10b-4d50-a8df-83a7b0f83d9d",
+        "product_id": "dbaddf0c-87df-4010-9a3f-19f539ea2cb4",
+        "sku": "KS-ORTHOWAVESUPPO-1",
+        "title": "Standard \u2014 60\u00d740\u00d712/10 cm",
+        "price_paise": 329900,
+        "mrp_paise": 549833,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.470679+00:00"
+      }
+    ]
+  },
+  {
+    "id": "b9af9d0e-9b7a-451b-a64f-90ff674c3f6e",
+    "slug": "ortho-wave-acu-touch-pillow",
+    "name": "Ortho Wave Acu Touch Pillow",
+    "category_slug": "pillows",
+    "price_paise": 349900,
+    "mrp_paise": 583200,
+    "image_url": "https://cdn.phototourl.com/member/2026-09-22-586a543f-151f-454b-8a7b-b0570e75d9d7.png",
+    "description": "",
+    "is_active": true,
+    "is_seed": false,
+    "sort_order": 11,
+    "created_at": "2026-09-30T06:27:02.301136+00:00",
+    "updated_at": "2026-09-30T06:28:20.565107+00:00",
+    "storytelling": null,
+    "product_variants": [
+      {
+        "id": "f392165c-e2cd-4925-91c8-da47f1520362",
+        "product_id": "b9af9d0e-9b7a-451b-a64f-90ff674c3f6e",
+        "sku": "KS-ORTHOWAVEACUTO-1",
+        "title": "Standard \u2014 59\u00d736\u00d713/11 cm",
+        "price_paise": 349900,
+        "mrp_paise": 583167,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.470679+00:00"
+      }
+    ]
+  },
+  {
+    "id": "0efb22b2-23f7-4a41-aa06-4b2ba111ada0",
+    "slug": "jumbo-pillow",
+    "name": "Jumbo Pillow",
+    "category_slug": "pillows",
+    "price_paise": 399900,
+    "mrp_paise": 666500,
+    "image_url": "https://cdn.phototourl.com/member/2026-09-26-162f483d-4221-4fec-bfd1-3321e88daff4.jpg",
+    "description": "",
+    "is_active": true,
+    "is_seed": false,
+    "sort_order": 12,
+    "created_at": "2026-09-30T06:27:02.301136+00:00",
+    "updated_at": "2026-09-30T06:28:20.565107+00:00",
+    "storytelling": null,
+    "product_variants": [
+      {
+        "id": "0e3d38c6-5645-40d4-b050-a25f44575e77",
+        "product_id": "0efb22b2-23f7-4a41-aa06-4b2ba111ada0",
+        "sku": "KS-JUMBOPILLOW-1",
+        "title": "Standard \u2014 92\u00d740\u00d712 cm",
+        "price_paise": 399900,
+        "mrp_paise": 666500,
+        "stock": 25,
+        "reserved": 3,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.470679+00:00"
+      }
+    ]
+  },
+  {
+    "id": "0d7d2a8f-9cf2-4349-846b-e1173d2c107b",
+    "slug": "dualis-arc-pillow",
+    "name": "Dualis Arc Pillow",
+    "category_slug": "pillows",
+    "price_paise": 489900,
+    "mrp_paise": 816500,
+    "image_url": "https://cdn.phototourl.com/member/2026-09-23-66e778fa-1b51-4f9f-a8e7-b0d8ef87a6e5.jpg",
+    "description": "",
+    "is_active": true,
+    "is_seed": false,
+    "sort_order": 13,
+    "created_at": "2026-09-30T06:27:02.301136+00:00",
+    "updated_at": "2026-09-30T06:28:20.565107+00:00",
+    "storytelling": null,
+    "product_variants": [
+      {
+        "id": "d67608e3-7f48-4c9c-b7fb-9c868dc9d353",
+        "product_id": "0d7d2a8f-9cf2-4349-846b-e1173d2c107b",
+        "sku": "KS-DUALISARCPILLO-1",
+        "title": "Standard \u2014 70\u00d743 cm",
+        "price_paise": 489900,
+        "mrp_paise": 816500,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.470679+00:00"
+      }
+    ]
+  },
+  {
+    "id": "8b85da70-8bbb-494e-9d57-39468ff4f674",
+    "slug": "dualis-travel-pillow",
+    "name": "Dualis Travel Pillow",
+    "category_slug": "pillows",
+    "price_paise": 189900,
+    "mrp_paise": 316500,
+    "image_url": "https://cdn.phototourl.com/member/2026-09-23-ec4001c4-6330-453e-b6d6-9e2f66ab4fc0.jpg",
+    "description": "",
+    "is_active": true,
+    "is_seed": false,
+    "sort_order": 14,
+    "created_at": "2026-09-30T06:27:02.301136+00:00",
+    "updated_at": "2026-09-30T06:28:20.565107+00:00",
+    "storytelling": null,
+    "product_variants": [
+      {
+        "id": "ce47b081-f061-4605-be36-84ac547067be",
+        "product_id": "8b85da70-8bbb-494e-9d57-39468ff4f674",
+        "sku": "KS-DUALISTRAVELPI-1",
+        "title": "Standard \u2014 43\u00d733 cm",
+        "price_paise": 189900,
+        "mrp_paise": 316500,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.470679+00:00"
+      }
+    ]
+  },
+  {
+    "id": "76b40aeb-00e9-4106-a72c-cdd74d243ac8",
+    "slug": "dualis-body-pillow",
+    "name": "Dualis Body Pillow",
+    "category_slug": "pillows",
+    "price_paise": 559900,
+    "mrp_paise": 933200,
+    "image_url": "https://cdn.phototourl.com/member/2026-09-23-94ba7d88-251d-4053-a562-78b30f543c7c.jpg",
+    "description": "",
+    "is_active": true,
+    "is_seed": false,
+    "sort_order": 15,
+    "created_at": "2026-09-30T06:27:02.301136+00:00",
+    "updated_at": "2026-09-30T06:28:20.565107+00:00",
+    "storytelling": null,
+    "product_variants": [
+      {
+        "id": "8732708c-cf06-48ab-8a15-d30a1f6d184f",
+        "product_id": "76b40aeb-00e9-4106-a72c-cdd74d243ac8",
+        "sku": "KS-DUALISBODYPILL-1",
+        "title": "Standard \u2014 183 cm",
+        "price_paise": 559900,
+        "mrp_paise": 933167,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.470679+00:00"
+      }
+    ]
+  },
+  {
+    "id": "3aab14dc-59db-45fc-a81b-fb57248970e0",
+    "slug": "topper",
+    "name": "Topper",
+    "category_slug": "toppers",
+    "price_paise": 2500000,
+    "mrp_paise": 4166700,
+    "image_url": "https://cdn.phototourl.com/member/2026-09-23-6b486cf9-0fea-481b-9c26-fac9c94586c4.jpg",
+    "description": "",
+    "is_active": true,
+    "is_seed": false,
+    "sort_order": 16,
+    "created_at": "2026-09-30T06:27:02.301136+00:00",
+    "updated_at": "2026-09-30T06:28:20.565107+00:00",
+    "storytelling": null,
+    "product_variants": [
+      {
+        "id": "fa27ddea-5d92-4c21-8dbd-84780f9d42a2",
+        "product_id": "3aab14dc-59db-45fc-a81b-fb57248970e0",
+        "sku": "KS-TOPPER-Q-72-60-2",
+        "title": "Queen 72\u00d760 2\" thick",
+        "price_paise": 2500000,
+        "mrp_paise": 4166667,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "55fe4a73-4e16-4610-9ae4-3541bc2a0562",
+        "product_id": "3aab14dc-59db-45fc-a81b-fb57248970e0",
+        "sku": "KS-TOPPER-Q-75-60-2",
+        "title": "Queen 75\u00d760 2\" thick",
+        "price_paise": 2600000,
+        "mrp_paise": 4333333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "14f173c1-9422-4adc-b155-ef8ab6254cf9",
+        "product_id": "3aab14dc-59db-45fc-a81b-fb57248970e0",
+        "sku": "KS-TOPPER-Q-78-60-2",
+        "title": "Queen 78\u00d760 2\" thick",
+        "price_paise": 2700000,
+        "mrp_paise": 4500000,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "2d6390bd-3194-4210-a8d8-f5af5b248af8",
+        "product_id": "3aab14dc-59db-45fc-a81b-fb57248970e0",
+        "sku": "KS-TOPPER-K-72-72-2",
+        "title": "King 72\u00d772 2\" thick",
+        "price_paise": 2800000,
+        "mrp_paise": 4666667,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "c14de624-f685-46ae-98d4-ecbb9cb86497",
+        "product_id": "3aab14dc-59db-45fc-a81b-fb57248970e0",
+        "sku": "KS-TOPPER-K-75-72-2",
+        "title": "King 75\u00d772 2\" thick",
+        "price_paise": 2800000,
+        "mrp_paise": 4666667,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      },
+      {
+        "id": "a001380a-3600-450b-9646-6a68a633a211",
+        "product_id": "3aab14dc-59db-45fc-a81b-fb57248970e0",
+        "sku": "KS-TOPPER-K-78-72-2",
+        "title": "King 78\u00d772 2\" thick",
+        "price_paise": 2900000,
+        "mrp_paise": 4833333,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.200148+00:00"
+      }
+    ]
+  },
+  {
+    "id": "e63511bb-0b81-4034-8ded-b2acccab5e36",
+    "slug": "natural-nest-junior-pillow",
+    "name": "Natural Nest Junior Pillow",
+    "category_slug": "baby-kids",
+    "price_paise": 209900,
+    "mrp_paise": 349800,
+    "image_url": "https://cdn.phototourl.com/member/2026-09-23-334275fa-130c-4cdd-a46f-c28ef9e3f7c1.png",
+    "description": "",
+    "is_active": true,
+    "is_seed": false,
+    "sort_order": 17,
+    "created_at": "2026-09-30T06:27:02.301136+00:00",
+    "updated_at": "2026-09-30T06:28:20.565107+00:00",
+    "storytelling": null,
+    "product_variants": [
+      {
+        "id": "742c5a64-826f-4aad-a4dd-ee5d8b03ff0f",
+        "product_id": "e63511bb-0b81-4034-8ded-b2acccab5e36",
+        "sku": "KS-NATURALNESTJUN-1",
+        "title": "Standard \u2014 48\u00d728\u00d79/7 cm",
+        "price_paise": 209900,
+        "mrp_paise": 349833,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.470679+00:00"
+      }
+    ]
+  },
+  {
+    "id": "6992b002-db32-48cf-bd4e-ec3d9e797a0b",
+    "slug": "natural-nest-mini-pillow",
+    "name": "Natural Nest Mini Pillow",
+    "category_slug": "baby-kids",
+    "price_paise": 189900,
+    "mrp_paise": 316500,
+    "image_url": "https://cdn.phototourl.com/member/2026-09-23-0385ffe0-b11e-4446-a8e4-9ee94aa0baa0.jpg",
+    "description": "",
+    "is_active": true,
+    "is_seed": false,
+    "sort_order": 18,
+    "created_at": "2026-09-30T06:27:02.301136+00:00",
+    "updated_at": "2026-09-30T06:28:20.565107+00:00",
+    "storytelling": null,
+    "product_variants": [
+      {
+        "id": "47c9796b-f225-4669-9bf3-aa0d371e2469",
+        "product_id": "6992b002-db32-48cf-bd4e-ec3d9e797a0b",
+        "sku": "KS-NATURALNESTMIN-1",
+        "title": "Standard \u2014 44\u00d728\u00d76/6 cm",
+        "price_paise": 189900,
+        "mrp_paise": 316500,
+        "stock": 25,
+        "reserved": 0,
+        "is_active": true,
+        "created_at": "2026-09-30T06:28:22.470679+00:00"
+      }
+    ]
+  }
+];
+
 async function handleRequest(method: string, path: string, body?: any): Promise<any> {
   const [pathname, queryString] = path.split("?");
   const params = new URLSearchParams(queryString || "");
@@ -325,142 +1492,10 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
   }
 
 
-  // ---------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------
   // 2. CATALOG & PDP
   // ---------------------------------------------------------------------------
-  if (pathname === "/catalog/categories") {
-    const { data, error } = await supabase
-      .from("categories")
-      .select("*")
-      .order("sort_order", { ascending: true });
-    if (error) throw new ApiError(500, error);
-    return data || [];
-  }
-
-  if (pathname === "/catalog/products") {
-    let query = supabase.from("products").select("*, product_variants(*)").eq("is_active", true);
-    const cat = params.get("category");
-    if (cat && cat !== "all") {
-      query = query.eq("category_slug", cat);
-    }
-    const { data, error } = await query;
-    if (error) throw new ApiError(500, error);
-
-    const mapProduct = (p: any) => {
-      const vars = (p.product_variants || []).filter((v: any) => v.is_active !== false);
-      const lowestPrice = vars.length > 0 
-        ? Math.min(...vars.map((v: any) => v.price_paise || 0)) 
-        : p.price_paise || 0;
-      const lowestMrp = vars.length > 0 
-        ? Math.min(...vars.map((v: any) => (v.mrp_paise && v.mrp_paise > v.price_paise ? v.mrp_paise : Math.round(v.price_paise / 0.60)))) 
-        : (p.mrp_paise && p.mrp_paise > p.price_paise ? p.mrp_paise : Math.round(p.price_paise / 0.60));
-      
-      const parsedVariants = vars.map((v: any) => {
-        let size = v.title || "Standard";
-        let length: string | null = null;
-        let width: string | null = null;
-        let thickness: string | null = null;
-
-        if (p.category_slug === "mattresses") {
-          const isQueen = v.title?.includes("Queen") || v.sku?.includes("-Q-");
-          const isKing = v.title?.includes("King") || v.sku?.includes("-K-");
-          if (isQueen) size = "Queen";
-          else if (isKing) size = "King";
-
-          const match = (v.title || "").match(/(\d+)[^\d]+(\d+)\s+(\d+)/);
-          if (match) {
-            length = match[1];
-            width = match[2];
-            thickness = match[3];
-          } else if (v.sku) {
-            const parts = v.sku.split("-");
-            if (parts.length >= 6) {
-              length = parts[3];
-              width = parts[4];
-              thickness = parts[5];
-            }
-          }
-        } else if (p.category_slug === "toppers") {
-          const isQueen = v.title?.includes("Queen") || v.sku?.includes("-Q-");
-          const isKing = v.title?.includes("King") || v.sku?.includes("-K-");
-          if (isQueen) size = "Queen";
-          else if (isKing) size = "King";
-
-          const match = (v.title || "").match(/(\d+)[^\d]+(\d+)/);
-          if (match) {
-            length = match[1];
-            width = match[2];
-            thickness = "2";
-          }
-        }
-
-        const price = v.price_paise; // Authoritative SELLING price (e.g. 7400000 paise = ₹74,000)
-        const mrp = (v.mrp_paise && v.mrp_paise > v.price_paise)
-          ? v.mrp_paise
-          : Math.round(v.price_paise / 0.60); // Authoritative MRP (e.g. 12333333 paise = ₹123,333)
-
-        return {
-          id: v.id,
-          product_id: p.id,
-          sku: v.sku,
-          title: v.title,
-          size,
-          length,
-          width,
-          thickness,
-          firmness: null,
-          price,
-          mrp,
-          discount_amount: mrp - price,
-          discount_percent: mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 40,
-          stock: v.stock || 20,
-          reserved: v.reserved || 0,
-          free_stock: Math.max(0, (v.stock || 20) - (v.reserved || 0)),
-          is_active: v.is_active,
-        };
-      });
-
-      return {
-        id: p.id,
-        slug: p.slug,
-        name: p.name,
-        tagline: p.description || "",
-        description: p.description || "",
-        category_slug: p.category_slug,
-        badge: p.badge || null,
-        rating: 4.9,
-        review_count: 128,
-        trial_days: 30,
-        warranty_years: 10,
-        images: p.image_url ? [p.image_url] : [],
-        primary_image: p.image_url,
-        is_seed: false,
-        is_active: p.is_active,
-        sort: 0,
-        created_at: p.created_at || new Date().toISOString(),
-        variants: parsedVariants,
-        price_from: lowestPrice, // e.g. 7400000 paise = ₹74,000
-        mrp_from: lowestMrp,     // e.g. 12333333 paise = ₹123,333
-        discount_percent: lowestMrp > lowestPrice ? Math.round(((lowestMrp - lowestPrice) / lowestMrp) * 100) : 40,
-        in_stock: vars.some((v: any) => (v.stock || 0) > (v.reserved || 0)),
-        storytelling: p.storytelling || null,
-        customization: p.customization || null,
-      };
-    };
-
-    return (data || []).map(mapProduct);
-  }
-
-  if (pathname.startsWith("/catalog/products/")) {
-    const slug = pathname.replace("/catalog/products/", "");
-    const { data: p, error } = await supabase
-      .from("products")
-      .select("*, product_variants(*)")
-      .eq("slug", slug)
-      .maybeSingle();
-
-    if (error || !p) throw new ApiError(404, { detail: "Product not found" });
-
+  const mapCatalogProduct = (p: any) => {
     const vars = (p.product_variants || []).filter((v: any) => v.is_active !== false);
     const lowestPrice = vars.length > 0 
       ? Math.min(...vars.map((v: any) => v.price_paise || 0)) 
@@ -508,10 +1543,10 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
         }
       }
 
-      const price = v.price_paise; // Authoritative SELLING price (e.g. 7400000 paise = ₹74,000)
+      const price = v.price_paise;
       const mrp = (v.mrp_paise && v.mrp_paise > v.price_paise)
         ? v.mrp_paise
-        : Math.round(v.price_paise / 0.60); // Authoritative MRP (e.g. 12333333 paise = ₹123,333)
+        : Math.round(v.price_paise / 0.60);
 
       return {
         id: v.id,
@@ -546,8 +1581,8 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
       review_count: 128,
       trial_days: 30,
       warranty_years: 10,
-      images: p.image_url ? [p.image_url] : [],
-      primary_image: p.image_url,
+      images: p.image_url ? [resolveMediaUrl(p.image_url)] : [],
+      primary_image: resolveMediaUrl(p.image_url),
       is_seed: false,
       is_active: p.is_active,
       sort: 0,
@@ -560,6 +1595,72 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
       storytelling: p.storytelling || null,
       customization: p.customization || null,
     };
+  };
+
+  if (pathname === "/catalog/categories") {
+    try {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("*")
+        .order("sort_order", { ascending: true });
+      if (!error && data && data.length > 0) return data;
+    } catch (_e) {}
+    return [
+      { id: "cat-1", name: "Mattresses", slug: "mattresses", sort_order: 1, description: "100% Organic Dunlop Latex Mattresses" },
+      { id: "cat-2", name: "Pillows", slug: "pillows", sort_order: 2, description: "Natural Latex Pillows for Ergonomic Support" },
+      { id: "cat-3", name: "Toppers", slug: "toppers", sort_order: 3, description: "Organic Latex Mattress Toppers" },
+      { id: "cat-4", name: "Baby + Kids", slug: "baby-kids", sort_order: 4, description: "Pure Organic Latex Pillows & Beds for Children" },
+      { id: "cat-5", name: "Customizable Products", slug: "customizable-products", sort_order: 5, description: "Bespoke Size, Feel & Tailored Sleep Solutions" },
+    ];
+  }
+
+  if (pathname === "/catalog/products") {
+    let rawList: any[] = [];
+    const cat = params.get("category");
+
+    try {
+      let query = supabase.from("products").select("*, product_variants(*)").eq("is_active", true);
+      if (cat && cat !== "all") {
+        query = query.eq("category_slug", cat);
+      }
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        rawList = data;
+      }
+    } catch (_e) {}
+
+    if (!rawList || rawList.length === 0) {
+      rawList = AUTHORITATIVE_PRODUCTS.filter((p: any) => p.is_active !== false);
+      if (cat && cat !== "all") {
+        rawList = rawList.filter((p: any) => p.category_slug === cat);
+      }
+    }
+
+    return rawList.map(mapCatalogProduct);
+  }
+
+  if (pathname.startsWith("/catalog/products/")) {
+    const slug = pathname.replace("/catalog/products/", "");
+    let p: any = null;
+
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*, product_variants(*)")
+        .eq("slug", slug)
+        .maybeSingle();
+      if (!error && data) {
+        p = data;
+      }
+    } catch (_e) {}
+
+    if (!p) {
+      p = AUTHORITATIVE_PRODUCTS.find((item: any) => item.slug === slug);
+    }
+
+    if (!p) throw new ApiError(404, { detail: "Product not found" });
+
+    return mapCatalogProduct(p);
   }
 
   if (pathname === "/catalog/pdp-settings") {
