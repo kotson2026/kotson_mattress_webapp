@@ -7,6 +7,8 @@ import { apiGet } from "@/lib/api";
 import type { AssetSlot } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+import { resolveMediaUrl } from "@/lib/media";
+
 /** Route slug -> category info, primary image URL from user prompt, and local fallback. */
 export const CATEGORY_NAV = [
   {
@@ -20,21 +22,21 @@ export const CATEGORY_NAV = [
     slug: "pillows",
     label: "Pillows",
     slot: "category-pillow",
-    imageUrl: "https://cdn.phototourl.com/member/2026-09-21-db2b927f-f73a-4acf-aa46-ca3f72a19d43.png",
+    imageUrl: "/navbar/pillows.png",
     localFallback: "/navbar/pillows.png",
   },
   {
     slug: "toppers",
     label: "Toppers",
     slot: "category-topper",
-    imageUrl: "https://cdn.phototourl.com/member/2026-09-21-d8cd5b3e-7b3c-4614-8cd3-293abc8d1526.png",
+    imageUrl: "/navbar/toppers.png",
     localFallback: "/navbar/toppers.png",
   },
   {
     slug: "baby-kids",
     label: "Baby + Kids",
     slot: "category-babykids",
-    imageUrl: "https://cdn.phototourl.com/member/2026-09-21-c10cfc86-8ffe-4b1c-9e20-dc91bd8f0238.png",
+    imageUrl: "/navbar/baby-kids.png",
     localFallback: "/navbar/baby-kids.png",
   },
 ] as const;
@@ -51,7 +53,7 @@ export function useCategoryAssets() {
     const publishedUrl = asset?.status === "published" && !!asset.file_url ? asset.file_url : null;
     return {
       ...c,
-      src: publishedUrl || c.imageUrl,
+      src: resolveMediaUrl(publishedUrl || c.imageUrl),
       fallbackSrc: c.localFallback,
       alt: asset?.alt_text || `${c.label} — Kotson`,
     };

@@ -13,7 +13,8 @@ import {
   supabaseSubmitPasswordReset,
 } from "./supabaseClient";
 import { CANONICAL_CERTIFICATIONS } from "./storytellingDefaults";
-export { resolveMediaUrl } from "./media";
+import { resolveMediaUrl } from "./media";
+export { resolveMediaUrl };
 
 /**
  * Normalizes price values into paise (integer).
@@ -611,7 +612,7 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
         stock: item.stock || 20,
         free_stock: item.available !== undefined ? item.available : (item.stock || 20),
         is_active: item.is_active !== false,
-        image: item.image || null,
+        image: resolveMediaUrl(item.image || item.image_url || item.product_image),
         referral_discount: item.referral_discount_paise || 0,
         coupon_discount: item.coupon_discount_paise || 0,
       };
@@ -793,11 +794,16 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
   // 4. CHECKOUT & PAYMENTS (Phase 5C RPCs)
   // ---------------------------------------------------------------------------
   if (pathname === "/checkout/config") {
+    const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID;
+    if (!keyId) {
+      throw new ApiError(500, { detail: "VITE_RAZORPAY_KEY_ID environment variable is missing" });
+    }
+    const isLive = keyId.startsWith("rzp_live_");
     return {
       gateway: "razorpay",
-      mode: "test",
-      state: "ready_test",
-      key_id: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_TeiXGd3FhS8Dai",
+      mode: isLive ? "live" : "test",
+      state: isLive ? "ready_live" : "ready_test",
+      key_id: keyId,
       currency: "INR",
       reservation_ttl_minutes: 15,
     };
@@ -825,69 +831,98 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
     const token = getGuestCartToken();
     const cartId = await getCartId(token, authCtx.userId);
 
-    const { data: rawOrder, error } = await supabase.rpc("kotson_checkout_start_order", {
-      p_cart_id: cartId,
-      p_token: token,
-      p_user_id: authCtx.userId,
-      p_shipping_address: {
-        name: body.shipping_address?.name || body.shipping_address?.fullName || "Customer",
-        phone: body.shipping_address?.phone || "+919876543210",
-        email: body.shipping_address?.email || authCtx.email || "customer@kotson.in",
-        address_line1: body.shipping_address?.address_line1 || body.shipping_address?.addressLine1 || "123 Street",
-        city: body.shipping_address?.city || "Bengaluru",
-        state: body.shipping_address?.state || "Karnataka",
-        pincode: body.shipping_address?.pincode || "560001",
-      },
-      p_billing_address: body.billing_address || body.shipping_address || {},
-      p_referral_code: body.referral_code || null,
-      p_coupon_code: body.coupon_code || null,
-      p_ttl_minutes: 15,
-    });
-    if (error) throw new ApiError(400, { detail: error.message });
-    const order = typeof rawOrder === "string" ? JSON.parse(rawOrder) : rawOrder;
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (session?.access_token) {
+      headers["Authorization"] = `Bearer ${session.access_token}`;
+    }
 
-    const rzpOrderId = `order_test_${order.order_number}`;
-    await supabase.rpc("kotson_checkout_attach_razorpay_order", {
-      p_order_id: order.id,
-      p_razorpay_order_id: rzpOrderId,
-      p_user_id: authCtx.userId,
-      p_guest_access_token: token,
+    const rawAddr = body.address || body.shipping_address || {};
+    const shippingAddress = {
+      name: rawAddr.full_name || rawAddr.name || rawAddr.fullName || "Customer",
+      phone: rawAddr.phone || "+919876543210",
+      email: rawAddr.email || authCtx.email || "customer@kotson.in",
+      address_line1: rawAddr.line1 || rawAddr.address_line1 || rawAddr.addressLine1 || "123 Street",
+      address_line2: rawAddr.line2 || rawAddr.address_line2 || undefined,
+      city: rawAddr.city || "Bengaluru",
+      state: rawAddr.state || "Karnataka",
+      pincode: rawAddr.pincode || "560001",
+    };
+
+    const payload = {
+      cart_id: cartId,
+      token,
+      shipping_address: shippingAddress,
+      billing_address: body.billing_address || shippingAddress,
+      referral_code: body.referral_code || null,
+      coupon_code: body.coupon_code || null,
+      ttl_minutes: 15,
+    };
+
+    const res = await fetch("https://buodzslvzkungwufdkca.supabase.co/functions/v1/checkout-start", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
     });
+
+    const resData = await res.json();
+    if (!res.ok) {
+      throw new ApiError(res.status, { detail: resData.error || "Failed to start checkout" });
+    }
+
+    const keyId = resData.key_id || import.meta.env.VITE_RAZORPAY_KEY_ID;
+    if (!keyId) {
+      throw new ApiError(500, { detail: "Payment gateway key_id is missing from configuration" });
+    }
+
+    const isLive = keyId.startsWith("rzp_live_");
 
     return {
-      order_id: order.id,
-      order_number: order.order_number,
-      guest_access_token: token,
-      amounts: order.amounts || {
-        subtotal: order.subtotal_paise,
-        discount: order.discount_paise,
-        total: order.total_paise,
+      order_id: resData.order_id,
+      order_number: resData.order_number,
+      guest_access_token: resData.guest_access_token || token,
+      amounts: {
+        subtotal: resData.amount_paise,
+        discount: 0,
+        total: resData.amount_paise,
         tax: 0,
         tax_status: "inclusive",
         shipping: 0,
         shipping_status: "free",
       },
       gateway: {
-        state: "ready_test",
-        mode: "test",
-        key_id: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_TeiXGd3FhS8Dai",
-        rzp_order_id: rzpOrderId,
-        amount: order.total_paise,
+        state: resData.gateway_state || (isLive ? "ready_live" : "ready_test"),
+        mode: isLive ? "live" : "test",
+        key_id: keyId,
+        rzp_order_id: resData.razorpay_order_id,
+        amount: resData.amount_paise,
       },
     };
   }
 
   if (pathname === "/checkout/verify" && method === "POST") {
-    const { data, error } = await supabase.rpc("kotson_payment_success", {
-      p_order_id: body.order_id,
-      p_razorpay_order_id: body.razorpay_order_id,
-      p_razorpay_payment_id: body.razorpay_payment_id || `pay_test_${Date.now()}`,
-      p_razorpay_signature: body.razorpay_signature || "sig_test",
-      p_method: "razorpay",
-      p_source: "verify",
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (session?.access_token) {
+      headers["Authorization"] = `Bearer ${session.access_token}`;
+    }
+
+    const res = await fetch("https://buodzslvzkungwufdkca.supabase.co/functions/v1/checkout-verify", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
     });
-    if (error) throw new ApiError(400, { detail: error.message });
-    return { ok: true, status: "paid", order_id: body.order_id };
+
+    const resData = await res.json();
+    if (!res.ok) {
+      throw new ApiError(res.status, { detail: resData.error || "Payment verification failed" });
+    }
+
+    return { ok: true, status: resData.status || "paid", order_id: resData.order_id };
   }
 
   // ---------------------------------------------------------------------------

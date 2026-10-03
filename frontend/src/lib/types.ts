@@ -270,6 +270,7 @@ export interface CartLine {
   free_stock: number;
   is_active: boolean;
   image?: string | null;
+  image_url?: string | null;
   is_custom?: boolean;
   custom_configuration_id?: string | null;
   custom_dimensions?: Record<string, any> | null;

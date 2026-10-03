@@ -6,6 +6,7 @@ import StorefrontHeader from "@/components/layout/StorefrontHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
 import CustomerSupportCta from "@/components/home/CustomerSupportCta";
 import { apiGet } from "@/lib/api";
+import { resolveMediaUrl } from "@/lib/media";
 import type { BlogListResponse } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 
@@ -169,7 +170,7 @@ export default function BlogList() {
                     <div className="lg:col-span-7 relative aspect-16/10 sm:aspect-16/9 lg:aspect-auto lg:h-full overflow-hidden bg-[#EAE4D9]/30">
                       <Link to={`/blogs/${featuredBlog.slug}`} className="block h-full w-full">
                         <img
-                          src={featuredBlog.cover_image || "https://cdn.phototourl.com/member/2026-09-26-af7dc6e9-091c-496e-ad79-c5638c2915e1.png"}
+                          src={resolveMediaUrl(featuredBlog.cover_image)}
                           alt={featuredBlog.title}
                           className="h-full w-full object-cover transition-transform duration-700 ease-out hover:scale-103"
                         />
@@ -255,7 +256,7 @@ export default function BlogList() {
                             className="block relative aspect-16/10 overflow-hidden rounded-[18px] bg-[#EAE4D9]/30 mb-4"
                           >
                             <img
-                              src={b.cover_image || "https://cdn.phototourl.com/member/2026-09-26-af7dc6e9-091c-496e-ad79-c5638c2915e1.png"}
+                              src={resolveMediaUrl(b.cover_image)}
                               alt={b.title}
                               className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-103"
                               loading="lazy"

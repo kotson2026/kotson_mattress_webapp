@@ -180,7 +180,7 @@ export default function CustomizableProductsLanding() {
                   onError={(e) => {
                     // Fallback to CDN hosted image if local file fails
                     (e.target as HTMLImageElement).src =
-                      "https://cdn.phototourl.com/member/2026-09-25-fdcc5d89-9660-48c9-8356-3c13ea2156c8.png";
+                      "/categories/customizable-products.png";
                   }}
                 />
               </div>

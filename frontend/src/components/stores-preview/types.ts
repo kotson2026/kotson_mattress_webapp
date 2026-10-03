@@ -37,7 +37,7 @@ export const KOTSON_STORE_DATA: StoreSectionContent = {
   paragraph:
     "Experience our mattresses, pillows and natural latex products in person. Visit a Kotson store and find the comfort that feels right for you.",
   showroomImage:
-    "https://cdn.phototourl.com/free/2026-09-22-5f3360d1-de72-4db6-b87b-fd03e0286836.png",
+    "/stores/kotson-store.jpg",
   showroomImageAlt:
     "Kotson showroom interior featuring natural latex mattresses, pillows and ergonomic displays",
   stores: [
@@ -54,7 +54,7 @@ export const KOTSON_STORE_DATA: StoreSectionContent = {
       phone: "+91 91234 56789",
       timings: "10:30 AM – 8:30 PM (All 7 Days)",
       mapUrl: "https://maps.google.com/?q=Kotson+Mattress+Hyderabad",
-      image: "https://cdn.phototourl.com/free/2026-09-22-5f3360d1-de72-4db6-b87b-fd03e0286836.png",
+      image: "/stores/kotson-store.jpg",
       storeCount: 1,
     },
     {
@@ -70,7 +70,7 @@ export const KOTSON_STORE_DATA: StoreSectionContent = {
       phone: "+91 91234 56790",
       timings: "10:30 AM – 8:30 PM (All 7 Days)",
       mapUrl: "https://maps.google.com/?q=Kotson+Mattress+Vijayawada",
-      image: "https://cdn.phototourl.com/free/2026-09-22-5f3360d1-de72-4db6-b87b-fd03e0286836.png",
+      image: "/stores/kotson-store.jpg",
       storeCount: 1,
     },
   ],

@@ -55,6 +55,7 @@ import PriceDisplay from "@/components/product/PriceDisplay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { resolveMediaUrl } from "@/lib/media";
 
 // ─────────────────────────────────────────────────────────
 // Razorpay types
@@ -314,11 +315,11 @@ function DrawerCartItem({ line, onQty, onRemove, onEditCustom, busy }: {
         overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center",
         border: `1px solid ${C.border}`,
       }}>
-        {line.image ? (
+        {resolveMediaUrl(line.image || (line as any).image_url) ? (
           <img
-            src={line.image}
+            src={resolveMediaUrl(line.image || (line as any).image_url)}
             alt={line.product_name}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            style={{ width: "100%", height: "100%", objectFit: "contain" }}
           />
         ) : (
           <Package size={24} color={C.muted} />

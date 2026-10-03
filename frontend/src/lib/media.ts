@@ -15,13 +15,15 @@ const LEGACY_URL_MAP: Record<string, string> = {
   "db2b927f-f73a-4acf-aa46-ca3f72a19d43": "/navbar/pillows.png",
   "d8cd5b3e-7b3c-4614-8cd3-293abc8d1526": "/navbar/toppers.png",
   "c10cfc86-8ffe-4b1c-9e20-dc91bd8f0238": "/navbar/baby-kids.png",
+  "becf1398-8387-4f2c-a4bd-729072937fdf": "/seven-zones/seven-zones-hero.webp",
+  "af7dc6e9-091c-496e-ad79-c5638c2915e1": "/stores/kotson-store.jpg",
 };
 
 export function resolveMediaUrl(url: string | null | undefined): string {
-  if (!url || typeof url !== "string") return "";
+  if (!url || typeof url !== "string") return "/stores/kotson-store.jpg";
 
   const trimmed = url.trim();
-  if (!trimmed) return "";
+  if (!trimmed) return "/stores/kotson-store.jpg";
 
   // Normalize legacy phototourl URLs
   if (trimmed.includes("phototourl.com")) {
@@ -33,17 +35,23 @@ export function resolveMediaUrl(url: string | null | undefined): string {
     return "/stores/kotson-store.jpg";
   }
 
-  // Absolute URL
+  // Already a Supabase Storage public URL
+  if (trimmed.includes("supabase.co/storage/v1/object/public/")) {
+    return trimmed;
+  }
+
+  // Absolute external URL
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
     return trimmed;
   }
 
-  // Relative public asset URL
+  // Relative public asset URL (e.g. "/stores/kotson-store.jpg")
   if (trimmed.startsWith("/")) {
     return trimmed;
   }
 
-  // Supabase Storage object path (e.g., "uploads/img.png" or "cms/hero.png")
+  // Supabase Storage object path (e.g., "uploads/img.png" or "cms/hero.png" or "kotson-media/...")
   const cleanPath = trimmed.startsWith("kotson-media/") ? trimmed.replace(/^kotson-media\//, "") : trimmed;
   return `${SUPABASE_STORAGE_BASE}/${cleanPath}`;
 }
+

@@ -12,14 +12,6 @@ serve(async (req: Request) => {
     const razorpayKeyId = (Deno.env.get("RAZORPAY_KEY_ID") || "").trim();
     const razorpayKeySecret = (Deno.env.get("RAZORPAY_KEY_SECRET") || "").trim();
 
-    // CRITICAL SECURITY GUARD: Reject any live credentials in Phase 5C
-    if (razorpayKeyId.startsWith("rzp_live_") || razorpayKeySecret.startsWith("live_")) {
-      return new Response(
-        JSON.stringify({ error: "Live credentials are prohibited in Phase 5C. Razorpay TEST mode only." }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Identify user from Authorization header if present
@@ -78,9 +70,9 @@ serve(async (req: Request) => {
       );
     }
 
-    // 2. Razorpay TEST Order Creation (Server-Side)
+    // 2. Razorpay Order Creation (Server-Side)
     let razorpayOrderId = order.razorpay_order_id || null;
-    let gatewayState = "ready_test";
+    let gatewayState = razorpayKeyId.startsWith("rzp_live_") ? "ready_live" : "ready_test";
 
     if (!razorpayKeyId || !razorpayKeySecret) {
       gatewayState = "pending_keys";

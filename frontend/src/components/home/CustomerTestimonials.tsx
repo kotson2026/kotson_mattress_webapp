@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { resolveMediaUrl } from "@/lib/media";
 import { Play, ChevronLeft, ChevronRight } from "lucide-react";
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -220,7 +221,7 @@ export default function CustomerTestimonials({ config }: CustomerTestimonialsPro
       id="testimonials"
       className="testimonials-section relative w-full overflow-hidden bg-[#FAF7F0] bg-cover bg-no-repeat transition-colors select-none flex flex-col justify-center"
       style={{
-        backgroundImage: `url('${config?.background_url || "https://cdn.phototourl.com/member/2026-09-26-af7dc6e9-091c-496e-ad79-c5638c2915e1.png"}')`,
+        backgroundImage: `url('${resolveMediaUrl(config?.background_url)}')`,
         backgroundPosition: "center center",
       }}
       aria-label="Customer Testimonials"

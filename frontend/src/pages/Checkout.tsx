@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { apiGet, apiPost, apiDelete } from "@/lib/api";
+import { apiGet, apiPost, apiDelete, resolveMediaUrl } from "@/lib/api";
 import type { CartView, CheckoutConfig, CheckoutStartOut, SavedAddress } from "@/lib/types";
 import { inr } from "@/lib/format";
 import { useMe } from "@/lib/session";
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Check, MapPin, Plus, ShieldCheck, Tag } from "lucide-react";
+import { Check, MapPin, Package, Plus, ShieldCheck, Tag } from "lucide-react";
 
 import type { RazorpayResponse } from "@/lib/razorpay.d";
 
@@ -387,25 +387,41 @@ export default function Checkout() {
 
             <aside className="h-fit rounded-2xl border border-border bg-card p-6">
               <h2 className="font-heading text-lg font-bold">Order summary</h2>
-              <ul className="mt-4 space-y-2 text-sm" data-testid="checkout-summary-items">
-                {cart.items.map((l) => (
-                  <li key={l.variant_id} className="flex flex-col gap-0.5 border-b border-border/40 pb-2">
-                    <div className="flex justify-between gap-3">
-                      <span className="font-medium text-foreground">{l.product_name} × {l.qty}</span>
-                      <span className="tabular-nums font-bold text-foreground">{inr(l.line_total)}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{[l.size, l.thickness].filter(Boolean).join(" · ")}</span>
-                      {l.mrp && l.mrp > l.unit_price && (
-                        <>
-                          <span>·</span>
-                          <span className="line-through">MRP {inr(l.mrp)}</span>
-                          <span className="text-[#2F5233] font-semibold">({l.discount_percent ? `${Math.round(l.discount_percent)}% OFF` : "40% OFF"})</span>
-                        </>
-                      )}
-                    </div>
-                  </li>
-                ))}
+              <ul className="mt-4 space-y-3 text-sm" data-testid="checkout-summary-items">
+                {cart.items.map((l) => {
+                  const imgSrc = resolveMediaUrl(l.image || l.image_url);
+                  return (
+                    <li key={l.variant_id} className="flex gap-3 border-b border-border/40 pb-3 items-center">
+                      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-border/60 bg-brand-sand/30 p-1 flex items-center justify-center">
+                        {imgSrc ? (
+                          <img
+                            src={imgSrc}
+                            alt={l.product_name}
+                            className="h-full w-full object-contain"
+                          />
+                        ) : (
+                          <Package className="h-6 w-6 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                        <div className="flex justify-between gap-2">
+                          <span className="font-medium text-foreground truncate">{l.product_name} × {l.qty}</span>
+                          <span className="tabular-nums font-bold text-foreground shrink-0">{inr(l.line_total)}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{[l.size, l.thickness].filter(Boolean).join(" · ")}</span>
+                          {l.mrp && l.mrp > l.unit_price && (
+                            <>
+                              <span>·</span>
+                              <span className="line-through">MRP {inr(l.mrp)}</span>
+                              <span className="text-[#2F5233] font-semibold">({l.discount_percent ? `${Math.round(l.discount_percent)}% OFF` : "40% OFF"})</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
 
               {(() => {
