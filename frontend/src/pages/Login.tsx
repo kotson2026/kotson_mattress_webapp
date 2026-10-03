@@ -92,7 +92,6 @@ export default function Login() {
       <AuthBrandPanel
         eyebrow="WELCOME BACK"
         heading="Better sleep starts naturally."
-        description="Sign in to manage your orders, saved addresses and Refer & Earn—all in one place."
       />
 
       <div className="flex flex-col justify-center px-4 py-8 sm:px-8 md:px-12">
@@ -104,9 +103,6 @@ export default function Login() {
           <h1 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900">
             Sign in
           </h1>
-          <p className="mt-1.5 text-xs text-neutral-500">
-            Customers and staff use the same sign-in.
-          </p>
 
           <form className="mt-6 space-y-4" onSubmit={handleSubmit} noValidate>
             {/* Email or Phone */}

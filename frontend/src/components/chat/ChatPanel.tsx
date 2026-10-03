@@ -437,26 +437,23 @@ function ChatProductCard({
 // ─────────────────────────────────────────────────────────────
 function ChatTrackOrderWidget() {
   const [orderNumber, setOrderNumber] = useState("");
-  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PublicTracking | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!orderNumber || !email) return;
+    if (!orderNumber.trim()) return;
 
     setLoading(true);
     setError(null);
     try {
       const data = await apiGet<PublicTracking>(
-        `/ops/track/${encodeURIComponent(orderNumber.trim().toUpperCase())}?email=${encodeURIComponent(
-          email.trim()
-        )}`
+        `/ops/track/${encodeURIComponent(orderNumber.trim().toUpperCase())}`
       );
       setResult(data);
     } catch {
-      setError("No order found matching that order number and email.");
+      setError("No order found matching that order number or ID.");
     } finally {
       setLoading(false);
     }
@@ -474,23 +471,23 @@ function ChatTrackOrderWidget() {
           <div className="flex justify-between items-center bg-brand-sand/50 p-2 rounded-lg">
             <span className="font-bold">{result.order_number}</span>
             <span className="text-[11px] px-2 py-0.5 rounded-full bg-brand-leaf/15 text-brand-deep font-semibold">
-              {result.fulfilment_status.replace(/_/g, " ")}
+              {(result.fulfilment_status || "Processing").replace(/_/g, " ")}
             </span>
           </div>
           <p className="text-brand-charcoal/70 text-[11px]">
-            Placed: {fmtDateTime(result.placed_at)}
+            Placed: {result.placed_at ? fmtDateTime(result.placed_at) : "Recently"}
           </p>
           <div className="border-t border-[#E5DDD0] pt-2">
             <p className="font-semibold text-brand-charcoal text-[11px] mb-1">
               Items:
             </p>
-            {result.items.map((item, idx) => (
+            {(result.items || []).map((item, idx) => (
               <p key={idx} className="text-brand-charcoal/70 text-[11px]">
                 • {item.product_name} × {item.qty}
               </p>
             ))}
           </div>
-          {result.shipments.length > 0 ? (
+          {result.shipments && result.shipments.length > 0 ? (
             <div className="border-t border-[#E5DDD0] pt-2">
               <p className="font-semibold text-brand-charcoal text-[11px] mb-1">
                 Shipment Milestones:
@@ -521,17 +518,7 @@ function ChatTrackOrderWidget() {
               type="text"
               value={orderNumber}
               onChange={(e) => setOrderNumber(e.target.value.toUpperCase())}
-              placeholder="Order Number (e.g. KS00001)"
-              required
-              className="w-full bg-[#FAF8F5] border border-[#E5DDD0] rounded-lg px-2.5 py-1.5 text-xs text-brand-charcoal placeholder:text-brand-charcoal/40 focus:outline-none focus:ring-1 focus:ring-brand-deep"
-            />
-          </div>
-          <div>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email used at checkout"
+              placeholder="Order Number or ID (e.g. KS00027)"
               required
               className="w-full bg-[#FAF8F5] border border-[#E5DDD0] rounded-lg px-2.5 py-1.5 text-xs text-brand-charcoal placeholder:text-brand-charcoal/40 focus:outline-none focus:ring-1 focus:ring-brand-deep"
             />
@@ -539,7 +526,7 @@ function ChatTrackOrderWidget() {
           {error && <p className="text-[11px] text-red-600">{error}</p>}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !orderNumber.trim()}
             className="w-full py-1.5 rounded-lg bg-brand-deep text-white text-xs font-semibold hover:bg-brand-deep/90 transition-colors disabled:opacity-50 cursor-pointer"
           >
             {loading ? "Checking..." : "Track My Order"}

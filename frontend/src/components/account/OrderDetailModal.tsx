@@ -265,6 +265,10 @@ export default function OrderDetailModal({
                       r.variant_id === item.variant_id
                   );
 
+                  const itemQty = Number(item.qty || (item as any).quantity || 1);
+                  const itemLineTotal = Number(item.line_total ?? (item as any).line_total_paise ?? 0);
+                  const itemUnitPrice = Number(item.unit_price ?? (item as any).final_unit_price_paise ?? (itemQty > 0 ? Math.round(itemLineTotal / itemQty) : 0));
+
                   return (
                     <div
                       key={idx}
@@ -287,13 +291,13 @@ export default function OrderDetailModal({
                           {[item.size, item.thickness, item.firmness, item.title].filter(Boolean).join(" · ")}
                         </p>
                         <p className="text-xs text-[#777777]">
-                          Qty: {item.qty} × {inr(Math.round(item.line_total / (item.qty || 1)))} · SKU: {item.sku || "—"}
+                          Qty: {itemQty} × {inr(itemUnitPrice)} · SKU: {item.sku || "—"}
                         </p>
                       </div>
 
                       <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2.5">
                         <span className="font-heading font-bold text-sm text-[#11291F] tabular-nums">
-                          {inr(item.line_total)}
+                          {inr(itemLineTotal)}
                         </span>
 
                         {/* ONLY when genuinely DELIVERED show "Rate & Review Product" */}
@@ -339,20 +343,30 @@ export default function OrderDetailModal({
                 <span className="font-bold text-[#666666] uppercase tracking-wider text-[10px] block">
                   Payment Summary
                 </span>
-                <div className="flex justify-between text-[#666666]">
-                  <span>Subtotal:</span>
-                  <span className="tabular-nums">{inr(order.amounts?.subtotal || 0)}</span>
-                </div>
-                {order.amounts?.discount > 0 && (
-                  <div className="flex justify-between text-emerald-700">
-                    <span>Discount:</span>
-                    <span className="tabular-nums">−{inr(order.amounts.discount)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between font-bold text-[#11291F] pt-1.5 border-t border-[#E4E9E2]">
-                  <span>Total Paid:</span>
-                  <span className="tabular-nums">{inr(order.amounts?.total || 0)}</span>
-                </div>
+                {(() => {
+                  const subtotalPaise = Number(order.amounts?.subtotal ?? (order as any).subtotal_paise ?? (order.amounts as any)?.subtotal_sale_paise ?? 0);
+                  const discountPaise = Number(order.amounts?.discount ?? (order as any).discount_paise ?? ((Number((order.amounts as any)?.total_coupon_discount_paise) || 0) + (Number((order.amounts as any)?.total_referral_discount_paise) || 0)));
+                  const totalPaise = Number(order.amounts?.total ?? (order as any).total_paise ?? (order.amounts as any)?.total_paise ?? 0);
+
+                  return (
+                    <>
+                      <div className="flex justify-between text-[#666666]">
+                        <span>Subtotal:</span>
+                        <span className="tabular-nums">{inr(subtotalPaise)}</span>
+                      </div>
+                      {discountPaise > 0 && (
+                        <div className="flex justify-between text-emerald-700">
+                          <span>Discount:</span>
+                          <span className="tabular-nums">−{inr(discountPaise)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-bold text-[#11291F] pt-1.5 border-t border-[#E4E9E2]">
+                        <span>Total Paid:</span>
+                        <span className="tabular-nums">{inr(totalPaise)}</span>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>

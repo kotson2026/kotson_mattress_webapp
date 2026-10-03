@@ -21,10 +21,7 @@ export default function AuthBrandPanel({
   description,
   subheading,
 }: AuthBrandPanelProps) {
-  const contentDescription =
-    description ??
-    subheading ??
-    "Sign in to manage your orders, saved addresses and Refer & Earn—all in one place.";
+  const contentDescription = description ?? subheading ?? null;
 
   return (
     <div
@@ -64,9 +61,11 @@ export default function AuthBrandPanel({
         />
 
         {/* Supporting Copy */}
-        <p className="max-w-[460px] text-white/85 text-base sm:text-[17px] leading-[1.6] font-normal">
-          {contentDescription}
-        </p>
+        {contentDescription && (
+          <p className="max-w-[460px] text-white/85 text-base sm:text-[17px] leading-[1.6] font-normal">
+            {contentDescription}
+          </p>
+        )}
       </div>
 
       {/* Subtle Legal Company Name */}

@@ -393,7 +393,6 @@ export default function Register() {
       <AuthBrandPanel
         eyebrow="JOIN KOTSON"
         heading="Your better sleep journey starts here."
-        description="Create your Kotson account to manage orders, save addresses and access Refer & Earn."
       />
 
       <div className="flex flex-col justify-center px-4 py-8 sm:px-8 md:px-12">

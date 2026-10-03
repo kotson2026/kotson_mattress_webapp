@@ -828,6 +828,25 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
   }
 
   // ---------------------------------------------------------------------------
+  // 4B. PUBLIC ORDER TRACKING (Order Number or Order UUID)
+  // ---------------------------------------------------------------------------
+  if (pathname.startsWith("/ops/track/")) {
+    const rawParam = pathname.replace("/ops/track/", "").split("?")[0].trim();
+    const orderIdentifier = decodeURIComponent(rawParam);
+    const { data, error } = await supabase.rpc("kotson_get_public_order_tracking", {
+      p_order_identifier: orderIdentifier,
+    });
+    if (error) {
+      throw new ApiError(500, { detail: error.message });
+    }
+    const tracking = typeof data === "string" ? JSON.parse(data) : data;
+    if (!tracking || tracking.found === false) {
+      throw new ApiError(404, { detail: tracking?.error || "No order found matching that order number or ID." });
+    }
+    return tracking;
+  }
+
+  // ---------------------------------------------------------------------------
   // 5. PUBLIC STOREFRONT CMS & BLOGS (Phase 5E RPCs)
   // ---------------------------------------------------------------------------
   if (pathname === "/cms/pages/home" || pathname === "/public/homepage") {
@@ -924,40 +943,12 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
   // ---------------------------------------------------------------------------
   // 6. CUSTOMER ACCOUNT & ORDERS
   // ---------------------------------------------------------------------------
-  if (pathname === "/orders") {
-    const { data, error } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("user_id", authCtx.userId)
-      .order("created_at", { ascending: false });
-    if (error) throw new ApiError(500, error);
-    return (data || []).map((o: any) => {
-      const ship = typeof o.shipping_address === "string" ? JSON.parse(o.shipping_address) : (o.shipping_address || {});
-      const addr = {
-        full_name: ship.name || ship.full_name || o.customer_name || "",
-        phone: ship.phone || o.phone || "",
-        line1: ship.address_line1 || ship.line1 || "",
-        line2: ship.address_line2 || ship.line2 || "",
-        landmark: ship.landmark || "",
-        city: ship.city || "",
-        state: ship.state || "",
-        pincode: ship.pincode || ship.postal_code || "",
-      };
-      return {
-        ...o,
-        address: o.address || addr,
-      };
-    });
-  }
-
-  if (pathname.startsWith("/orders/")) {
-    const id = pathname.replace("/orders/", "");
-    const { data, error } = await supabase.from("orders").select("*").eq("id", id).maybeSingle();
-    if (error || !data) throw new ApiError(404, { detail: "Order not found" });
-    const ship = typeof data.shipping_address === "string" ? JSON.parse(data.shipping_address) : (data.shipping_address || {});
+  function normalizeOrderRecord(o: any) {
+    if (!o) return o;
+    const ship = typeof o.shipping_address === "string" ? JSON.parse(o.shipping_address) : (o.shipping_address || {});
     const addr = {
-      full_name: ship.name || ship.full_name || data.customer_name || "",
-      phone: ship.phone || data.phone || "",
+      full_name: ship.name || ship.full_name || o.customer_name || "",
+      phone: ship.phone || o.phone || "",
       line1: ship.address_line1 || ship.line1 || "",
       line2: ship.address_line2 || ship.line2 || "",
       landmark: ship.landmark || "",
@@ -965,10 +956,77 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
       state: ship.state || "",
       pincode: ship.pincode || ship.postal_code || "",
     };
-    return {
-      ...data,
-      address: data.address || addr,
+
+    const rawItems = typeof o.items === "string" ? JSON.parse(o.items) : (o.items || []);
+    const items = (rawItems || []).map((it: any) => {
+      const qty = Number(it.qty ?? it.quantity ?? 1);
+      const line_total = Number(it.line_total ?? it.line_total_paise ?? it.total ?? 0);
+      const unit_price = Number(
+        it.unit_price ??
+        it.final_unit_price_paise ??
+        it.sale_price_paise ??
+        (qty > 0 ? Math.round(line_total / qty) : 0)
+      );
+      return {
+        ...it,
+        qty,
+        quantity: qty,
+        line_total,
+        line_total_paise: line_total,
+        unit_price,
+        final_unit_price_paise: unit_price,
+      };
+    });
+
+    const rawAmounts = typeof o.amounts === "string" ? JSON.parse(o.amounts) : (o.amounts || {});
+    const total = Number(rawAmounts.total ?? o.total_paise ?? rawAmounts.total_paise ?? 0);
+    const subtotal = Number(rawAmounts.subtotal ?? o.subtotal_paise ?? rawAmounts.subtotal_sale_paise ?? total);
+    const discount = Number(
+      rawAmounts.discount ??
+      o.discount_paise ??
+      ((Number(rawAmounts.total_coupon_discount_paise) || 0) + (Number(rawAmounts.total_referral_discount_paise) || 0))
+    );
+    const shipping = Number(rawAmounts.shipping ?? rawAmounts.shipping_paise ?? 0);
+    const tax = Number(rawAmounts.tax ?? rawAmounts.tax_paise ?? 0);
+
+    const amounts = {
+      ...rawAmounts,
+      total,
+      total_paise: total,
+      subtotal,
+      subtotal_paise: subtotal,
+      discount,
+      discount_paise: discount,
+      shipping,
+      shipping_status: rawAmounts.shipping_status || "free",
+      tax,
+      tax_status: rawAmounts.tax_status || "included",
     };
+
+    return {
+      ...o,
+      items,
+      amounts,
+      address: o.address || addr,
+      shipping_address: ship,
+    };
+  }
+
+  if (pathname === "/orders") {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("user_id", authCtx.userId)
+      .order("created_at", { ascending: false });
+    if (error) throw new ApiError(500, error);
+    return (data || []).map(normalizeOrderRecord);
+  }
+
+  if (pathname.startsWith("/orders/")) {
+    const id = pathname.replace("/orders/", "");
+    const { data, error } = await supabase.from("orders").select("*").eq("id", id).maybeSingle();
+    if (error || !data) throw new ApiError(404, { detail: "Order not found" });
+    return normalizeOrderRecord(data);
   }
 
   // ---------------------------------------------------------------------------
@@ -1661,12 +1719,7 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
     const { data, count, error } = await query;
     if (error) throw new ApiError(500, error);
 
-    const rows = (data || []).map((o: any) => ({
-      ...o,
-      items: typeof o.items === "string" ? JSON.parse(o.items) : (o.items || []),
-      amounts: typeof o.amounts === "string" ? JSON.parse(o.amounts) : (o.amounts || {}),
-      shipping_address: typeof o.shipping_address === "string" ? JSON.parse(o.shipping_address) : (o.shipping_address || {}),
-    }));
+    const rows = (data || []).map(normalizeOrderRecord);
 
     return {
       total: count !== null ? count : rows.length,
@@ -2347,7 +2400,7 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
 
   if (pathname === "/admin/dispatch/orders") {
     const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(50);
-    const list = data || [];
+    const list = (data || []).map(normalizeOrderRecord);
     return { total: list.length, rows: list, page: 1, limit: 10, pages: Math.ceil(list.length / 10) || 1 };
   }
 
@@ -2430,7 +2483,7 @@ async function handleRequest(method: string, path: string, body?: any): Promise<
   if (pathname === "/stock-point/orders/search") {
     const q = params.get("q") || "";
     const { data } = await supabase.from("orders").select("*").ilike("customer_name", `%${q}%`).limit(10);
-    return data || [];
+    return (data || []).map(normalizeOrderRecord);
   }
 
   // ---------------------------------------------------------------------------
